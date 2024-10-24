@@ -123,3 +123,128 @@ footer {
     padding: 1rem;
     margin-top: 2rem;
 }
+/* Global Styles */
+body {
+    font-family: 'Arial', sans-serif;
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    background-color: #f4f4f9;
+    color: #333;
+}
+
+/* Header */
+header {
+    background-color: #333;
+    padding: 1rem 0;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+
+header .logo h1 a {
+    color: white;
+    text-decoration: none;
+}
+
+.nav-links {
+    display: flex;
+    list-style: none;
+    justify-content: space-around;
+}
+
+.nav-links li a {
+    color: white;
+    text-decoration: none;
+    padding: 0.5rem;
+    transition: color 0.3s ease;
+}
+
+.nav-links li a:hover {
+    color: #ff6b6b;
+}
+
+.nav-links li a.active {
+    color: #ff6b6b;
+}
+
+/* Privacy Policy Page */
+.privacy-policy-page {
+    padding: 2rem 1rem;
+    max-width: 800px;
+    margin: auto;
+}
+
+.section-title {
+    text-align: center;
+    font-size: 2.5rem;
+    color: #333;
+    margin-bottom: 1.5rem;
+}
+
+.intro-text {
+    text-align: center;
+    margin-bottom: 2rem;
+    color: #666;
+}
+
+/* Accordion Styles */
+.accordion {
+    border-radius: 8px;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    background-color: white;
+    overflow: hidden;
+}
+
+.accordion-item {
+    border-bottom: 1px solid #ddd;
+}
+
+.accordion-button {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background-color: #f9f9f9;
+    padding: 1rem;
+    width: 100%;
+    font-size: 1.1rem;
+    color: #333;
+    cursor: pointer;
+    border: none;
+    outline: none;
+    transition: background-color 0.3s ease;
+}
+
+.accordion-button:hover {
+    background-color: #ff6b6b;
+    color: white;
+}
+
+.accordion-content {
+    padding: 1rem;
+    display: none;
+    background-color: white;
+}
+
+.accordion-content p, .accordion-content ul {
+    margin: 0.5rem 0;
+    color: #555;
+}
+
+.accordion-button i {
+    transition: transform 0.3s ease;
+}
+
+.accordion-button.active i {
+    transform: rotate(180deg);
+}
+
+/* Footer */
+footer {
+    background-color: #333;
+    color: white;
+    text-align: center;
+    padding: 1rem 0;
+    margin-top: 2rem;
+}
+
