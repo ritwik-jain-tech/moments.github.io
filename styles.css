@@ -108,11 +108,86 @@ header .logo h1 a {
     transform: rotate(180deg);
 }
 
-/* Footer */
-footer {
-    background-color: #1b1b1b;
-    color: #c49bff;
+.hero {
+    background-image: url('wedding-hero.jpg');
+    background-size: cover;
+    background-position: center;
+    height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
     text-align: center;
-    padding: 1rem 0;
+}
+
+.hero h1 {
+    font-size: 3rem;
+    margin-bottom: 20px;
+}
+
+.hero p {
+    font-size: 1.3rem;
+    margin-bottom: 30px;
+}
+
+.cta-button {
+    background-color: #ff6b6b;
+    color: white;
+    padding: 10px 20px;
+    border: none;
+    border-radius: 5px;
+    text-decoration: none;
+    font-size: 1.1rem;
+}
+
+.cta-button:hover {
+    background-color: #ff5252;
+}
+
+.features, .how-it-works, .download, .contact {
+    padding: 3rem;
+    text-align: center;
+}
+
+.features h2, .how-it-works h2, .download h2, .contact h2 {
+    font-size: 2.5rem;
+    margin-bottom: 2rem;
+}
+
+.feature-list {
+    display: flex;
+    justify-content: space-around;
+}
+
+.feature-item {
+    flex: 1;
+    margin: 0 15px;
+}
+
+.feature-item h3 {
+    font-size: 1.8rem;
+    margin-bottom: 15px;
+}
+
+.steps {
+    display: flex;
+    justify-content: space-between;
+}
+
+.step {
+    flex: 1;
+    margin: 0 20px;
+}
+
+.download-buttons img {
+    width: 150px;
+    margin: 10px;
+}
+
+footer {
+    background-color: #333;
+    color: white;
+    text-align: center;
+    padding: 1rem;
     margin-top: 2rem;
 }
