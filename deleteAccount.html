@@ -33,10 +33,26 @@
             <input type="text" id="phone" name="phone" maxlength="10" placeholder="Enter 10-digit phone number" required>
             
             <button type="button" onclick="sendOTP()">Send OTP</button>
+            
+            <!-- OTP Input Field, initially hidden -->
+            <div id="otp-section" style="display: none;">
+                <label for="otp">Enter OTP</label>
+                <input type="text" id="otp" name="otp" maxlength="6" placeholder="Enter OTP">
+                <button type="button" onclick="verifyOTP()">Verify OTP</button>
+            </div>
         </form>
         
         <p class="note">* By confirming, all your data will be permanently deleted and cannot be recovered.</p>
     </section>
+
+    <!-- Confirmation Modal -->
+    <div id="confirmation-modal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal()">&times;</span>
+            <h2>Account Deleted</h2>
+            <p id="confirmation-message"></p>
+        </div>
+    </div>
 
     <!-- Footer -->
     <footer>
