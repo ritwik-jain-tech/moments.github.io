@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Delete Account - Moments.live</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+    <!-- Header Section -->
+    <header>
+        <nav>
+            <div class="logo">
+                <h1>Moments.live</h1>
+            </div>
+            <ul class="nav-links">
+                <li><a href="index.html">Home</a></li>
+                <li><a href="#features">Features</a></li>
+                <li><a href="#contact">Contact</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <!-- Delete Account Section -->
+    <section class="delete-account">
+        <h2>Delete Account</h2>
+        <p>Enter your registered mobile number to receive an OTP and confirm account deletion.</p>
+        
+        <form id="delete-account-form">
+            <label for="phone">Phone Number</label>
+            <input type="text" id="phone" name="phone" maxlength="10" placeholder="Enter 10-digit phone number" required>
+            
+            <button type="button" onclick="sendOTP()">Send OTP</button>
+        </form>
+        
+        <p class="note">* By confirming, all your data will be permanently deleted and cannot be recovered.</p>
+    </section>
+
+    <!-- Footer -->
+    <footer>
+        <p>&copy; 2024 Moments.live. All rights reserved.</p>
+    </footer>
+
+    <script src="script.js"></script>
+</body>
+</html>
