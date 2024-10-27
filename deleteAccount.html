@@ -59,6 +59,44 @@
         <p>&copy; 2024 Moments.live. All rights reserved.</p>
     </footer>
 
-    <script src="script.js"></script>
+    <!-- Inline JavaScript for Debugging -->
+    <script>
+        function sendOTP() {
+            const phoneInput = document.getElementById('phone');
+            const phone = phoneInput.value;
+
+            // Check if the phone number is exactly 10 digits and numeric
+            const isValidPhone = /^\d{10}$/.test(phone);
+            if (!isValidPhone) {
+                alert("Invalid phone number. Please enter a valid 10-digit phone number.");
+                return;
+            }
+
+            // Show OTP section and display an alert confirming OTP sent
+            document.getElementById('otp-section').style.display = 'block';
+            alert("OTP has been sent to " + phone + ".");
+        }
+
+        function verifyOTP() {
+            const otpInput = document.getElementById('otp').value;
+            const phoneInput = document.getElementById('phone').value;
+
+            // Check if OTP matches the required "123456"
+            if (otpInput === "123456") {
+                // Display confirmation modal
+                const confirmationModal = document.getElementById('confirmation-modal');
+                const confirmationMessage = document.getElementById('confirmation-message');
+                
+                confirmationMessage.textContent = "Your account associated with " + phoneInput + " has been deleted.";
+                confirmationModal.style.display = "flex";
+            } else {
+                alert("Invalid OTP. Please try again.");
+            }
+        }
+
+        function closeModal() {
+            document.getElementById('confirmation-modal').style.display = "none";
+        }
+    </script>
 </body>
 </html>
