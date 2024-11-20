@@ -18,7 +18,7 @@ header {
 }
 
 header .logo h1 a {
-    color: #c49bff;
+    color: #9b59b6;
     text-decoration: none;
 }
 
@@ -29,7 +29,7 @@ header .logo h1 a {
 }
 
 .nav-links li a {
-    color: #c49bff;
+    color: #9b59b6;
     text-decoration: none;
     padding: 0.5rem;
     transition: color 0.3s ease;
@@ -297,12 +297,7 @@ button:hover {
     cursor: pointer;
 }
 
-.close: hover,
-.close: focus {
-    color: black;
-    text-decoration: none;
-    cursor: pointer;
-}
+
 
 /* General Reset */
 * {
@@ -314,8 +309,8 @@ button:hover {
 /* Body Styling */
 body {
     font-family: 'Georgia', serif;
-    background-color: #1a1a1a; /* Black background */
-    color: #fff; /* White text */
+    background-color: #ccc; /* Black background */
+    color: #000; /* White text */
 }
 
 /* Container */

@@ -17,6 +17,8 @@ accordionButtons.forEach(button => {
         }
     });
 
+});
+
 function sendOTP() {
     const phoneInput = document.getElementById('phone');
     const phone = phoneInput.value;
@@ -76,5 +78,3 @@ document.addEventListener('DOMContentLoaded', function () {
    // Trigger on scroll
    window.addEventListener('scroll', checkAnimation);
 });
-
-
