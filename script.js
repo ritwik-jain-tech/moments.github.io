@@ -54,3 +54,27 @@ function closeModal() {
     document.getElementById('confirmation-modal').style.display = "none";
 }
 
+// JavaScript for triggering animations when elements are in view
+document.addEventListener('DOMContentLoaded', function () {
+   const contactBoxes = document.querySelectorAll('.contact-box');
+
+   // Function to check if element is in viewport
+   function isInViewport(element) {
+       const rect = element.getBoundingClientRect();
+       return rect.top <= window.innerHeight && rect.bottom >= 0;
+   }
+
+   // Add 'show' class when in view
+   function checkAnimation() {
+       contactBoxes.forEach(box => {
+           if (isInViewport(box)) {
+               box.classList.add('show');
+           }
+       });
+   }
+
+   // Trigger on scroll
+   window.addEventListener('scroll', checkAnimation);
+});
+
+
