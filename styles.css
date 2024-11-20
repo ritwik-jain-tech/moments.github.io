@@ -304,4 +304,108 @@ button:hover {
     cursor: pointer;
 }
 
+/* General Reset */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+/* Body Styling */
+body {
+    font-family: 'Georgia', serif;
+    background-color: #1a1a1a; /* Black background */
+    color: #fff; /* White text */
+}
+
+/* Container */
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+/* Luxury Header Styling */
+.header {
+    text-align: center;
+    padding: 50px 20px;
+}
+
+.header h1 {
+    font-size: 3rem;
+    color: #9b59b6; /* Purple color */
+}
+
+.header p {
+    font-size: 1.2rem;
+    color: #dcdcdc; /* Light gray text */
+}
+
+/* Contact Information Box */
+.contact-info {
+    display: flex;
+    justify-content: space-around;
+    margin-top: 50px;
+}
+
+.contact-box {
+    background-color: #333; /* Dark gray box */
+    padding: 30px;
+    border-radius: 10px;
+    width: 45%;
+    text-align: center;
+}
+
+.contact-box h2 {
+    font-size: 1.8rem;
+    margin-bottom: 20px;
+}
+
+.contact-box p {
+    font-size: 1rem;
+}
+
+.email-link, .whatsapp-btn {
+    display: inline-block;
+    margin-top: 20px;
+    padding: 10px 20px;
+    background-color: #9b59b6; /* Purple button */
+    color: #fff; 
+    text-decoration: none;
+    border-radius: 5px;
+}
+
+.email-link:hover, .whatsapp-btn:hover {
+    background-color: #8e44ad; /* Darker purple on hover */
+}
+
+/* Footer Styling */
+.footer {
+    text-align: center;
+    margin-top: 50px;
+}
+
+.footer p {
+    font-size: 0.9rem;
+}
+
+/* Luxury Animations */
+.contact-box {
+    opacity: 0;
+    transform: translateY(50px);
+}
+
+.contact-box.show {
+    animation: fadeInUp 1s forwards ease-in-out; 
+}
+
+/* Animation Keyframes */
+@keyframes fadeInUp {
+   to {
+       opacity: 1;
+       transform: translateY(0);
+   }
+}
+
+
 
