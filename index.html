@@ -6,6 +6,8 @@
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
     <title>Moments.live - Capture and Share Wedding Memories</title>
     <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/aos/2.3.4/aos.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
 <body>
 
@@ -27,26 +29,41 @@
 
     <!-- Hero Section -->
     <section class="hero">
-        <div class="hero-text">
-            <h1>Capture and Share Wedding Memories</h1>
-            <p>Your special moments, shared in real-time.</p>
-            <a href="#download" class="cta-button">Get the App</a>
+        <div class="hero-content">
+            <h1 class="hero-title" data-aos="fade-up">Capture and Share Wedding Memories</h1>
+            <p class="hero-subtitle" data-aos="fade-up" data-aos-delay="200">Your special moments, shared in real-time.</p>
+            <div class="hero-buttons" data-aos="fade-up" data-aos-delay="400">
+                <a href="#download" class="cta-button primary">Get the App</a>
+                <a href="#features" class="cta-button secondary">Learn More</a>
+            </div>
+        </div>
+        <div class="hero-image" data-aos="fade-left">
+            <img src="wedding-hero.jpg" alt="Wedding Moments">
         </div>
     </section>
 
     <!-- Features Section -->
     <section id="features" class="features">
-        <h2>Features</h2>
-        <div class="feature-list">
-            <div class="feature-item">
+        <h2 class="section-title" data-aos="fade-up">Features</h2>
+        <div class="feature-grid">
+            <div class="feature-item" data-aos="fade-up">
+                <div class="feature-icon">
+                    <i class="fas fa-bolt"></i>
+                </div>
                 <h3>Real-Time Sharing</h3>
                 <p>Upload and share wedding photos instantly with family and friends.</p>
             </div>
-            <div class="feature-item">
+            <div class="feature-item" data-aos="fade-up" data-aos-delay="100">
+                <div class="feature-icon">
+                    <i class="fas fa-lock"></i>
+                </div>
                 <h3>Private Albums</h3>
                 <p>Create and share private albums that are only accessible to selected guests.</p>
             </div>
-            <div class="feature-item">
+            <div class="feature-item" data-aos="fade-up" data-aos-delay="200">
+                <div class="feature-icon">
+                    <i class="fas fa-camera"></i>
+                </div>
                 <h3>High-Quality Photos</h3>
                 <p>Preserve your precious moments in high resolution for everyone to enjoy.</p>
             </div>
@@ -55,18 +72,21 @@
 
     <!-- How It Works Section -->
     <section id="how-it-works" class="how-it-works">
-        <h2>How It Works</h2>
-        <div class="steps">
-            <div class="step">
-                <h3>1. Create an Event</h3>
+        <h2 class="section-title" data-aos="fade-up">How It Works</h2>
+        <div class="steps-container">
+            <div class="step" data-aos="fade-right">
+                <div class="step-number">01</div>
+                <h3>Create an Event</h3>
                 <p>Start by creating a wedding event and invite guests to join.</p>
             </div>
-            <div class="step">
-                <h3>2. Capture Moments</h3>
+            <div class="step" data-aos="fade-right" data-aos-delay="100">
+                <div class="step-number">02</div>
+                <h3>Capture Moments</h3>
                 <p>Guests can upload photos and videos in real time, right from their phones.</p>
             </div>
-            <div class="step">
-                <h3>3. Share with Everyone</h3>
+            <div class="step" data-aos="fade-right" data-aos-delay="200">
+                <div class="step-number">03</div>
+                <h3>Share with Everyone</h3>
                 <p>All the photos are instantly available for everyone in your event to view and download.</p>
             </div>
         </div>
@@ -74,18 +94,26 @@
 
     <!-- Download Section -->
     <section id="download" class="download">
-        <h2>Download the App</h2>
-        <p>Available on iOS and Android. Start sharing your special moments today!</p>
-        <div class="download-buttons">
-            <a href="#"><img src="ios-download.png" alt="Download on the App Store"></a>
-            <a href="#"><img src="android-download.png" alt="Get it on Google Play"></a>
+        <div class="download-content" data-aos="fade-up">
+            <h2 class="section-title">Download the App</h2>
+            <p>Available on iOS and Android. Start sharing your special moments today!</p>
+            <div class="download-buttons">
+                <a href="#" class="store-button">
+                    <img src="ios-download.png" alt="Download on the App Store">
+                </a>
+                <a href="#" class="store-button">
+                    <img src="android-download.png" alt="Get it on Google Play">
+                </a>
+            </div>
         </div>
     </section>
 
     <!-- Contact Section -->
     <section id="contact" class="contact">
-        <h2>Contact Us</h2>
-        <p>Have questions? Feel free to reach out at <a href="mailto:support@moments.live">support@moments.live</a></p>
+        <div class="contact-content" data-aos="fade-up">
+            <h2 class="section-title">Contact Us</h2>
+            <p>Have questions? Feel free to reach out at <a href="mailto:support@moments.live">support@moments.live</a></p>
+        </div>
     </section>
 
     <!-- Privacy Policy Section -->
@@ -97,8 +125,21 @@
 
     <!-- Footer -->
     <footer>
-        <p>&copy; 2024 Moments.live. All rights reserved.</p>
+        <div class="footer-content">
+            <p>&copy; 2024 Moments.live. All rights reserved.</p>
+            <div class="footer-links">
+                <a href="privacy-policy.html">Privacy Policy</a>
+                <a href="#">Terms of Service</a>
+            </div>
+        </div>
     </footer>
 
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/aos/2.3.4/aos.js"></script>
+    <script>
+        AOS.init({
+            duration: 1000,
+            once: true
+        });
+    </script>
 </body>
 </html>
