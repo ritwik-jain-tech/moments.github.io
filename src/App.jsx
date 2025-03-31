@@ -106,7 +106,7 @@ export default function App() {
           transition={{ duration: 1 }}
           className="flex justify-center items-center"
         >
-          <img src="public/logo.png" alt="Moments Logo" className="w-12 h-12 mr-3" />
+          <img src={`${import.meta.env.BASE_URL}logo.png`} alt="Moments Logo" className="w-12 h-12 mr-3" />
           <span className="text-[#F1A2D5] text-4xl font-bold tracking-wide">moments</span>
         </motion.div>
         <motion.h1
