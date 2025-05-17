@@ -3,9 +3,16 @@
     "apps": [],
     "details": [
       {
-        "appID": "YOUR_TEAM_ID.com.moments.live",
-        "paths": ["*"]
+        "appID": "9R3B26J58A.com.live.moments",
+        "paths": [
+          "/feed",
+          "/profile",
+          "/profile/*",
+          "/image/*",
+          "/uploads/*",
+          "/event/*"
+        ]
       }
     ]
   }
-} 
+}
