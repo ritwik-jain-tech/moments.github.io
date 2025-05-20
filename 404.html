@@ -2,21 +2,22 @@
 <html>
 <head>
     <meta charset="utf-8">
-    <title>Redirecting...</title>
+    <title>Apple App Site Association</title>
     <script>
         if (window.location.pathname === '/.well-known/apple-app-site-association') {
-            // Fetch the file and serve it with correct MIME type
+            // Set the content type to application/json
+            document.contentType = 'application/json';
+            
+            // Fetch and display the content
             fetch('/apple-app-site-association')
                 .then(response => response.text())
                 .then(data => {
                     document.body.innerHTML = data;
-                    // Set the correct MIME type
-                    document.contentType = 'application/json';
                 });
         }
     </script>
 </head>
 <body>
-    <p>Redirecting...</p>
+    <p>Loading...</p>
 </body>
 </html> 
