@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Apple App Site Association</title>
+    <script>
+        if (window.location.pathname === '/.well-known/apple-app-site-association') {
+            // Set the content type to application/json
+            document.contentType = 'application/json';
+            
+            // Fetch and display the content
+            fetch('/apple-app-site-association')
+                .then(response => response.text())
+                .then(data => {
+                    document.body.innerHTML = data;
+                });
+        }
+    </script>
+</head>
+<body>
+    <p>Loading...</p>
+</body>
+</html> 

@@ -2,7 +2,7 @@ import React from "react";
 
 export default function Layout({ children }) {
   return (
-    <div className="bg-[#000001] text-white font-sans overflow-x-hidden relative">
+    <div className="bg-[##1C1C1C] text-[#2a4d32] font-sans overflow-x-hidden relative">
       {children}
       <footer className="pt-20 text-center text-sm text-gray-500">
         © 2025 moments.live — All rights reserved.

@@ -54,7 +54,7 @@ const privacySections = [
 
 export default function PrivacyPolicy() {
   return (
-    <div className="min-h-screen text-white px-6 pb-16 space-y-24 font-sans relative overflow-hidden bg-[#000001]">
+    <div className="min-h-screen text-[#2a4d32] px-6 pb-16 font-sans relative overflow-hidden bg-[#f3efe6]">
       {/* Header gradient + arc line */}
       <div className="absolute top-0 left-0 w-full h-[400px] bg-gradient-to-b from-[#67143A] via-[#1a0015] to-transparent z-0" />
       <div className="absolute top-[320px] left-0 w-full h-[1px] z-0">
@@ -63,28 +63,8 @@ export default function PrivacyPolicy() {
         </svg>
       </div>
 
-      {/* Navigation */}
-      <nav className="relative z-10 pt-8">
-        <div className="max-w-6xl mx-auto flex justify-between items-center">
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="flex items-center"
-          >
-            <img src="/public/logo.png" alt="Moments Logo" className="w-8 h-8 mr-2" />
-            <span className="text-[#F1A2D5] text-2xl font-bold">moments</span>
-          </motion.div>
-          <Button 
-            onClick={() => window.location.href = '/'}
-            className="bg-[#67143A] hover:bg-[#4f0f2d] text-white px-6 py-2 rounded-full"
-          >
-            Back to Home
-          </Button>
-        </div>
-      </nav>
-
       {/* Main Content */}
-      <main className="relative z-10 max-w-4xl mx-auto">
+      <main className="relative z-10 max-w-4xl mx-auto pt-20">
         <motion.h1
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -111,7 +91,7 @@ export default function PrivacyPolicy() {
               transition={{ delay: index * 0.1 }}
               className="bg-[#1C1C1C] rounded-xl p-6 shadow-lg border border-gray-800"
             >
-              <h2 className="text-2xl font-semibold mb-4 text-[#F1A2D5]">
+              <h2 className="text-2xl font-semibold mb-4 text-[#2a4d32]">
                 {section.title}
               </h2>
               <ul className="space-y-2 text-gray-300">

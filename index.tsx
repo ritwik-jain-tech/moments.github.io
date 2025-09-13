@@ -16,7 +16,7 @@ export default function MomentsLiveLanding() {
         <p className="text-gray-300 text-lg max-w-xl mx-auto">
           Let Moments.live help you create a shared memory vault from your big day. Designed especially for couples who want to cherish every angle of their celebration.
         </p>
-        <button className="bg-pink-500 hover:bg-pink-600 text-white text-lg px-10 py-4 rounded-full shadow-xl">
+        <button className="bg-[#2a4d32] hover:bg-[#1e3b27] text-white text-lg px-10 py-4 rounded-full shadow-xl">
           Contact Us
         </button>
       </motion.section>

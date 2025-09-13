@@ -1,0 +1,18 @@
+{
+  "applinks": {
+    "apps": [],
+    "details": [
+      {
+        "appID": "9R3B26J58A.com.live.moments",
+        "paths": [
+          "/feed",
+          "/profile",
+          "/profile/*",
+          "/image/*",
+          "/uploads/*",
+          "/event/*"
+        ]
+      }
+    ]
+  }
+}

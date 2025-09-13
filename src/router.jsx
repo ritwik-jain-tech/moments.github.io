@@ -6,9 +6,5 @@ export const router = createHashRouter([
   {
     path: "/",
     element: <App />,
-  },
-  {
-    path: "/privacy-policy",
-    element: <PrivacyPolicy />,
-  },
+  }
 ]); 

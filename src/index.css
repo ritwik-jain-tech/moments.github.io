@@ -5,3 +5,39 @@
 html {
   scroll-behavior: smooth;
 }
+
+/* Add these CSS resets at the top of your index.css */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  min-height: 100vh;
+  background: #f3efe6;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+/* Add these to your existing CSS */
+.header-shadow {
+  box-shadow: 0 2px 20px rgba(0, 0, 0, 0.5);
+}
+
+@keyframes slideDown {
+  from {
+    transform: translateY(-100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+.animate-slideDown {
+  animation: slideDown 0.3s ease-in-out;
+}
