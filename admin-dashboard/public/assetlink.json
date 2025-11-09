@@ -1,0 +1,12 @@
+[
+    {
+      "relation": ["delegate_permission/common.handle_all_urls"],
+      "target": {
+        "namespace": "android_app",
+        "package_name": "com.moments.live",
+        "sha256_cert_fingerprints": [
+          "24:5C:EA:E4:76:AD:F2:6A:B5:D9:17:25:19:61:4F:63:C0:AE:70:0E:87:1F:D9:F9:3B:39:97:17:C4:75:05:C9"
+        ]
+      }
+    }
+  ]

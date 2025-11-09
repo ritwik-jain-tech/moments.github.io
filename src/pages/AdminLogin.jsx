@@ -1,6 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import { 
+  signInWithPhoneNumber, 
+  RecaptchaVerifier
+} from 'firebase/auth';
+import { auth } from '../firebase/config';
 
 const AdminLogin = () => {
   const [phoneNumber, setPhoneNumber] = useState('');
@@ -8,37 +13,220 @@ const AdminLogin = () => {
   const [showOtpInput, setShowOtpInput] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [recaptchaLoaded, setRecaptchaLoaded] = useState(false);
   const navigate = useNavigate();
+  const recaptchaVerifierRef = useRef(null);
+  const confirmationResultRef = useRef(null);
+
+  // Helper function to properly reset reCAPTCHA
+  const resetRecaptcha = async () => {
+    const container = document.getElementById('recaptcha-container');
+    if (!container) {
+      console.error('reCAPTCHA container not found');
+      return false;
+    }
+
+    // Clear existing reCAPTCHA instance
+    if (recaptchaVerifierRef.current) {
+      try {
+        recaptchaVerifierRef.current.clear();
+        recaptchaVerifierRef.current = null;
+      } catch (clearErr) {
+        // Ignore clear errors - instance might already be cleared
+        console.log('Clear error (ignored):', clearErr);
+      }
+    }
+
+    // Clear the container's innerHTML to remove any rendered elements
+    container.innerHTML = '';
+
+    // Wait a bit for cleanup to complete
+    await new Promise(resolve => setTimeout(resolve, 100));
+
+    try {
+      // Create new reCAPTCHA verifier (invisible)
+      // Note: The Enterprise config warning is normal - Firebase will use reCAPTCHA v2 if Enterprise isn't configured
+      recaptchaVerifierRef.current = new RecaptchaVerifier(auth, 'recaptcha-container', {
+        size: 'invisible',
+        callback: () => {
+          setRecaptchaLoaded(true);
+          console.log('reCAPTCHA verified');
+        },
+        'expired-callback': () => {
+          setRecaptchaLoaded(false);
+          console.log('reCAPTCHA expired');
+        }
+      });
+
+      // Render reCAPTCHA
+      await recaptchaVerifierRef.current.render();
+      setRecaptchaLoaded(true);
+      console.log('reCAPTCHA initialized successfully');
+      return true;
+    } catch (err) {
+      console.error('Error initializing reCAPTCHA:', err);
+      
+      // Handle "already rendered" error
+      if (err.message && err.message.includes('already been rendered')) {
+        console.log('reCAPTCHA already rendered, clearing container and retrying...');
+        container.innerHTML = '';
+        await new Promise(resolve => setTimeout(resolve, 200));
+        // Retry once
+        try {
+          recaptchaVerifierRef.current = new RecaptchaVerifier(auth, 'recaptcha-container', {
+            size: 'invisible',
+            callback: () => setRecaptchaLoaded(true),
+            'expired-callback': () => setRecaptchaLoaded(false)
+          });
+          await recaptchaVerifierRef.current.render();
+          setRecaptchaLoaded(true);
+          return true;
+        } catch (retryErr) {
+          console.error('Retry failed:', retryErr);
+          return false;
+        }
+      }
+      
+      // The Enterprise config error is just a warning - reCAPTCHA v2 will work fine
+      if (err.message && err.message.includes('Enterprise')) {
+        console.log('Using reCAPTCHA v2 fallback (this is normal)');
+        setRecaptchaLoaded(true);
+        return true;
+      }
+      
+      return false;
+    }
+  };
+
+  // Initialize reCAPTCHA on component mount
+  useEffect(() => {
+    let isMounted = true;
+
+    const initializeRecaptcha = async () => {
+      // Wait for DOM to be ready
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      if (!isMounted) return;
+
+      const success = await resetRecaptcha();
+      if (!success && isMounted) {
+        setError('Failed to initialize reCAPTCHA. Please refresh the page.');
+      }
+    };
+
+    initializeRecaptcha();
+
+    return () => {
+      isMounted = false;
+      // Cleanup on unmount
+      if (recaptchaVerifierRef.current) {
+        try {
+          recaptchaVerifierRef.current.clear();
+          recaptchaVerifierRef.current = null;
+        } catch (err) {
+          // Ignore cleanup errors
+        }
+      }
+      // Clear container
+      const container = document.getElementById('recaptcha-container');
+      if (container) {
+        container.innerHTML = '';
+      }
+    };
+  }, []);
+
+  // Format phone number to E.164 format
+  const formatPhoneNumber = (phone) => {
+    // Remove all non-digit characters
+    let cleaned = phone.replace(/\D/g, '');
+    
+    // If phone doesn't start with +, add country code (defaulting to +91 for India)
+    // You may want to add a country code selector
+    if (!phone.startsWith('+')) {
+      cleaned = '+91' + cleaned;
+    }
+    
+    return cleaned.startsWith('+') ? cleaned : '+' + cleaned;
+  };
 
   const handleSendOtp = async () => {
     try {
       setError('');
       setLoading(true);
       
-      // Log the request
-      console.log('Sending OTP request for:', phoneNumber);
+      if (!recaptchaVerifierRef.current) {
+        throw new Error('reCAPTCHA not initialized. Please refresh the page.');
+      }
+
+      const formattedPhone = formatPhoneNumber(phoneNumber);
+      console.log('📱 Sending OTP to:', formattedPhone);
+      console.log('🔍 Original phone number:', phoneNumber);
       
-      const response = await axios.post(
-        'https://momentsbackend-673332237675.us-central1.run.app/api/otp/send',
-        { phoneNumber },
-        {
-          headers: {
-            'Content-Type': 'application/json',
-          },
-        }
+      // Send OTP using Firebase
+      const confirmationResult = await signInWithPhoneNumber(
+        auth,
+        formattedPhone,
+        recaptchaVerifierRef.current
       );
       
-      // Log the response
-      console.log('OTP Response:', response.data);
+      confirmationResultRef.current = confirmationResult;
+      setShowOtpInput(true);
       
-      if (response.data) {
-        setShowOtpInput(true);
-      }
+      console.log('✅ OTP sent successfully!');
+      console.log('📝 Confirmation result:', confirmationResult);
+      console.log('⚠️  IMPORTANT: If OTP not received, check Firebase Console:');
+      console.log('   1. Authentication > Phone numbers - Add test phone numbers');
+      console.log('   2. Project Settings > Usage - Check SMS quota');
+      console.log('   3. Phone authentication must be enabled in Firebase Console');
+      console.log('   4. For production: Enable billing or check quotas');
+      
     } catch (err) {
-      // Log the error
-      console.error('OTP Error:', err);
+      console.error('❌ OTP Error Details:', {
+        code: err.code,
+        message: err.message,
+        fullError: err
+      });
       
-      setError(err.response?.data?.message || 'Failed to send OTP. Please try again.');
+      let errorMessage = err.message || 'Failed to send OTP. Please try again.';
+      
+      // Handle specific Firebase errors
+      if (err.code) {
+        switch (err.code) {
+          case 'auth/invalid-phone-number':
+            errorMessage = 'Invalid phone number format. Use +91 followed by 10 digits (e.g., +919876543210)';
+            break;
+          case 'auth/too-many-requests':
+            errorMessage = 'Too many requests. Please wait a few minutes and try again.';
+            break;
+          case 'auth/quota-exceeded':
+            errorMessage = 'SMS quota exceeded. Check Firebase Console for quota limits or enable billing.';
+            break;
+          case 'auth/captcha-check-failed':
+            errorMessage = 'reCAPTCHA verification failed. Please refresh and try again.';
+            break;
+          case 'auth/missing-phone-number':
+            errorMessage = 'Phone number is required.';
+            break;
+          case 'auth/unauthorized-domain':
+            errorMessage = 'Domain not authorized. Please add admin.moments.live to Firebase authorized domains.';
+            break;
+          case 'auth/operation-not-allowed':
+            errorMessage = 'Phone authentication is not enabled. Please enable it in Firebase Console.';
+            break;
+          default:
+            errorMessage = `${err.message || 'Failed to send OTP'}. Code: ${err.code || 'Unknown'}. If persistent, check Firebase Console > Authentication > Settings > Authorized domains and ensure admin.moments.live is added.`;
+        }
+      } else if (err.message?.includes('domain') || err.message?.includes('authorized')) {
+        errorMessage = 'Domain authorization error. Please add admin.moments.live to Firebase Console > Authentication > Settings > Authorized domains.';
+      }
+      
+      setError(errorMessage);
+      
+      // Reset reCAPTCHA if error occurs (especially for captcha-check-failed)
+      if (err.code === 'auth/captcha-check-failed' || err.message?.includes('reCAPTCHA') || err.message?.includes('already been rendered')) {
+        console.log('Resetting reCAPTCHA after error...');
+        await resetRecaptcha();
+      }
     } finally {
       setLoading(false);
     }
@@ -49,40 +237,89 @@ const AdminLogin = () => {
       setError('');
       setLoading(true);
       
-      const response = await axios.post(
-        'https://momentsbackend-673332237675.us-central1.run.app/api/otp/verify',
-        {
-          phoneNumber,
-          otp: parseInt(otp),
-        },
+      if (!confirmationResultRef.current) {
+        throw new Error('No OTP session found. Please request a new OTP.');
+      }
+
+      console.log('Verifying OTP:', otp);
+
+      // Verify OTP using Firebase
+      const result = await confirmationResultRef.current.confirm(otp);
+      
+      console.log('OTP verified successfully:', result);
+      
+      // Get Firebase ID token
+      const idToken = await result.user.getIdToken();
+      console.log('Firebase ID Token:', idToken);
+      
+      // Get phone number from Firebase user, fallback to entered phone number
+      const user = result.user;
+      let phoneNumberToUse = user.phoneNumber;
+      
+      // Get the formatted phone number that was used for sending OTP
+      const formattedPhone = formatPhoneNumber(phoneNumber);
+      
+      // If Firebase doesn't have phone number, use the one entered by user
+      if (!phoneNumberToUse) {
+        phoneNumberToUse = formattedPhone;
+        console.log('Phone number not found in Firebase user, using entered phone number:', phoneNumberToUse);
+      }
+
+      // Ensure we have a phone number
+      if (!phoneNumberToUse) {
+        throw new Error('Phone number not found');
+      }
+
+      // Extract last 10 digits from phone number (remove country code)
+      const cleanedPhone = phoneNumberToUse.replace(/\D/g, ''); // Remove all non-digit characters
+      const last10Digits = cleanedPhone.slice(-10); // Get last 10 digits
+
+      if (last10Digits.length !== 10) {
+        throw new Error('Invalid phone number format');
+      }
+
+      // Store the entered phone number for future use
+      localStorage.setItem('enteredPhoneNumber', formattedPhone);
+      localStorage.setItem('enteredPhoneNumberLast10', last10Digits);
+
+      console.log('Fetching user profile with phone number:', last10Digits);
+      
+      // Call API to get user profile and event details
+      const profileResponse = await axios.get(
+        `https://momentsbackend-673332237675.us-central1.run.app/api/userProfile/phone?phoneNumber=${last10Digits}`,
         {
           headers: {
-            'Content-Type': 'application/json',
-          },
+            'Content-Type': 'application/json'
+          }
         }
       );
 
-      console.log('Verify response:', response.data); // Debug log
+      console.log('User profile response:', profileResponse.data);
 
-      if (response.data.status === 'OK') {
-        const token = response.data.token || response.data.data?.token;
-        const userProfile = response.data.userProfile || response.data.data?.userProfile;
-        
-        console.log('Login response:', response.data); // Debug log
-        console.log('User Profile:', userProfile); // Debug log
-
-        if (token && userProfile) {
-          localStorage.setItem('adminToken', token);
-          sessionStorage.setItem('userProfile', JSON.stringify(userProfile));
-          sessionStorage.setItem('isAdminLoggedIn', 'true');
-          navigate('/admin/events');
-        } else {
-          setError('Invalid response from server');
-        }
+      // Extract userProfile data from response
+      const userProfileData = profileResponse.data;
+      
+      if (!userProfileData) {
+        throw new Error('No user profile data received from API');
       }
+
+      // Store authentication data
+      localStorage.setItem('adminToken', idToken);
+      localStorage.setItem('firebaseUser', JSON.stringify({
+        uid: user.uid,
+        phoneNumber: phoneNumber
+      }));
+      localStorage.setItem('userProfile', JSON.stringify(userProfileData));
+      localStorage.setItem('isAdminLoggedIn', 'true');
+      
+      // Also store in sessionStorage for immediate access
+      sessionStorage.setItem('userProfile', JSON.stringify(userProfileData));
+      sessionStorage.setItem('isAdminLoggedIn', 'true');
+      
+      navigate('/admin/events');
     } catch (err) {
-      console.error('Verify error:', err.response || err); // Debug log
-      setError(err.response?.data?.message || 'Invalid OTP. Please try again.');
+      console.error('Verify error:', err);
+      setError(err.message || 'Invalid OTP. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -101,10 +338,9 @@ const AdminLogin = () => {
 
       {/* Sticky Header */}
       <header className="fixed top-0 left-0 right-0 z-50 bg-[#f3efe6] bg-opacity-90 backdrop-blur-sm border-b border-[#d4d4d8]">
-        <div className="container mx-auto px-4 py-4 flex justify-between items-center">
-          <div className="flex items-center space-x-2">
-            <img src="/logo.png" alt="Moments" className="h-8 w-8" />
-            <span className="text-xl font-semibold">moments</span>
+        <div className="container mx-auto px-4 py-4 flex justify-center items-center">
+          <div className="flex items-center justify-center">
+            <img src="/logo.png" alt="Moments" className="h-[33.6px] w-[281px]" />
           </div>
         </div>
       </header>
@@ -214,6 +450,8 @@ const AdminLogin = () => {
                 </>
               )}
             </div>
+            {/* reCAPTCHA container (hidden) */}
+            <div id="recaptcha-container" className="hidden"></div>
           </div>
         </div>
       </div>

@@ -16,7 +16,7 @@ const AdminEvents = () => {
 
   useEffect(() => {
     // Get user profile and token from storage
-    const profile = sessionStorage.getItem('userProfile');
+    const profile = localStorage.getItem('userProfile') || sessionStorage.getItem('userProfile');
     const token = localStorage.getItem('adminToken');
     
     console.log('Token:', token); // Debug log
@@ -31,9 +31,10 @@ const AdminEvents = () => {
     }
 
     // Safely parse the profile if it exists
+    let parsedProfile = null;
     if (profile) {
       try {
-        const parsedProfile = JSON.parse(profile);
+        parsedProfile = JSON.parse(profile);
         console.log('Parsed Profile:', parsedProfile); // Debug log
         setUserProfile(parsedProfile);
       } catch (err) {
@@ -41,23 +42,72 @@ const AdminEvents = () => {
       }
     }
 
-    // Fetch events
+    // Fetch events - use stored eventDetails or fetch from API
     const fetchEvents = async () => {
       try {
-        console.log('Fetching events with token:', token);
+        // First, check if eventDetails are already in the stored userProfile
+        if (parsedProfile && parsedProfile.eventDetails && Array.isArray(parsedProfile.eventDetails)) {
+          console.log('Using stored eventDetails from userProfile');
+          setEvents(parsedProfile.eventDetails);
+          setLoading(false);
+          return;
+        }
+
+        // If not in storage, fetch from API
+        if (!parsedProfile) {
+          throw new Error('User profile not found');
+        }
+        
+        // Try to get phone number from user profile, fallback to stored entered phone number
+        let phoneNumber = parsedProfile?.phoneNumber;
+        let last10Digits = null;
+
+        // If phone number not in profile, use the one entered during login
+        if (!phoneNumber) {
+          const storedPhoneNumber = localStorage.getItem('enteredPhoneNumber');
+          const storedLast10 = localStorage.getItem('enteredPhoneNumberLast10');
+          
+          if (storedLast10) {
+            last10Digits = storedLast10;
+            console.log('Using stored entered phone number (last 10 digits):', last10Digits);
+          } else if (storedPhoneNumber) {
+            const cleanedPhone = storedPhoneNumber.replace(/\D/g, '');
+            last10Digits = cleanedPhone.slice(-10);
+            console.log('Extracted last 10 digits from stored entered phone number:', last10Digits);
+          }
+        } else {
+          // Extract last 10 digits from phone number in profile
+          const cleanedPhone = phoneNumber.replace(/\D/g, ''); // Remove all non-digit characters
+          last10Digits = cleanedPhone.slice(-10); // Get last 10 digits
+        }
+
+        if (!last10Digits || last10Digits.length !== 10) {
+          throw new Error('Phone number not found. Please login again.');
+        }
+
+        console.log('Fetching user profile and events with phone number:', last10Digits);
+        
         const response = await axios.get(
-          'https://momentsbackend-673332237675.us-central1.run.app/api/event',
+          `https://momentsbackend-673332237675.us-central1.run.app/api/userProfile/phone?phoneNumber=${last10Digits}`,
           {
             headers: {
-              'Authorization': `Bearer ${token}`,
               'Content-Type': 'application/json'
             }
           }
         );
-        console.log('Events response:', response.data); // Debug log
         
-        // Handle the response data properly
-        const eventsData = response.data.data || response.data || [];
+        console.log('User profile and events response:', response.data); // Debug log
+        
+        // Update stored userProfile with fresh data
+        const userProfileData = response.data;
+        if (userProfileData) {
+          localStorage.setItem('userProfile', JSON.stringify(userProfileData));
+          sessionStorage.setItem('userProfile', JSON.stringify(userProfileData));
+          setUserProfile(userProfileData);
+        }
+        
+        // Extract eventDetails from response.data.eventDetails
+        const eventsData = userProfileData?.eventDetails || response.data?.data?.eventDetails || [];
         console.log('Events data:', eventsData); // Debug log
         setEvents(Array.isArray(eventsData) ? eventsData : []);
       } catch (err) {
@@ -66,7 +116,7 @@ const AdminEvents = () => {
           // If unauthorized, redirect to login
           navigate('/admin/login');
         } else {
-          setError('Failed to fetch events. Please try again.');
+          setError(err.message || 'Failed to fetch events. Please try again.');
         }
       } finally {
         setLoading(false);
@@ -78,6 +128,19 @@ const AdminEvents = () => {
 
   const handleEventClick = (eventId) => {
     navigate(`/admin/events/${eventId}`);
+  };
+
+  const handleLogout = () => {
+    // Clear all authentication data
+    localStorage.removeItem('adminToken');
+    localStorage.removeItem('userProfile');
+    localStorage.removeItem('isAdminLoggedIn');
+    localStorage.removeItem('firebaseUser');
+    sessionStorage.removeItem('userProfile');
+    sessionStorage.removeItem('isAdminLoggedIn');
+    
+    // Redirect to login
+    navigate('/admin/login');
   };
 
   const handleImageSelect = (event) => {
@@ -147,10 +210,66 @@ const AdminEvents = () => {
         throw new Error('Failed to upload image: ' + uploadError.message);
       }
 
-      // Get creator ID from userProfile
-      const creatorId = userProfile?.userId;
+      // Get creator ID from userProfile - try multiple possible field names
+      let creatorId = userProfile?.userId || userProfile?.id || userProfile?.user_id;
+      
+      // If still not found, try to fetch fresh profile data from API
+      if (!creatorId && userProfile) {
+        console.warn('Creator ID not found in cached profile. Available fields:', Object.keys(userProfile));
+        console.log('Full user profile:', JSON.stringify(userProfile, null, 2));
+        
+        // Try to get phone number to fetch fresh profile
+        let phoneNumber = userProfile?.phoneNumber;
+        if (!phoneNumber) {
+          const storedLast10 = localStorage.getItem('enteredPhoneNumberLast10');
+          const storedPhone = localStorage.getItem('enteredPhoneNumber');
+          
+          if (storedLast10) {
+            phoneNumber = storedLast10;
+          } else if (storedPhone) {
+            const cleanedPhone = storedPhone.replace(/\D/g, '');
+            phoneNumber = cleanedPhone.slice(-10);
+          }
+        } else {
+          const cleanedPhone = phoneNumber.replace(/\D/g, '');
+          phoneNumber = cleanedPhone.slice(-10);
+        }
+        
+        if (phoneNumber && phoneNumber.length === 10) {
+          try {
+            console.log('Fetching fresh user profile to get creator ID...');
+            const response = await axios.get(
+              `https://momentsbackend-673332237675.us-central1.run.app/api/userProfile/phone?phoneNumber=${phoneNumber}`,
+              {
+                headers: {
+                  'Content-Type': 'application/json'
+                }
+              }
+            );
+            
+            const freshProfile = response.data;
+            console.log('Fresh profile data:', freshProfile);
+            
+            // Try to get creator ID from fresh profile
+            creatorId = freshProfile?.userId || freshProfile?.id || freshProfile?.user_id;
+            
+            // Update cached profile
+            if (freshProfile) {
+              localStorage.setItem('userProfile', JSON.stringify(freshProfile));
+              sessionStorage.setItem('userProfile', JSON.stringify(freshProfile));
+              setUserProfile(freshProfile);
+            }
+          } catch (fetchError) {
+            console.error('Error fetching fresh profile:', fetchError);
+          }
+        }
+      }
+      
       if (!creatorId) {
-        throw new Error('Creator ID not found in user profile');
+        const availableFields = userProfile ? Object.keys(userProfile).join(', ') : 'none';
+        const errorMsg = `Creator ID not found in user profile. Available fields: ${availableFields}. Please check the console for full profile data.`;
+        console.error('Profile structure:', JSON.stringify(userProfile, null, 2));
+        throw new Error(errorMsg);
       }
 
       // Then create the event with the publicUrl
@@ -311,9 +430,22 @@ const AdminEvents = () => {
       {/* Sticky Header */}
       <header className="fixed top-0 left-0 right-0 z-50 bg-[#f3efe6] bg-opacity-90 backdrop-blur-sm">
         <div className="container mx-auto px-4 py-4 flex justify-between items-center">
-          <div className="flex items-center space-x-2">
-            <img src="/logo.png" alt="Moments" className="h-8 w-8" />
-            <span className="text-xl font-semibold">moments</span>
+          {/* Spacer to balance layout */}
+          <div className="w-24"></div>
+          
+          {/* Centered Logo */}
+          <div className="flex items-center justify-center flex-1">
+            <img src="/logo.png" alt="Moments" className="h-[33.6px] w-[281px]" />
+          </div>
+          
+          {/* Logout Button */}
+          <div className="w-24 flex justify-end">
+            <button
+              onClick={handleLogout}
+              className="bg-[#2a4d32] text-white px-4 py-2 rounded-lg hover:opacity-90 transition-colors text-sm font-medium"
+            >
+              Logout
+            </button>
           </div>
         </div>
       </header>

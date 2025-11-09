@@ -647,12 +647,12 @@ const EventDetails = () => {
               `}
             </style>
             <QRCodeSVG
-              value={`https://moments.live/event/${eventId}`}
+              value={`https://admin.moments.live/event/${eventId}`}
               size={200}
               level="H"
               includeMargin={true}
               imageSettings={{
-                src: "/logo.svg",
+                src: "/logo.png",
                 height: 40,
                 width: 40,
                 excavate: true,
@@ -698,10 +698,9 @@ const EventDetails = () => {
     <div className="min-h-screen bg-gradient-to-b from-[#f3efe6] to-[#f3efe6] text-[#2a4d32] font-sans relative overflow-hidden">
       {/* Sticky Header */}
       <header className="fixed top-0 left-0 right-0 z-50 bg-[#f3efe6] bg-opacity-90 backdrop-blur-sm">
-        <div className="container mx-auto px-4 py-4 flex justify-between items-center">
-          <div className="flex items-center space-x-2">
-            <img src="/logo.png" alt="Moments" className="h-8 w-8" />
-            <span className="text-xl font-semibold">moments</span>
+        <div className="container mx-auto px-4 py-4 flex justify-center items-center">
+          <div className="flex items-center justify-center">
+            <img src="/logo.png" alt="Moments" className="h-[33.6px] w-[281px]" />
           </div>
         </div>
       </header>

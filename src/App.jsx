@@ -320,7 +320,7 @@ export default function App() {
                 window.location.href = `https://wa.me/918962364626?text=Hi, I'm interested in knowing more about Moments.live for my wedding.`;
               } else {
                 // Email link for web
-                window.location.href = `mailto:moments.live.weddings@gmail.com?subject=Inquiry about Moments.live&body=Hi, I'm interested in knowing more about Moments.live for my wedding.`;
+                window.location.href = `mailto:moments.live.weddings@gmail.com?subject=Inquiry about Admin.Moments.live&body=Hi, I'm interested in knowing more about Admin.Moments.live for my wedding.`;
               }
             }}
             className="bg-[#67143A] hover:bg-[#4f0f2d] text-white text-lg px-10 py-4 rounded-full shadow-xl"

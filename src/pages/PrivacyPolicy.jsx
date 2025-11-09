@@ -41,7 +41,7 @@ const privacySections = [
       "Access, correct, or delete your personal data.",
       "Opt out of marketing messages.",
       "Request a copy or deletion of your data.",
-      "To exercise your rights, email us at support@moments.live",
+      "To exercise your rights, email us at support@admin.moments.live",
     ],
   },
   {
@@ -108,7 +108,7 @@ export default function PrivacyPolicy() {
       </main>
 
       <footer className="relative z-10 text-center text-sm text-gray-500">
-        © 2025 moments.live — All rights reserved.
+        © 2025 admin.moments.live — All rights reserved.
       </footer>
     </div>
   );

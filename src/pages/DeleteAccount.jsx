@@ -99,7 +99,7 @@ export default function DeleteAccount() {
       )}
 
       <footer className="relative z-10 text-center text-sm text-gray-500 pt-20">
-        © 2025 moments.live — All rights reserved.
+        © 2025 admin.moments.live — All rights reserved.
       </footer>
     </div>
   );
