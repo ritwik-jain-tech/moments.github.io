@@ -1,11 +1,7 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { 
-  signInWithPhoneNumber, 
-  RecaptchaVerifier
-} from 'firebase/auth';
-import { auth } from '../firebase/config';
+import { API_BASE_URL } from '../config/api';
 
 const AdminLogin = () => {
   const [phoneNumber, setPhoneNumber] = useState('');
@@ -13,220 +9,55 @@ const AdminLogin = () => {
   const [showOtpInput, setShowOtpInput] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const [recaptchaLoaded, setRecaptchaLoaded] = useState(false);
   const navigate = useNavigate();
-  const recaptchaVerifierRef = useRef(null);
-  const confirmationResultRef = useRef(null);
 
-  // Helper function to properly reset reCAPTCHA
-  const resetRecaptcha = async () => {
-    const container = document.getElementById('recaptcha-container');
-    if (!container) {
-      console.error('reCAPTCHA container not found');
-      return false;
-    }
-
-    // Clear existing reCAPTCHA instance
-    if (recaptchaVerifierRef.current) {
-      try {
-        recaptchaVerifierRef.current.clear();
-        recaptchaVerifierRef.current = null;
-      } catch (clearErr) {
-        // Ignore clear errors - instance might already be cleared
-        console.log('Clear error (ignored):', clearErr);
-      }
-    }
-
-    // Clear the container's innerHTML to remove any rendered elements
-    container.innerHTML = '';
-
-    // Wait a bit for cleanup to complete
-    await new Promise(resolve => setTimeout(resolve, 100));
-
-    try {
-      // Create new reCAPTCHA verifier (invisible)
-      // Note: The Enterprise config warning is normal - Firebase will use reCAPTCHA v2 if Enterprise isn't configured
-      recaptchaVerifierRef.current = new RecaptchaVerifier(auth, 'recaptcha-container', {
-        size: 'invisible',
-        callback: () => {
-          setRecaptchaLoaded(true);
-          console.log('reCAPTCHA verified');
-        },
-        'expired-callback': () => {
-          setRecaptchaLoaded(false);
-          console.log('reCAPTCHA expired');
-        }
-      });
-
-      // Render reCAPTCHA
-      await recaptchaVerifierRef.current.render();
-      setRecaptchaLoaded(true);
-      console.log('reCAPTCHA initialized successfully');
-      return true;
-    } catch (err) {
-      console.error('Error initializing reCAPTCHA:', err);
-      
-      // Handle "already rendered" error
-      if (err.message && err.message.includes('already been rendered')) {
-        console.log('reCAPTCHA already rendered, clearing container and retrying...');
-        container.innerHTML = '';
-        await new Promise(resolve => setTimeout(resolve, 200));
-        // Retry once
-        try {
-          recaptchaVerifierRef.current = new RecaptchaVerifier(auth, 'recaptcha-container', {
-            size: 'invisible',
-            callback: () => setRecaptchaLoaded(true),
-            'expired-callback': () => setRecaptchaLoaded(false)
-          });
-          await recaptchaVerifierRef.current.render();
-          setRecaptchaLoaded(true);
-          return true;
-        } catch (retryErr) {
-          console.error('Retry failed:', retryErr);
-          return false;
-        }
-      }
-      
-      // The Enterprise config error is just a warning - reCAPTCHA v2 will work fine
-      if (err.message && err.message.includes('Enterprise')) {
-        console.log('Using reCAPTCHA v2 fallback (this is normal)');
-        setRecaptchaLoaded(true);
-        return true;
-      }
-      
-      return false;
-    }
-  };
-
-  // Initialize reCAPTCHA on component mount
-  useEffect(() => {
-    let isMounted = true;
-
-    const initializeRecaptcha = async () => {
-      // Wait for DOM to be ready
-      await new Promise(resolve => setTimeout(resolve, 100));
-      
-      if (!isMounted) return;
-
-      const success = await resetRecaptcha();
-      if (!success && isMounted) {
-        setError('Failed to initialize reCAPTCHA. Please refresh the page.');
-      }
-    };
-
-    initializeRecaptcha();
-
-    return () => {
-      isMounted = false;
-      // Cleanup on unmount
-      if (recaptchaVerifierRef.current) {
-        try {
-          recaptchaVerifierRef.current.clear();
-          recaptchaVerifierRef.current = null;
-        } catch (err) {
-          // Ignore cleanup errors
-        }
-      }
-      // Clear container
-      const container = document.getElementById('recaptcha-container');
-      if (container) {
-        container.innerHTML = '';
-      }
-    };
-  }, []);
-
-  // Format phone number to E.164 format
+  // Format phone number (remove all non-digits)
   const formatPhoneNumber = (phone) => {
-    // Remove all non-digit characters
-    let cleaned = phone.replace(/\D/g, '');
-    
-    // If phone doesn't start with +, add country code (defaulting to +91 for India)
-    // You may want to add a country code selector
-    if (!phone.startsWith('+')) {
-      cleaned = '+91' + cleaned;
-    }
-    
-    return cleaned.startsWith('+') ? cleaned : '+' + cleaned;
+    return phone.replace(/\D/g, '');
   };
 
   const handleSendOtp = async () => {
     try {
       setError('');
       setLoading(true);
+
+      const cleanedPhone = formatPhoneNumber(phoneNumber);
       
-      if (!recaptchaVerifierRef.current) {
-        throw new Error('reCAPTCHA not initialized. Please refresh the page.');
+      if (cleanedPhone.length < 10) {
+        setError('Please enter a valid 10-digit phone number');
+        setLoading(false);
+        return;
       }
 
-      const formattedPhone = formatPhoneNumber(phoneNumber);
-      console.log('📱 Sending OTP to:', formattedPhone);
-      console.log('🔍 Original phone number:', phoneNumber);
+      console.log('📱 Sending OTP to:', cleanedPhone);
       
-      // Send OTP using Firebase
-      const confirmationResult = await signInWithPhoneNumber(
-        auth,
-        formattedPhone,
-        recaptchaVerifierRef.current
+      // Send OTP using backend API
+      const response = await axios.post(
+        `${API_BASE_URL}/api/otp/send`,
+        {
+          phoneNumber: cleanedPhone
+        },
+        {
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        }
       );
       
-      confirmationResultRef.current = confirmationResult;
+      console.log('✅ OTP sent successfully!', response.data);
       setShowOtpInput(true);
       
-      console.log('✅ OTP sent successfully!');
-      console.log('📝 Confirmation result:', confirmationResult);
-      console.log('⚠️  IMPORTANT: If OTP not received, check Firebase Console:');
-      console.log('   1. Authentication > Phone numbers - Add test phone numbers');
-      console.log('   2. Project Settings > Usage - Check SMS quota');
-      console.log('   3. Phone authentication must be enabled in Firebase Console');
-      console.log('   4. For production: Enable billing or check quotas');
-      
     } catch (err) {
-      console.error('❌ OTP Error Details:', {
-        code: err.code,
-        message: err.message,
-        fullError: err
-      });
+      console.error('❌ OTP Error:', err);
+      let errorMessage = 'Failed to send OTP. Please try again.';
       
-      let errorMessage = err.message || 'Failed to send OTP. Please try again.';
-      
-      // Handle specific Firebase errors
-      if (err.code) {
-        switch (err.code) {
-          case 'auth/invalid-phone-number':
-            errorMessage = 'Invalid phone number format. Use +91 followed by 10 digits (e.g., +919876543210)';
-            break;
-          case 'auth/too-many-requests':
-            errorMessage = 'Too many requests. Please wait a few minutes and try again.';
-            break;
-          case 'auth/quota-exceeded':
-            errorMessage = 'SMS quota exceeded. Check Firebase Console for quota limits or enable billing.';
-            break;
-          case 'auth/captcha-check-failed':
-            errorMessage = 'reCAPTCHA verification failed. Please refresh and try again.';
-            break;
-          case 'auth/missing-phone-number':
-            errorMessage = 'Phone number is required.';
-            break;
-          case 'auth/unauthorized-domain':
-            errorMessage = 'Domain not authorized. Please add admin.moments.live to Firebase authorized domains.';
-            break;
-          case 'auth/operation-not-allowed':
-            errorMessage = 'Phone authentication is not enabled. Please enable it in Firebase Console.';
-            break;
-          default:
-            errorMessage = `${err.message || 'Failed to send OTP'}. Code: ${err.code || 'Unknown'}. If persistent, check Firebase Console > Authentication > Settings > Authorized domains and ensure admin.moments.live is added.`;
-        }
-      } else if (err.message?.includes('domain') || err.message?.includes('authorized')) {
-        errorMessage = 'Domain authorization error. Please add admin.moments.live to Firebase Console > Authentication > Settings > Authorized domains.';
+      if (err.response?.data?.message) {
+        errorMessage = err.response.data.message;
+      } else if (err.message) {
+        errorMessage = err.message;
       }
       
       setError(errorMessage);
-      
-      // Reset reCAPTCHA if error occurs (especially for captcha-check-failed)
-      if (err.code === 'auth/captcha-check-failed' || err.message?.includes('reCAPTCHA') || err.message?.includes('already been rendered')) {
-        console.log('Resetting reCAPTCHA after error...');
-        await resetRecaptcha();
-      }
     } finally {
       setLoading(false);
     }
@@ -236,57 +67,25 @@ const AdminLogin = () => {
     try {
       setError('');
       setLoading(true);
-      
-      if (!confirmationResultRef.current) {
-        throw new Error('No OTP session found. Please request a new OTP.');
+
+      const cleanedPhone = formatPhoneNumber(phoneNumber);
+      const otpNumber = parseInt(otp, 10);
+
+      if (isNaN(otpNumber) || otp.length !== 4) {
+        setError('Please enter a valid 4-digit OTP');
+        setLoading(false);
+        return;
       }
 
-      console.log('Verifying OTP:', otp);
+      console.log('🔐 Verifying OTP:', otpNumber, 'for phone:', cleanedPhone);
 
-      // Verify OTP using Firebase
-      const result = await confirmationResultRef.current.confirm(otp);
-      
-      console.log('OTP verified successfully:', result);
-      
-      // Get Firebase ID token
-      const idToken = await result.user.getIdToken();
-      console.log('Firebase ID Token:', idToken);
-      
-      // Get phone number from Firebase user, fallback to entered phone number
-      const user = result.user;
-      let phoneNumberToUse = user.phoneNumber;
-      
-      // Get the formatted phone number that was used for sending OTP
-      const formattedPhone = formatPhoneNumber(phoneNumber);
-      
-      // If Firebase doesn't have phone number, use the one entered by user
-      if (!phoneNumberToUse) {
-        phoneNumberToUse = formattedPhone;
-        console.log('Phone number not found in Firebase user, using entered phone number:', phoneNumberToUse);
-      }
-
-      // Ensure we have a phone number
-      if (!phoneNumberToUse) {
-        throw new Error('Phone number not found');
-      }
-
-      // Extract last 10 digits from phone number (remove country code)
-      const cleanedPhone = phoneNumberToUse.replace(/\D/g, ''); // Remove all non-digit characters
-      const last10Digits = cleanedPhone.slice(-10); // Get last 10 digits
-
-      if (last10Digits.length !== 10) {
-        throw new Error('Invalid phone number format');
-      }
-
-      // Store the entered phone number for future use
-      localStorage.setItem('enteredPhoneNumber', formattedPhone);
-      localStorage.setItem('enteredPhoneNumberLast10', last10Digits);
-
-      console.log('Fetching user profile with phone number:', last10Digits);
-      
-      // Call API to get user profile and event details
-      const profileResponse = await axios.get(
-        `https://momentsbackend-673332237675.us-central1.run.app/api/userProfile/phone?phoneNumber=${last10Digits}`,
+      // Verify OTP using backend API
+      const response = await axios.post(
+        `${API_BASE_URL}/api/otp/verify`,
+        {
+          phoneNumber: cleanedPhone,
+          otp: otpNumber
+        },
         {
           headers: {
             'Content-Type': 'application/json'
@@ -294,35 +93,62 @@ const AdminLogin = () => {
         }
       );
 
-      console.log('User profile response:', profileResponse.data);
+      console.log('✅ OTP verified successfully!', response.data);
 
-      // Extract userProfile data from response
-      const userProfileData = profileResponse.data;
+      // Extract userProfile from response
+      const userProfile = response.data?.userProfile || response.data?.data?.userProfile;
       
-      if (!userProfileData) {
-        throw new Error('No user profile data received from API');
+      if (!userProfile) {
+        throw new Error('User profile not found in response');
       }
 
-      // Store authentication data
-      localStorage.setItem('adminToken', idToken);
-      localStorage.setItem('firebaseUser', JSON.stringify({
-        uid: user.uid,
-        phoneNumber: phoneNumber
-      }));
-      localStorage.setItem('userProfile', JSON.stringify(userProfileData));
+      // Extract user information
+      const userId = userProfile.userId;
+      const phoneNumberFromResponse = userProfile.phoneNumber || cleanedPhone;
+      const name = userProfile.name || '';
+
+      // Save user information to localStorage
+      localStorage.setItem('userId', userId);
+      localStorage.setItem('phoneNumber', phoneNumberFromResponse);
+      localStorage.setItem('name', name);
+      localStorage.setItem('userProfile', JSON.stringify(userProfile));
       localStorage.setItem('isAdminLoggedIn', 'true');
-      
-      // Also store in sessionStorage for immediate access
-      sessionStorage.setItem('userProfile', JSON.stringify(userProfileData));
+
+      // Also store in sessionStorage
+      sessionStorage.setItem('userId', userId);
+      sessionStorage.setItem('phoneNumber', phoneNumberFromResponse);
+      sessionStorage.setItem('name', name);
+      sessionStorage.setItem('userProfile', JSON.stringify(userProfile));
       sessionStorage.setItem('isAdminLoggedIn', 'true');
+
+      // Store entered phone number for backward compatibility
+      localStorage.setItem('enteredPhoneNumber', phoneNumberFromResponse);
+      const last10Digits = phoneNumberFromResponse.replace(/\D/g, '').slice(-10);
+      localStorage.setItem('enteredPhoneNumberLast10', last10Digits);
+
+      console.log('💾 Saved user info:', { userId, phoneNumber: phoneNumberFromResponse, name });
       
       navigate('/admin/events');
     } catch (err) {
-      console.error('Verify error:', err);
-      setError(err.message || 'Invalid OTP. Please try again.');
+      console.error('❌ Verify error:', err);
+      let errorMessage = 'Invalid OTP. Please try again.';
+      
+      if (err.response?.data?.message) {
+        errorMessage = err.response.data.message;
+      } else if (err.message) {
+        errorMessage = err.message;
+      }
+      
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleBackToPhone = () => {
+    setShowOtpInput(false);
+    setOtp('');
+    setError('');
   };
 
   return (
@@ -354,7 +180,9 @@ const AdminLogin = () => {
               <h2 className="text-3xl font-bold bg-gradient-to-r from-[#2a4d32] to-[#2a4d32] bg-clip-text text-transparent">
                 Admin Login
               </h2>
-              <p className="text-gray-400 mt-2">Welcome back! Please login to continue.</p>
+              <p className="text-gray-400 mt-2">
+                {showOtpInput ? 'Enter the OTP sent to your phone' : 'Welcome back! Please login to continue.'}
+              </p>
             </div>
 
             {error && (
@@ -367,49 +195,54 @@ const AdminLogin = () => {
             )}
 
             <div className="space-y-6">
-              <div className="space-y-2">
-                <label className="block text-sm font-medium text-gray-300">
-                  Phone Number
-                </label>
-                <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-                    </svg>
-                  </div>
-                  <input
-                    type="tel"
-                    value={phoneNumber}
-                    onChange={(e) => setPhoneNumber(e.target.value)}
-                    className="pl-10 block w-full rounded-lg bg-white border border-[#d4d4d8] text-[#2a4d32] shadow-sm focus:border-[#2a4d32] focus:ring-[#2a4d32] transition-colors duration-200"
-                    placeholder="Enter phone number"
-                    disabled={loading}
-                  />
-                </div>
-              </div>
-
               {!showOtpInput ? (
-                <button
-                  onClick={handleSendOtp}
-                  disabled={loading || !phoneNumber}
-                  className={`w-full bg-gradient-to-r from-[#2a4d32] to-[#2a4d32] text-white py-3 px-4 rounded-lg hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-[#2a4d32] focus:ring-offset-2 focus:ring-offset-[#18181b] transition-all duration-200 ${
-                    loading ? 'opacity-50 cursor-not-allowed' : ''
-                  }`}
-                >
-                  {loading ? (
-                    <div className="flex items-center justify-center">
-                      <div className="w-5 h-5 border-t-2 border-b-2 border-white rounded-full animate-spin mr-2"></div>
-                      Sending...
+                <>
+                  <div className="space-y-2">
+                    <label className="block text-sm font-medium text-gray-300">
+                      Phone Number
+                    </label>
+                    <div className="relative">
+                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                        </svg>
+                      </div>
+                      <input
+                        type="tel"
+                        value={phoneNumber}
+                        onChange={(e) => {
+                          const value = e.target.value.replace(/\D/g, '').slice(0, 10);
+                          setPhoneNumber(value);
+                        }}
+                        className="pl-10 block w-full rounded-lg bg-white border border-[#d4d4d8] text-[#2a4d32] shadow-sm focus:border-[#2a4d32] focus:ring-[#2a4d32] transition-colors duration-200"
+                        placeholder="Enter 10-digit phone number"
+                        disabled={loading}
+                      />
                     </div>
-                  ) : (
-                    'Send OTP'
-                  )}
-                </button>
+                  </div>
+
+                  <button
+                    onClick={handleSendOtp}
+                    disabled={loading || phoneNumber.length < 10}
+                    className={`w-full bg-gradient-to-r from-[#2a4d32] to-[#2a4d32] text-white py-3 px-4 rounded-lg hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-[#2a4d32] focus:ring-offset-2 focus:ring-offset-[#18181b] transition-all duration-200 ${
+                      loading || phoneNumber.length < 10 ? 'opacity-50 cursor-not-allowed' : ''
+                    }`}
+                  >
+                    {loading ? (
+                      <div className="flex items-center justify-center">
+                        <div className="w-5 h-5 border-t-2 border-b-2 border-white rounded-full animate-spin mr-2"></div>
+                        Sending...
+                      </div>
+                    ) : (
+                      'Send OTP'
+                    )}
+                  </button>
+                </>
               ) : (
                 <>
                   <div className="space-y-2">
                     <label className="block text-sm font-medium text-gray-300">
-                      OTP
+                      Enter 4-digit OTP
                     </label>
                     <div className="relative">
                       <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -421,37 +254,50 @@ const AdminLogin = () => {
                         type="text"
                         value={otp}
                         onChange={(e) => {
-                          const value = e.target.value.replace(/[^0-9]/g, '').slice(0, 6);
+                          const value = e.target.value.replace(/[^0-9]/g, '').slice(0, 4);
                           setOtp(value);
                         }}
-                        className="pl-10 block w-full rounded-lg bg-white border border-[#d4d4d8] text-[#2a4d32] shadow-sm focus:border-[#2a4d32] focus:ring-[#2a4d32] transition-colors duration-200"
-                        placeholder="Enter 6-digit OTP"
-                        maxLength={6}
+                        className="pl-10 block w-full rounded-lg bg-white border border-[#d4d4d8] text-[#2a4d32] shadow-sm focus:border-[#2a4d32] focus:ring-[#2a4d32] transition-colors duration-200 text-center text-2xl tracking-widest"
+                        placeholder="0000"
+                        maxLength={4}
                         disabled={loading}
+                        autoFocus
                       />
                     </div>
+                    <p className="text-xs text-gray-400 text-center">
+                      OTP sent to {phoneNumber}
+                    </p>
                   </div>
-                  <button
-                    onClick={handleVerifyOtp}
-                    disabled={loading || otp.length !== 6}
-                    className={`w-full bg-gradient-to-r from-[#2a4d32] to-[#2a4d32] text-white py-3 px-4 rounded-lg hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-[#2a4d32] focus:ring-offset-2 focus:ring-offset-[#18181b] transition-all duration-200 ${
-                      loading ? 'opacity-50 cursor-not-allowed' : ''
-                    }`}
-                  >
-                    {loading ? (
-                      <div className="flex items-center justify-center">
-                        <div className="w-5 h-5 border-t-2 border-b-2 border-white rounded-full animate-spin mr-2"></div>
-                        Verifying...
-                      </div>
-                    ) : (
-                      'Verify OTP'
-                    )}
-                  </button>
+
+                  <div className="space-y-3">
+                    <button
+                      onClick={handleVerifyOtp}
+                      disabled={loading || otp.length !== 4}
+                      className={`w-full bg-gradient-to-r from-[#2a4d32] to-[#2a4d32] text-white py-3 px-4 rounded-lg hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-[#2a4d32] focus:ring-offset-2 focus:ring-offset-[#18181b] transition-all duration-200 ${
+                        loading || otp.length !== 4 ? 'opacity-50 cursor-not-allowed' : ''
+                      }`}
+                    >
+                      {loading ? (
+                        <div className="flex items-center justify-center">
+                          <div className="w-5 h-5 border-t-2 border-b-2 border-white rounded-full animate-spin mr-2"></div>
+                          Verifying...
+                        </div>
+                      ) : (
+                        'Verify OTP'
+                      )}
+                    </button>
+
+                    <button
+                      onClick={handleBackToPhone}
+                      disabled={loading}
+                      className="w-full text-[#2a4d32] py-2 px-4 rounded-lg hover:bg-[#2a4d32]/10 focus:outline-none focus:ring-2 focus:ring-[#2a4d32] transition-all duration-200"
+                    >
+                      Change Phone Number
+                    </button>
+                  </div>
                 </>
               )}
             </div>
-            {/* reCAPTCHA container (hidden) */}
-            <div id="recaptcha-container" className="hidden"></div>
           </div>
         </div>
       </div>
@@ -459,4 +305,4 @@ const AdminLogin = () => {
   );
 };
 
-export default AdminLogin; 
+export default AdminLogin;

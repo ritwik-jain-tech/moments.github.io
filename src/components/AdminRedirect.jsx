@@ -6,27 +6,27 @@ const AdminRedirect = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
 
   useEffect(() => {
-    // Check authentication status
-    const checkAuth = () => {
-      const token = localStorage.getItem('adminToken');
-      const userProfile = localStorage.getItem('userProfile');
-      const isLoggedIn = localStorage.getItem('isAdminLoggedIn') === 'true';
-      
-      console.log('🔍 AdminRedirect Debug:', {
-        token: token ? 'Present' : 'Missing',
-        isLoggedIn,
-        userProfile: userProfile ? 'Present' : 'Missing',
-        timestamp: new Date().toISOString()
-      });
-      
-      // User is considered authenticated if they have token and user profile
-      // We don't need to check isLoggedIn flag as it's redundant with token presence
-      const authenticated = !!(token && userProfile);
+      // Check authentication status
+      const checkAuth = () => {
+        const userId = localStorage.getItem('userId');
+        const userProfile = localStorage.getItem('userProfile');
+        const isLoggedIn = localStorage.getItem('isAdminLoggedIn') === 'true';
+        
+        console.log('🔍 AdminRedirect Debug:', {
+          userId: userId ? 'Present' : 'Missing',
+          isLoggedIn,
+          userProfile: userProfile ? 'Present' : 'Missing',
+          timestamp: new Date().toISOString()
+        });
+        
+        // User is considered authenticated if they have userId and user profile
+        // We don't need to check isLoggedIn flag as it's redundant with userId presence
+        const authenticated = !!(userId && userProfile);
       
       console.log('🔐 Authentication Status:', authenticated ? 'Authenticated' : 'Not Authenticated');
       
-      // If we have a token but no userProfile, try to restore from sessionStorage
-      if (token && !userProfile) {
+      // If we have userId but no userProfile, try to restore from sessionStorage
+      if (userId && !userProfile) {
         const sessionProfile = sessionStorage.getItem('userProfile');
         if (sessionProfile) {
           localStorage.setItem('userProfile', sessionProfile);

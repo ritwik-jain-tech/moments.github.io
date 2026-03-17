@@ -3,11 +3,32 @@
     {
       "src": "/.well-known/apple-app-site-association",
       "dest": "/.well-known/apple-app-site-association"
+    },
+    {
+      "src": "/.well-known/assetlinks.json",
+      "dest": "/.well-known/assetlinks.json"
+    },
+    {
+      "src": "/event/(.*)",
+      "dest": "/index.html"
+    },
+    {
+      "src": "/deleteAccount",
+      "dest": "/index.html"
     }
   ],
   "headers": [
     {
       "source": "/.well-known/apple-app-site-association",
+      "headers": [
+        {
+          "key": "Content-Type",
+          "value": "application/json"
+        }
+      ]
+    },
+    {
+      "source": "/.well-known/assetlinks.json",
       "headers": [
         {
           "key": "Content-Type",

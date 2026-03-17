@@ -3,7 +3,29 @@
   to = "/.well-known/apple-app-site-association"
   status = 200 
 
+[[redirects]]
+  from = "/.well-known/assetlinks.json"
+  to = "/.well-known/assetlinks.json"
+  status = 200
+
+# SPA routing - redirect all /event/* routes to index.html
+[[redirects]]
+  from = "/event/*"
+  to = "/index.html"
+  status = 200
+
+# SPA routing - redirect /deleteAccount to index.html
+[[redirects]]
+  from = "/deleteAccount"
+  to = "/index.html"
+  status = 200
+
 [[headers]]
   for = "/.well-known/apple-app-site-association"
+  [headers.values]
+    Content-Type = "application/json"
+
+[[headers]]
+  for = "/.well-known/assetlinks.json"
   [headers.values]
     Content-Type = "application/json" 

@@ -31,6 +31,16 @@ jobs:
       - name: Build
         run: npm run build
 
+      - name: Verify 404.html exists
+        run: |
+          if [ ! -f dist/404.html ]; then
+            echo "Error: 404.html not found in dist folder"
+            exit 1
+          fi
+          echo "✓ 404.html exists"
+          echo "✓ Contents:"
+          head -5 dist/404.html
+
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v3
         with:

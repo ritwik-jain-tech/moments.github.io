@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import { API_BASE_URL } from '../config/api';
 
 const AdminEvents = () => {
   const [events, setEvents] = useState([]);
@@ -15,16 +16,16 @@ const AdminEvents = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Get user profile and token from storage
+    // Get user profile and userId from storage
     const profile = localStorage.getItem('userProfile') || sessionStorage.getItem('userProfile');
-    const token = localStorage.getItem('adminToken');
+    const userId = localStorage.getItem('userId');
     
-    console.log('Token:', token); // Debug log
+    console.log('UserId:', userId); // Debug log
     console.log('Raw Profile:', profile); // Debug log
 
-    // Check if we have both token and profile
-    if (!token) {
-      setError('No authentication token found');
+    // Check if we have userId and profile
+    if (!userId) {
+      setError('No user ID found. Please login again.');
       setLoading(false);
       navigate('/admin/login');
       return;
@@ -88,7 +89,7 @@ const AdminEvents = () => {
         console.log('Fetching user profile and events with phone number:', last10Digits);
         
         const response = await axios.get(
-          `https://momentsbackend-673332237675.us-central1.run.app/api/userProfile/phone?phoneNumber=${last10Digits}`,
+          `${API_BASE_URL}/api/userProfile/phone?phoneNumber=${last10Digits}`,
           {
             headers: {
               'Content-Type': 'application/json'
@@ -132,10 +133,16 @@ const AdminEvents = () => {
 
   const handleLogout = () => {
     // Clear all authentication data
-    localStorage.removeItem('adminToken');
+    localStorage.removeItem('userId');
+    localStorage.removeItem('phoneNumber');
+    localStorage.removeItem('name');
     localStorage.removeItem('userProfile');
     localStorage.removeItem('isAdminLoggedIn');
-    localStorage.removeItem('firebaseUser');
+    localStorage.removeItem('enteredPhoneNumber');
+    localStorage.removeItem('enteredPhoneNumberLast10');
+    sessionStorage.removeItem('userId');
+    sessionStorage.removeItem('phoneNumber');
+    sessionStorage.removeItem('name');
     sessionStorage.removeItem('userProfile');
     sessionStorage.removeItem('isAdminLoggedIn');
     
@@ -157,13 +164,17 @@ const AdminEvents = () => {
     formData.append('fileType', 'IMAGE');
 
     try {
-      const token = localStorage.getItem('adminToken');
+      const userId = localStorage.getItem('userId');
+      const phoneNumber = localStorage.getItem('phoneNumber');
+      
       const response = await axios.post(
-        'https://momentsbackend-673332237675.us-central1.run.app/api/files/upload',
+        `${API_BASE_URL}/api/files/upload`,
         formData,
         {
           headers: {
-            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'multipart/form-data',
+            ...(userId && { 'X-User-Id': userId }),
+            ...(phoneNumber && { 'X-Phone-Number': phoneNumber }),
           }
         }
       );
@@ -239,7 +250,7 @@ const AdminEvents = () => {
           try {
             console.log('Fetching fresh user profile to get creator ID...');
             const response = await axios.get(
-              `https://momentsbackend-673332237675.us-central1.run.app/api/userProfile/phone?phoneNumber=${phoneNumber}`,
+              `${API_BASE_URL}/api/userProfile/phone?phoneNumber=${phoneNumber}`,
               {
                 headers: {
                   'Content-Type': 'application/json'
@@ -273,7 +284,9 @@ const AdminEvents = () => {
       }
 
       // Then create the event with the publicUrl
-      const token = localStorage.getItem('adminToken');
+      const userId = localStorage.getItem('userId');
+      const phoneNumber = localStorage.getItem('phoneNumber');
+      
       const eventData = {
         creatorId: creatorId,
         eventThumbnail: imageUrl, // This will now be the publicUrl from the upload response
@@ -283,12 +296,13 @@ const AdminEvents = () => {
       console.log('Creating event with data:', eventData);
 
       const response = await axios.post(
-        'https://momentsbackend-673332237675.us-central1.run.app/api/event',
+        `${API_BASE_URL}/api/event`,
         eventData,
         {
           headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
+            ...(userId && { 'X-User-Id': userId }),
+            ...(phoneNumber && { 'X-Phone-Number': phoneNumber }),
           }
         }
       );
@@ -310,68 +324,48 @@ const AdminEvents = () => {
     }
   };
 
-  const renderCreateEventCard = () => (
-    <div 
-      onClick={() => setShowCreateModal(true)}
-      className="bg-white bg-opacity-90 rounded-xl shadow-2xl overflow-hidden border border-[#d4d4d8] hover:border-[#2a4d32] transition-colors cursor-pointer flex items-center justify-center h-[300px]"
-    >
-      <div className="text-center">
-        <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center mx-auto mb-4">
-          <svg className="w-8 h-8 text-[#2a4d32]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
-          </svg>
-        </div>
-        <p className="text-[#2a4d32] font-medium">Create New Event</p>
-      </div>
-    </div>
-  );
-
   const renderCreateEventModal = () => (
-    <div className="fixed inset-0 bg-[#f3efe6] bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-xl p-8 max-w-md w-full mx-4">
-        <h2 className="text-2xl font-bold text-[#2a4d32] mb-6">Create New Event</h2>
+    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
+      <div className="bg-[#101827] border border-white/10 rounded-2xl p-6 max-w-md w-full mx-4 shadow-2xl">
+        <h2 className="text-2xl font-semibold text-white mb-6">New Project</h2>
         
         {error && (
-          <div className="bg-[#2a4d32]/20 border border-[#2a4d32] text-[#2a4d32] px-4 py-3 rounded mb-4">
+          <div className="bg-red-500/10 border border-red-500/30 text-red-200 px-4 py-3 rounded-lg mb-4">
             {error}
           </div>
         )}
 
         <div className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-300 mb-2">
-              Event Name
-            </label>
+            <label className="block text-sm font-medium text-white/80 mb-2">Project name</label>
             <input
               type="text"
               value={newEventName}
               onChange={(e) => setNewEventName(e.target.value)}
-              className="w-full rounded-lg bg-white border border-[#d4d4d8] text-[#2a4d32] px-4 py-2 focus:border-[#2a4d32] focus:ring-[#2a4d32]"
-              placeholder="Enter event name"
+              className="w-full rounded-xl bg-[#0B1220] border border-white/10 text-white px-4 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500/40"
+              placeholder="e.g., Ritwik Weds Shivani"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-300 mb-2">
-              Event Thumbnail
-            </label>
+            <label className="block text-sm font-medium text-white/80 mb-2">Project cover</label>
             <div 
               onClick={() => fileInputRef.current?.click()}
-              className="border-2 border-dashed border-[#d4d4d8] rounded-lg p-4 text-center cursor-pointer hover:border-[#2a4d32] transition-colors"
+              className="border-2 border-dashed border-white/15 rounded-2xl p-4 text-center cursor-pointer hover:border-emerald-500/40 transition-colors bg-[#0B1220]"
             >
               {selectedImage ? (
                 <div className="relative">
                   <img 
                     src={URL.createObjectURL(selectedImage)} 
                     alt="Selected" 
-                    className="max-h-40 mx-auto"
+                    className="max-h-44 mx-auto rounded-xl"
                   />
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
                       setSelectedImage(null);
                     }}
-                    className="absolute top-2 right-2 bg-[#2a4d32] text-white rounded-full p-1"
+                    className="absolute top-2 right-2 bg-black/60 text-white rounded-full p-2 hover:bg-black/80 transition-colors"
                   >
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
@@ -379,11 +373,11 @@ const AdminEvents = () => {
                   </button>
                 </div>
               ) : (
-                <div className="text-gray-400">
+                <div className="text-white/60">
                   <svg className="w-12 h-12 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                   </svg>
-                  <p>Click to upload image</p>
+                  <p>Click to upload an image</p>
                 </div>
               )}
             </div>
@@ -396,27 +390,30 @@ const AdminEvents = () => {
             />
           </div>
 
-          <div className="flex space-x-4 mt-6">
+          <div className="flex space-x-3 mt-6">
             <button
-              onClick={() => setShowCreateModal(false)}
-              className="flex-1 bg-gray-700 text-[#2a4d32] py-2 px-4 rounded-lg hover:bg-gray-600 transition-colors"
+              onClick={() => {
+                setError('');
+                setShowCreateModal(false);
+              }}
+              className="flex-1 bg-white/5 text-white py-3 px-4 rounded-xl hover:bg-white/10 transition-colors border border-white/10"
             >
               Cancel
             </button>
             <button
               onClick={handleCreateEvent}
               disabled={uploading || !newEventName || !selectedImage}
-              className={`flex-1 bg-[#2a4d32] text-white py-2 px-4 rounded-lg hover:opacity-90 transition-colors ${
+              className={`flex-1 bg-emerald-600 text-white py-3 px-4 rounded-xl hover:bg-emerald-500 transition-colors ${
                 (uploading || !newEventName || !selectedImage) ? 'opacity-50 cursor-not-allowed' : ''
-              }`}
+              } border border-emerald-400/20`}
             >
               {uploading ? (
                 <div className="flex items-center justify-center">
                   <div className="w-5 h-5 border-t-2 border-b-2 border-white rounded-full animate-spin mr-2"></div>
-                  Creating...
+                  Creating…
                 </div>
               ) : (
-                'Create Event'
+                'Create Project'
               )}
             </button>
           </div>
@@ -425,134 +422,382 @@ const AdminEvents = () => {
     </div>
   );
 
+  const totalUploadsThisMonth = events.reduce((sum, ev) => sum + (Number(ev?.totalMoments) || 0), 0);
+  const teamMembers = events.reduce((sum, ev) => sum + (Number(ev?.memberCount) || 0), 0);
+  const activeProjects = events.length;
+
+  const sidebarItemBase =
+    'w-full flex items-center gap-3 px-4 py-2 rounded-xl text-sm font-medium transition-colors';
+  const sidebarItemActive = `${sidebarItemBase} bg-emerald-600/20 text-white border border-emerald-500/20`;
+  const sidebarItemIdle = `${sidebarItemBase} text-white/70 hover:text-white hover:bg-white/5`;
+
   return (
-    <div className="min-h-screen bg-gradient-to-b from-[#f3efe6] to-[#f3efe6] text-[#2a4d32] font-sans relative overflow-hidden">
-      {/* Sticky Header */}
-      <header className="fixed top-0 left-0 right-0 z-50 bg-[#f3efe6] bg-opacity-90 backdrop-blur-sm">
-        <div className="container mx-auto px-4 py-4 flex justify-between items-center">
-          {/* Spacer to balance layout */}
-          <div className="w-24"></div>
-          
-          {/* Centered Logo */}
-          <div className="flex items-center justify-center flex-1">
-            <img src="/logo.png" alt="Moments" className="h-[33.6px] w-[281px]" />
+    <div className="min-h-screen bg-[#0B1220] text-white font-sans">
+      <div className="flex min-h-screen">
+        {/* Sidebar */}
+        <aside className="hidden md:flex md:w-72 md:flex-col border-r border-white/10 bg-[#08101D]">
+          <div className="px-6 py-6 flex items-center gap-3">
+            <img src="/logo.png" alt="Moments" className="h-9 w-9" />
+            <div className="leading-tight">
+              <div className="text-lg font-semibold tracking-wide">MOMENTS</div>
+              <div className="text-xs text-white/50">Studio dashboard</div>
+            </div>
           </div>
-          
-          {/* Logout Button */}
-          <div className="w-24 flex justify-end">
-            <button
-              onClick={handleLogout}
-              className="bg-[#2a4d32] text-white px-4 py-2 rounded-lg hover:opacity-90 transition-colors text-sm font-medium"
-            >
-              Logout
+
+          <nav className="px-4 space-y-1">
+            <button className={sidebarItemActive} onClick={() => navigate('/admin/events')}>
+              <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M3 12l2-2 7-7 7 7 2 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2v-9z" />
+              </svg>
+              Homepage
+            </button>
+            <button className={sidebarItemIdle} onClick={() => navigate('/admin/events')}>
+              <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M3 7h6l2 2h10v10a2 2 0 01-2 2H5a2 2 0 01-2-2V7z" />
+              </svg>
+              Projects
+            </button>
+            <button className={sidebarItemIdle} onClick={() => navigate('/admin/events')}>
+              <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M12 5v14m7-7H5" />
+              </svg>
+              Uploads
+            </button>
+            <button className={sidebarItemIdle} onClick={() => navigate('/admin/events')}>
+              <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M4 7h16M4 12h16M4 17h16" />
+              </svg>
+              Storage
+            </button>
+            <button className={sidebarItemIdle} onClick={() => navigate('/admin/events')}>
+              <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6 6 0 10-12 0v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0a3 3 0 11-6 0m6 0H9" />
+              </svg>
+              Notifications
+            </button>
+            <button className={sidebarItemIdle} onClick={() => navigate('/admin/events')}>
+              <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
+              Team Management
+            </button>
+          </nav>
+
+          <div className="mt-auto px-4 py-6 space-y-2">
+            <button className={sidebarItemIdle} onClick={() => { /* UI-only for now */ }}>
+              <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M12 3v2m0 14v2m9-9h-2M5 12H3m15.364-6.364l-1.414 1.414M7.05 16.95l-1.414 1.414m0-11.314L7.05 7.05m9.9 9.9l1.414 1.414" />
+                <path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M12 8a4 4 0 100 8 4 4 0 000-8z" />
+              </svg>
+              Light Mode
+            </button>
+            <button className={sidebarItemIdle} onClick={() => { /* UI-only for now */ }}>
+              <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M12 15l3.5-3.5M7 12a5 5 0 0110 0v1a3 3 0 01-3 3H10a3 3 0 01-3-3v-1z" />
+                <path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M12 3a7 7 0 00-7 7v2a7 7 0 0014 0v-2a7 7 0 00-7-7z" />
+              </svg>
+              Account Settings
+            </button>
+            <button className={`${sidebarItemIdle} text-red-200 hover:text-red-100`} onClick={handleLogout}>
+              <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M10 16l4-4-4-4m4 4H3m12 7a2 2 0 002-2V7a2 2 0 00-2-2h-3" />
+              </svg>
+              Log Out
             </button>
           </div>
-        </div>
-      </header>
+        </aside>
 
-      {/* Main Content */}
-      <div className="pt-24 pb-12">
-        <div className="container mx-auto px-4">
-          {/* Welcome Message */}
-          <div className="mb-8">
-            <h1 className="text-3xl font-bold">
-              Welcome! {userProfile?.name || 'Admin'}
-            </h1>
+        {/* Main */}
+        <main className="flex-1">
+          {/* Top bar */}
+          <div className="sticky top-0 z-40 bg-[#0B1220]/80 backdrop-blur border-b border-white/10">
+            <div className="px-6 py-5 flex items-center justify-between gap-4">
+              <div>
+                <div className="text-2xl font-semibold">
+                  Welcome back, {userProfile?.name || 'Admin'}!
+                </div>
+                <div className="text-sm text-white/55">Here&apos;s what&apos;s happening with your studio today.</div>
+              </div>
+              <div className="flex items-center gap-3">
+                <button
+                  className="relative w-10 h-10 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-colors flex items-center justify-center"
+                  aria-label="Notifications"
+                >
+                  <svg className="w-5 h-5 text-white/80" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                    <path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6 6 0 10-12 0v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0a3 3 0 11-6 0m6 0H9" />
+                  </svg>
+                  <span className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-red-500 text-[11px] font-semibold flex items-center justify-center">
+                    2
+                  </span>
+                </button>
+                <button
+                  onClick={() => {
+                    setError('');
+                    setShowCreateModal(true);
+                  }}
+                  className="px-4 h-10 rounded-xl bg-emerald-600 hover:bg-emerald-500 transition-colors font-semibold flex items-center gap-2 border border-emerald-400/20"
+                >
+                  <span className="inline-flex w-6 h-6 rounded-lg bg-black/20 items-center justify-center">
+                    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                      <path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M12 5v14m7-7H5" />
+                    </svg>
+                  </span>
+                  New Project
+                </button>
+              </div>
+            </div>
           </div>
 
-          {/* Error Message */}
-          {error && (
-            <div className="bg-[#2a4d32]/20 border border-[#2a4d32] text-[#2a4d32] px-4 py-3 rounded mb-4">
-              {error}
-            </div>
-          )}
+          <div className="px-6 py-6">
+            {error && (
+              <div className="mb-4 bg-red-500/10 border border-red-500/30 text-red-200 px-4 py-3 rounded-xl">
+                {error}
+              </div>
+            )}
 
-          {/* Loading State */}
-          {loading ? (
-            <div className="flex justify-center items-center h-64">
-              <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#2a4d32]"></div>
-            </div>
-          ) : events.length > 0 ? (
-            /* Events Grid */
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {renderCreateEventCard()}
-              {events.map((event) => (
-                <div 
-                  key={event.eventId}
-                  onClick={() => handleEventClick(event.eventId)}
-                  className="bg-white bg-opacity-90 rounded-xl shadow-2xl overflow-hidden border border-[#d4d4d8] hover:border-[#2a4d32] transition-colors cursor-pointer"
-                >
-                  {/* Event Thumbnail */}
-                  <div className="relative h-48 bg-white">
-                    {event.eventThumbnail ? (
-                      <img
-                        src={event.eventThumbnail}
-                        alt={event.eventName || 'Event'}
-                        className="w-full h-full object-cover"
-                        onError={(e) => {
-                          e.target.onerror = null;
-                          e.target.src = '/default-event.jpg';
-                        }}
-                      />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center bg-white">
-                        <svg 
-                          className="w-12 h-12 text-gray-600" 
-                          fill="none" 
-                          stroke="currentColor" 
-                          viewBox="0 0 24 24"
-                        >
-                          <path 
-                            strokeLinecap="round" 
-                            strokeLinejoin="round" 
-                            strokeWidth="2" 
-                            d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" 
-                          />
+            {loading ? (
+              <div className="flex justify-center items-center h-64">
+                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-emerald-400"></div>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
+                {/* Left/content column */}
+                <div className="xl:col-span-9 space-y-6">
+                  {/* KPI cards */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="rounded-2xl bg-white/5 border border-white/10 p-5">
+                      <div className="flex items-start justify-between">
+                        <div>
+                          <div className="text-sm text-white/60">Active Projects</div>
+                          <div className="mt-2 text-4xl font-semibold">{activeProjects}</div>
+                          <button
+                            className="mt-3 text-sm text-white/70 hover:text-white inline-flex items-center gap-1"
+                            onClick={() => {
+                              const el = document.getElementById('projects-section');
+                              el?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                            }}
+                          >
+                            View all
+                            <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                              <path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                            </svg>
+                          </button>
+                        </div>
+                        <div className="w-10 h-10 rounded-xl bg-emerald-600/15 border border-emerald-500/20 flex items-center justify-center">
+                          <svg className="w-5 h-5 text-emerald-300" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                            <path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M3 7h6l2 2h10v10a2 2 0 01-2 2H5a2 2 0 01-2-2V7z" />
+                          </svg>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="rounded-2xl bg-white/5 border border-white/10 p-5">
+                      <div className="flex items-start justify-between">
+                        <div>
+                          <div className="text-sm text-white/60">Total Uploads</div>
+                          <div className="mt-2 text-4xl font-semibold">{totalUploadsThisMonth.toLocaleString()}</div>
+                          <div className="mt-2 text-sm text-white/45">This month</div>
+                        </div>
+                        <div className="w-10 h-10 rounded-xl bg-violet-600/15 border border-violet-500/20 flex items-center justify-center">
+                          <svg className="w-5 h-5 text-violet-300" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                            <path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                          </svg>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="rounded-2xl bg-white/5 border border-white/10 p-5">
+                      <div className="flex items-start justify-between">
+                        <div>
+                          <div className="text-sm text-white/60">Team Members</div>
+                          <div className="mt-2 text-4xl font-semibold">{teamMembers.toLocaleString()}</div>
+                          <button
+                            className="mt-3 text-sm text-white/70 hover:text-white inline-flex items-center gap-1"
+                            onClick={() => {}}
+                          >
+                            Manage
+                            <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                              <path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                            </svg>
+                          </button>
+                        </div>
+                        <div className="w-10 h-10 rounded-xl bg-emerald-600/15 border border-emerald-500/20 flex items-center justify-center">
+                          <svg className="w-5 h-5 text-emerald-300" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                            <path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
+                          </svg>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Projects */}
+                  <div id="projects-section" className="rounded-2xl bg-white/5 border border-white/10 p-5">
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="text-lg font-semibold">Active Projects</div>
+                      <button
+                        className="text-sm text-white/70 hover:text-white inline-flex items-center gap-1"
+                        onClick={() => {}}
+                      >
+                        View All
+                        <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                          <path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
                         </svg>
+                      </button>
+                    </div>
+
+                    {events.length === 0 ? (
+                      <div className="text-white/60 py-10 text-center">No projects yet.</div>
+                    ) : (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {events.map((event) => (
+                          <button
+                            key={event.eventId}
+                            onClick={() => handleEventClick(event.eventId)}
+                            className="text-left rounded-2xl overflow-hidden bg-[#0B1220] border border-white/10 hover:border-emerald-500/30 transition-colors"
+                          >
+                            <div className="h-44 bg-black/20">
+                              {event.eventThumbnail ? (
+                                <img
+                                  src={event.eventThumbnail}
+                                  alt={event.eventName || 'Project'}
+                                  className="w-full h-full object-cover"
+                                  onError={(e) => {
+                                    e.target.onerror = null;
+                                    e.target.style.display = 'none';
+                                  }}
+                                />
+                              ) : (
+                                <div className="w-full h-full flex items-center justify-center text-white/40">
+                                  <svg className="w-10 h-10" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                    <path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                  </svg>
+                                </div>
+                              )}
+                            </div>
+                            <div className="p-4">
+                              <div className="font-semibold truncate">{event.eventName || 'Untitled project'}</div>
+                              <div className="mt-1 text-xs text-white/45">Project ID: {event.eventId}</div>
+                              <div className="mt-3 flex items-center justify-between text-xs text-white/60">
+                                <div className="inline-flex items-center gap-1">
+                                  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                    <path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                  </svg>
+                                  {Number(event.totalMoments) || 0} guest uploads
+                                </div>
+                                <div className="inline-flex items-center gap-1">
+                                  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                    <path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
+                                  </svg>
+                                  {Number(event.memberCount) || 0} members
+                                </div>
+                              </div>
+                            </div>
+                          </button>
+                        ))}
                       </div>
                     )}
                   </div>
 
-                  {/* Event Details */}
-                  <div className="p-6">
-                    {/* Event Name */}
-                    <h3 className="text-2xl font-bold mb-3 text-[#2a4d32]">
-                      {event.eventName}
-                    </h3>
-                    
-                    {/* Event ID */}
-                    <p className="text-gray-400 text-sm mb-4">
-                      Event ID: {event.eventId}
-                    </p>
-                    
-                    {/* Stats */}
-                    <div className="flex justify-between text-sm text-gray-300">
-                      <div className="flex items-center space-x-1">
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                        </svg>
-                        <span>{event.totalMoments || 0} Moments</span>
-                      </div>
-                      <div className="flex items-center space-x-1">
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                        </svg>
-                        <span>{event.memberCount || 0} Members</span>
-                      </div>
+                  {/* Recent uploads strip */}
+                  <div className="rounded-2xl bg-white/5 border border-white/10 p-5">
+                    <div className="text-lg font-semibold">Recent Uploads</div>
+                    <div className="text-sm text-white/55">Last 12 uploaded media items</div>
+                    <div className="mt-4 flex gap-3 overflow-x-auto pb-2">
+                      {events
+                        .filter((e) => !!e?.eventThumbnail)
+                        .slice(0, 12)
+                        .map((e) => (
+                          <button
+                            key={`recent-${e.eventId}`}
+                            onClick={() => handleEventClick(e.eventId)}
+                            className="shrink-0 w-24 h-16 rounded-xl overflow-hidden bg-black/20 border border-white/10 hover:border-emerald-500/30 transition-colors"
+                            title={e.eventName}
+                          >
+                            <img src={e.eventThumbnail} alt={e.eventName || 'Upload'} className="w-full h-full object-cover" />
+                          </button>
+                        ))}
+                      {events.filter((e) => !!e?.eventThumbnail).length === 0 && (
+                        <div className="text-white/50 py-6">No uploads yet.</div>
+                      )}
                     </div>
                   </div>
                 </div>
-              ))}
-            </div>
-          ) : (
-            <div className="text-center text-gray-400 py-8">
-              No events found
-            </div>
-          )}
-        </div>
+
+                {/* Right column */}
+                <div className="xl:col-span-3 space-y-6">
+                  {/* Upcoming projects */}
+                  <div className="rounded-2xl bg-white/5 border border-white/10 p-5">
+                    <div className="text-lg font-semibold">Upcoming Projects</div>
+                    <div className="mt-4 space-y-3">
+                      {events.slice(0, 3).map((ev, idx) => (
+                        <button
+                          key={`upcoming-${ev.eventId}`}
+                          onClick={() => handleEventClick(ev.eventId)}
+                          className="w-full text-left rounded-xl border border-white/10 hover:border-emerald-500/30 bg-[#0B1220] px-4 py-3 transition-colors"
+                        >
+                          <div className="flex items-center justify-between">
+                            <div className="text-sm font-semibold truncate">{ev.eventName || 'Untitled project'}</div>
+                            <div className="text-xs text-white/45">{3 + idx * 5} days</div>
+                          </div>
+                          <div className="mt-1 text-xs text-white/45">
+                            {new Date(Date.now() + (3 + idx * 5) * 24 * 60 * 60 * 1000).toLocaleDateString(undefined, {
+                              year: 'numeric',
+                              month: 'long',
+                              day: 'numeric',
+                            })}
+                          </div>
+                        </button>
+                      ))}
+                      {events.length === 0 && <div className="text-white/50">No projects found.</div>}
+                    </div>
+                  </div>
+
+                  {/* Notifications */}
+                  <div className="rounded-2xl bg-white/5 border border-white/10 p-5">
+                    <div className="flex items-center justify-between">
+                      <div className="text-lg font-semibold">Notifications</div>
+                      <span className="text-xs px-2 py-1 rounded-full bg-red-500 text-white font-semibold">2</span>
+                    </div>
+                    <div className="mt-4 space-y-3">
+                      <div className="rounded-xl bg-[#0B1220] border border-white/10 px-4 py-3">
+                        <div className="text-sm text-white/80">45 new photos uploaded by guests</div>
+                        <div className="text-xs text-white/45 mt-1">5 min ago</div>
+                      </div>
+                      <div className="rounded-xl bg-[#0B1220] border border-white/10 px-4 py-3">
+                        <div className="text-sm text-white/80">Storage usage at 78%</div>
+                        <div className="text-xs text-white/45 mt-1">1 hour ago</div>
+                      </div>
+                      <div className="rounded-xl bg-[#0B1220] border border-white/10 px-4 py-3">
+                        <div className="text-sm text-white/80">Team member added to a project</div>
+                        <div className="text-xs text-white/45 mt-1">2 hours ago</div>
+                      </div>
+                      <div className="text-xs text-white/35 pt-1">Next billing on {new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toLocaleDateString()}</div>
+                    </div>
+                  </div>
+
+                  {/* Storage */}
+                  <div className="rounded-2xl bg-white/5 border border-white/10 p-5">
+                    <div className="text-lg font-semibold">Storage Usage</div>
+                    <div className="mt-4 rounded-xl bg-[#0B1220] border border-white/10 px-4 py-4">
+                      <div className="flex items-center justify-between text-sm text-white/70">
+                        <div>Used</div>
+                        <div className="text-white/80 font-semibold">12.9GB / 50GB</div>
+                      </div>
+                      <div className="mt-3 h-2 rounded-full bg-white/10 overflow-hidden">
+                        <div className="h-full w-[26%] bg-emerald-500 rounded-full"></div>
+                      </div>
+                      <button className="mt-4 w-full h-10 rounded-xl bg-emerald-600 hover:bg-emerald-500 transition-colors font-semibold border border-emerald-400/20">
+                        Manage Storage
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        </main>
       </div>
 
-      {/* Create Event Modal */}
       {showCreateModal && renderCreateEventModal()}
     </div>
   );
