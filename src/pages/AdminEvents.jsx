@@ -10,6 +10,10 @@ const AdminEvents = () => {
   const [userProfile, setUserProfile] = useState(null);
   const [theme, setTheme] = useState(() => localStorage.getItem('adminTheme') || 'light'); // 'light' | 'dark'
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => localStorage.getItem('adminSidebarCollapsed') === '1');
+  const [activeSection, setActiveSection] = useState(() => 'dashboard'); // 'dashboard' | 'projects'
+  const [projectsTab, setProjectsTab] = useState(() => 'All'); // 'All' | 'Active' | 'Delivered' | 'Archived'
+  const [projectsSearch, setProjectsSearch] = useState('');
+  const [projectsLayout, setProjectsLayout] = useState(() => 'list'); // 'grid' | 'list'
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [newEventName, setNewEventName] = useState('');
   const [selectedImage, setSelectedImage] = useState(null);
@@ -452,6 +456,391 @@ const AdminEvents = () => {
   const teamMembers = events.reduce((sum, ev) => sum + (Number(ev?.memberCount) || 0), 0);
   const activeProjects = events.length;
 
+  const getProjectStatus = (ev) => {
+    const raw =
+      ev?.status ??
+      ev?.eventStatus ??
+      ev?.projectStatus ??
+      ev?.deliveryStatus ??
+      ev?.state;
+    if (!raw) return 'Active';
+    const s = String(raw).toLowerCase();
+    if (s.includes('deliver')) return 'Delivered';
+    if (s.includes('archive')) return 'Archived';
+    if (s.includes('active')) return 'Active';
+    return 'Active';
+  };
+
+  const getProjectDate = (ev) => {
+    const raw =
+      ev?.eventDate ??
+      ev?.date ??
+      ev?.createdAt ??
+      ev?.created_at ??
+      ev?.createdOn ??
+      ev?.timestamp;
+    const d = raw ? new Date(raw) : null;
+    if (d && !Number.isNaN(d.getTime())) {
+      return d.toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' });
+    }
+    return '';
+  };
+
+  const getStorageNumbers = (ev) => {
+    const used =
+      ev?.storageUsedGB ??
+      ev?.storageUsed ??
+      ev?.usedStorageGB ??
+      ev?.storage?.usedGB ??
+      ev?.storage?.used ??
+      ev?.usedStorage;
+    const limit =
+      ev?.storageLimitGB ??
+      ev?.storageLimit ??
+      ev?.totalStorageGB ??
+      ev?.storage?.limitGB ??
+      ev?.storage?.limit ??
+      ev?.totalStorage;
+
+    const usedNum = used === undefined || used === null || used === '' ? 0 : Number(used);
+    const limitNum = limit === undefined || limit === null || limit === '' ? 10 : Number(limit);
+    if (!Number.isFinite(usedNum) || usedNum < 0) return { usedGB: 0, limitGB: Number.isFinite(limitNum) && limitNum > 0 ? limitNum : 10 };
+    if (!Number.isFinite(limitNum) || limitNum <= 0) return { usedGB: usedNum, limitGB: 10 };
+    return { usedGB: usedNum, limitGB: limitNum };
+  };
+
+  const projectSearchTerm = projectsSearch.trim().toLowerCase();
+  const allProjects = events.map((ev) => ({
+    ev,
+    status: getProjectStatus(ev),
+    dateLabel: getProjectDate(ev),
+    storage: getStorageNumbers(ev),
+    uploads: Number(ev?.totalMoments) || 0,
+    team: Number(ev?.memberCount) || 0,
+    name: ev?.eventName || 'Untitled project',
+    id: ev?.eventId,
+    thumbnail: ev?.eventThumbnail,
+  }));
+
+  const filteredProjects = allProjects.filter((p) => {
+    if (!projectSearchTerm) return true;
+    const haystack = `${p.name} ${p.id ?? ''}`.toLowerCase();
+    return haystack.includes(projectSearchTerm);
+  });
+
+  const tabbedProjects = filteredProjects.filter((p) => {
+    if (projectsTab === 'All') return true;
+    return p.status === projectsTab;
+  });
+
+  const formatGB = (num) => {
+    const n = Number(num);
+    if (!Number.isFinite(n)) return '0';
+    const rounded = Math.round(n * 10) / 10;
+    return String(rounded % 1 === 0 ? rounded.toFixed(0) : rounded.toFixed(1));
+  };
+
+  const getProgressPct = (p) => {
+    if (!p?.storage) return 0;
+    const { usedGB, limitGB } = p.storage;
+    if (!limitGB || limitGB <= 0) return 0;
+    const pct = (usedGB / limitGB) * 100;
+    return Math.max(0, Math.min(100, pct));
+  };
+
+  const statusPill = (status) => {
+    const base = 'inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold';
+    if (isDark) {
+      if (status === 'Active') return `${base} bg-emerald-500/15 text-emerald-300 border border-emerald-400/20`;
+      if (status === 'Delivered') return `${base} bg-cyan-500/15 text-cyan-300 border border-cyan-400/20`;
+      if (status === 'Archived') return `${base} bg-white/5 text-white/50 border border-white/10`;
+      return `${base} bg-white/5 text-white/60 border border-white/10`;
+    }
+    if (status === 'Active') return `${base} bg-emerald-600/10 text-emerald-700 border border-emerald-600/20`;
+    if (status === 'Delivered') return `${base} bg-cyan-600/10 text-cyan-700 border border-cyan-600/20`;
+    if (status === 'Archived') return `${base} bg-slate-100 text-slate-600 border border-slate-200`;
+    return `${base} bg-slate-100 text-slate-600 border border-slate-200`;
+  };
+
+  const renderProjectsView = () => {
+    const tabs = [
+      { key: 'All', label: 'All Projects' },
+      { key: 'Active', label: 'Active' },
+      { key: 'Delivered', label: 'Delivered' },
+      { key: 'Archived', label: 'Archived' },
+    ];
+
+    const headerBg = isDark ? 'bg-[#0B1220]/60 border-white/10' : 'bg-white/70 border-black/10';
+    const inputBg = isDark ? 'bg-black/20 border-white/10 text-white' : 'bg-white border-black/10 text-slate-900';
+    const inputPh = isDark ? 'placeholder:text-white/40' : 'placeholder:text-slate-400';
+    const inputBorder = isDark ? 'focus:border-emerald-500/40' : 'focus:border-emerald-600/40';
+    const cardBorder = isDark ? 'border-white/10' : 'border-black/10';
+
+    return (
+      <div className="space-y-5">
+        {/* Page header */}
+        <div className={`rounded-2xl ${headerBg} border backdrop-blur`}>
+          <div className="px-4 py-4 md:px-6 md:py-5 flex items-center justify-between gap-4">
+            <div className="min-w-0 flex-1">
+              <div className="text-xl md:text-2xl font-semibold text-inherit">Projects / Events</div>
+              <div className={`text-sm ${isDark ? 'text-white/55' : 'text-slate-500'}`}>
+                Central hub for all event management
+              </div>
+            </div>
+
+            <div className="hidden lg:flex items-center gap-3">
+              <div className={`flex items-center gap-2 px-3 h-11 rounded-xl border ${cardBorder} ${inputBg}`}>
+                <svg className={`w-4 h-4 ${isDark ? 'text-white/60' : 'text-slate-500'}`} viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                  <path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35M10 18a8 8 0 1 1 0-16 8 8 0 0 1 0 16z" />
+                </svg>
+                <input
+                  value={projectsSearch}
+                  onChange={(e) => setProjectsSearch(e.target.value)}
+                  className={`w-[360px] bg-transparent outline-none text-sm ${inputPh} ${inputBorder}`}
+                  placeholder="Search projects by name, event code, or client name..."
+                />
+              </div>
+
+              <button
+                onClick={() => setShowCreateModal(true)}
+                className="h-11 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 transition-colors font-semibold border border-emerald-400/20 text-white inline-flex items-center gap-2"
+              >
+                <span className="inline-flex w-5 h-5 rounded-md bg-black/20 items-center justify-center">
+                  <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                    <path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M12 5v14m7-7H5" />
+                  </svg>
+                </span>
+                Create New Project
+              </button>
+            </div>
+          </div>
+
+          {/* Tabs + layout controls */}
+          <div className="px-4 pb-4 md:px-6 md:pb-5 flex items-center justify-between gap-4">
+            <div className="flex items-center gap-2">
+              {tabs.map((t) => (
+                <button
+                  key={t.key}
+                  onClick={() => setProjectsTab(t.key)}
+                  className={`px-4 py-2 rounded-xl text-sm font-semibold border transition-colors ${
+                    projectsTab === t.key
+                      ? isDark
+                        ? 'bg-emerald-600/20 text-emerald-200 border-emerald-500/30'
+                        : 'bg-emerald-600/10 text-emerald-700 border-emerald-600/20'
+                      : isDark
+                        ? 'bg-white/0 text-white/60 border-white/10 hover:text-white'
+                        : 'bg-white text-slate-600 border-black/10 hover:text-slate-900'
+                  }`}
+                >
+                  {t.label}
+                </button>
+              ))}
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setProjectsLayout('grid')}
+                className={`w-10 h-10 rounded-xl border transition-colors flex items-center justify-center ${
+                  projectsLayout === 'grid'
+                    ? isDark
+                      ? 'bg-emerald-600/20 border-emerald-500/30'
+                      : 'bg-emerald-600/10 border-emerald-600/20'
+                    : isDark
+                      ? 'bg-white/0 border-white/10 hover:bg-white/5'
+                      : 'bg-white border-black/10 hover:bg-slate-50'
+                }`}
+                aria-label="Grid view"
+              >
+                <svg className={`w-5 h-5 ${isDark ? 'text-white/80' : 'text-slate-700'}`} viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                  <path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M4 4h6v6H4V4zm10 0h6v6h-6V4zM4 14h6v6H4v-6zm10 0h6v6h-6v-6z" />
+                </svg>
+              </button>
+              <button
+                onClick={() => setProjectsLayout('list')}
+                className={`w-10 h-10 rounded-xl border transition-colors flex items-center justify-center ${
+                  projectsLayout === 'list'
+                    ? isDark
+                      ? 'bg-emerald-600/20 border-emerald-500/30'
+                      : 'bg-emerald-600/10 border-emerald-600/20'
+                    : isDark
+                      ? 'bg-white/0 border-white/10 hover:bg-white/5'
+                      : 'bg-white border-black/10 hover:bg-slate-50'
+                }`}
+                aria-label="List view"
+              >
+                <svg className={`w-5 h-5 ${isDark ? 'text-white/80' : 'text-slate-700'}`} viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                  <path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+                </svg>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Search + create (mobile) */}
+        <div className="lg:hidden flex items-center gap-3 px-2">
+          <div className={`flex items-center gap-2 px-3 h-11 rounded-xl border ${cardBorder} ${inputBg} flex-1`}>
+            <svg className={`w-4 h-4 ${isDark ? 'text-white/60' : 'text-slate-500'}`} viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35M10 18a8 8 0 1 1 0-16 8 8 0 0 1 0 16z" />
+            </svg>
+            <input
+              value={projectsSearch}
+              onChange={(e) => setProjectsSearch(e.target.value)}
+              className={`w-full bg-transparent outline-none text-sm ${inputPh} ${inputBorder}`}
+              placeholder="Search..."
+            />
+          </div>
+          <button
+            onClick={() => setShowCreateModal(true)}
+            className="h-11 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 transition-colors font-semibold border border-emerald-400/20 text-white"
+          >
+            + New
+          </button>
+        </div>
+
+        {tabbedProjects.length === 0 ? (
+          <div className={`rounded-2xl ${surface} border ${surfaceBorder} p-10 text-center ${isDark ? 'text-white/60' : 'text-slate-600'}`}>
+            No projects found.
+          </div>
+        ) : projectsLayout === 'list' ? (
+          <div className={`rounded-2xl border overflow-hidden ${isDark ? 'border-white/10 bg-[#0B1220]' : 'border-black/10 bg-white'}`}>
+            <table className="w-full text-sm">
+              <thead className={isDark ? 'bg-white/0' : 'bg-slate-50'}>
+                <tr className={isDark ? 'text-white/60' : 'text-slate-500'}>
+                  <th className="text-left font-semibold px-6 py-4">Project</th>
+                  <th className="text-left font-semibold px-2 py-4">Date</th>
+                  <th className="text-left font-semibold px-2 py-4">Status</th>
+                  <th className="text-left font-semibold px-2 py-4">Storage</th>
+                  <th className="text-left font-semibold px-2 py-4">Uploads</th>
+                  <th className="text-left font-semibold px-2 py-4">Team</th>
+                  <th className="text-right font-semibold px-6 py-4">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {tabbedProjects.map((p) => {
+                  const pct = getProgressPct(p);
+                  const used = formatGB(p.storage.usedGB);
+                  const limit = formatGB(p.storage.limitGB);
+                  return (
+                    <tr key={p.id} className={`border-t ${isDark ? 'border-white/5' : 'border-slate-200'} hover:bg-white/5 transition-colors`}>
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-3">
+                          <div className={`w-11 h-11 rounded-xl overflow-hidden border ${isDark ? 'border-white/10 bg-white/5' : 'border-black/10 bg-slate-50'}`}>
+                            {p.thumbnail ? (
+                              <img src={p.thumbnail} alt={p.name} className="w-full h-full object-cover" />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center text-white/40">
+                                <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                  <path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M4 16l4.586-4.586a2 2 0 0 1 2.828 0L16 16m-2-2l1.586-1.586a2 2 0 0 1 2.828 0L20 14m-6-6h.01M6 20h12a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2z" />
+                                </svg>
+                              </div>
+                            )}
+                          </div>
+                          <div className="min-w-0">
+                            <div className="font-semibold truncate max-w-[220px]">{p.name}</div>
+                            <div className={`text-xs ${isDark ? 'text-white/45' : 'text-slate-500'}`}>{p.id ?? ''}</div>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-2 py-4 whitespace-nowrap">{p.dateLabel || '-'}</td>
+                      <td className="px-2 py-4 whitespace-nowrap">
+                        <span className={statusPill(p.status)}>{p.status}</span>
+                      </td>
+                      <td className="px-2 py-4" style={{ minWidth: 180 }}>
+                        <div className={`text-xs font-semibold ${isDark ? 'text-white/85' : 'text-slate-800'}`}>
+                          {used}GB / {limit}GB
+                        </div>
+                        <div className={`mt-2 h-2 rounded-full ${isDark ? 'bg-white/10' : 'bg-slate-200'} overflow-hidden`}>
+                          <div className={`h-full rounded-full ${isDark ? 'bg-emerald-500' : 'bg-emerald-600'}`} style={{ width: `${pct}%` }} />
+                        </div>
+                      </td>
+                      <td className="px-2 py-4 whitespace-nowrap">{p.uploads}</td>
+                      <td className="px-2 py-4 whitespace-nowrap">{p.team}</td>
+                      <td className="px-6 py-4 text-right">
+                        <button
+                          onClick={() => handleEventClick(p.id)}
+                          className="inline-flex items-center justify-center w-9 h-9 rounded-xl border border-white/10 hover:bg-white/5 transition-colors"
+                          aria-label="Project actions"
+                          title="Open project"
+                        >
+                          <svg className={`w-4 h-4 ${isDark ? 'text-white/70' : 'text-slate-600'}`} viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                            <path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M12 5h.01M12 12h.01M12 19h.01" />
+                          </svg>
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+            {tabbedProjects.map((p) => {
+              const pct = getProgressPct(p);
+              const used = formatGB(p.storage.usedGB);
+              const limit = formatGB(p.storage.limitGB);
+              return (
+                <button
+                  key={p.id}
+                  onClick={() => handleEventClick(p.id)}
+                  className={`text-left rounded-2xl border overflow-hidden hover:border-emerald-500/30 transition-colors ${isDark ? 'border-white/10 bg-[#0B1220]' : 'border-black/10 bg-white'}`}
+                >
+                  <div className="h-36 bg-black/20">
+                    {p.thumbnail ? (
+                      <img src={p.thumbnail} alt={p.name} className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-white/40">
+                        <svg className="w-10 h-10" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                          <path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                        </svg>
+                      </div>
+                    )}
+                  </div>
+                  <div className="p-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <div className="font-semibold truncate">{p.name}</div>
+                        <div className={`text-xs ${isDark ? 'text-white/45' : 'text-slate-500'} mt-1`}>
+                          {p.dateLabel || '-'}
+                        </div>
+                      </div>
+                      <span className={statusPill(p.status)}>{p.status}</span>
+                    </div>
+
+                    <div className="mt-3">
+                      <div className={`text-xs font-semibold ${isDark ? 'text-white/70' : 'text-slate-700'}`}>Storage Used</div>
+                      <div className={`text-xs ${isDark ? 'text-white/45' : 'text-slate-500'} mt-1`}>
+                        {used}GB / {limit}GB
+                      </div>
+                      <div className={`mt-2 h-2 rounded-full ${isDark ? 'bg-white/10' : 'bg-slate-200'} overflow-hidden`}>
+                        <div className={`h-full rounded-full ${isDark ? 'bg-emerald-500' : 'bg-emerald-600'}`} style={{ width: `${pct}%` }} />
+                      </div>
+                    </div>
+
+                    <div className="mt-3 flex items-center justify-between text-xs">
+                      <div className="inline-flex items-center gap-1">
+                        <svg className={`w-4 h-4 ${isDark ? 'text-white/60' : 'text-slate-600'}`} viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                          <path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M4 16l4.586-4.586a2 2 0 0 1 2.828 0L16 16m-2-2l1.586-1.586a2 2 0 0 1 2.828 0L20 14m-6-6h.01M6 20h12a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2z" />
+                        </svg>
+                        <span>{p.uploads}</span>
+                      </div>
+                      <div className="inline-flex items-center gap-1">
+                        <svg className={`w-4 h-4 ${isDark ? 'text-white/60' : 'text-slate-600'}`} viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                          <path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                        </svg>
+                        <span>{p.team}</span>
+                      </div>
+                    </div>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    );
+  };
+
   const appBg = isDark ? 'bg-[#0B1220]' : 'bg-white';
   const appText = isDark ? 'text-white' : 'text-slate-900';
   const dividerBorder = isDark ? 'border-white/10' : 'border-black/10';
@@ -503,13 +892,25 @@ const AdminEvents = () => {
           </div>
 
           <nav className={`${sidebarCollapsed ? 'px-3' : 'px-4'} space-y-1`}>
-            <button className={sidebarItemActive} onClick={() => navigate('/admin/events')} title="Homepage">
+            <button
+              className={sidebarItemActive}
+              onClick={() => setActiveSection('dashboard')}
+              title="Homepage"
+            >
               <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor">
                 <path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M3 12l2-2 7-7 7 7 2 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2v-9z" />
               </svg>
               {!sidebarCollapsed && 'Homepage'}
             </button>
-            <button className={sidebarItemIdle} onClick={() => navigate('/admin/events')} title="Projects">
+            <button
+              className={sidebarItemIdle}
+              onClick={() => {
+                setActiveSection('projects');
+                setProjectsTab('All');
+                setProjectsLayout('list');
+              }}
+              title="Projects"
+            >
               <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor">
                 <path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M3 7h6l2 2h10v10a2 2 0 01-2 2H5a2 2 0 01-2-2V7z" />
               </svg>
@@ -582,7 +983,10 @@ const AdminEvents = () => {
         {/* Main */}
         <main className="flex-1">
           {/* Top bar */}
-          <div className={`sticky top-0 z-40 backdrop-blur border-b ${dividerBorder} ${isDark ? 'bg-[#0B1220]/80' : 'bg-white/80'}`}>
+          {activeSection !== 'projects' && (
+            <div
+              className={`sticky top-0 z-40 backdrop-blur border-b ${dividerBorder} ${isDark ? 'bg-[#0B1220]/80' : 'bg-white/80'}`}
+            >
             <div className="px-6 py-5 flex items-center justify-between gap-4">
               <div>
                 <div className="text-2xl font-semibold">
@@ -621,6 +1025,7 @@ const AdminEvents = () => {
               </div>
             </div>
           </div>
+          )}
 
           <div className="px-6 py-6">
             {error && (
@@ -633,6 +1038,8 @@ const AdminEvents = () => {
               <div className="flex justify-center items-center h-64">
                 <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-emerald-400"></div>
               </div>
+            ) : activeSection === 'projects' ? (
+              renderProjectsView()
             ) : (
               <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
                 {/* Left/content column */}
@@ -647,8 +1054,10 @@ const AdminEvents = () => {
                           <button
                             className={`mt-3 text-sm inline-flex items-center gap-1 ${isDark ? 'text-white/70 hover:text-white' : 'text-slate-600 hover:text-slate-900'}`}
                             onClick={() => {
-                              const el = document.getElementById('projects-section');
-                              el?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                              setActiveSection('projects');
+                              setProjectsTab('All');
+                              setProjectsLayout('list');
+                              setProjectsSearch('');
                             }}
                           >
                             View all
@@ -710,7 +1119,12 @@ const AdminEvents = () => {
                       <div className="text-lg font-semibold">Active Projects</div>
                       <button
                         className={`text-sm inline-flex items-center gap-1 ${isDark ? 'text-white/70 hover:text-white' : 'text-slate-600 hover:text-slate-900'}`}
-                        onClick={() => {}}
+                          onClick={() => {
+                            setActiveSection('projects');
+                            setProjectsTab('All');
+                            setProjectsLayout('list');
+                            setProjectsSearch('');
+                          }}
                       >
                         View All
                         <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">
