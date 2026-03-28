@@ -56,8 +56,8 @@ const AdminRedirect = () => {
 
   // Redirect based on authentication status
   if (isAuthenticated) {
-    console.log('🚀 Redirecting to: /admin/events');
-    return <Navigate to="/admin/events" replace />;
+    console.log('🚀 Redirecting to: /admin/homepage');
+    return <Navigate to="/admin/homepage" replace />;
   } else {
     console.log('🚀 Redirecting to: /admin/login');
     return <Navigate to="/admin/login" replace />;

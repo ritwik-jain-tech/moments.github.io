@@ -1,10 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { QRCodeSVG } from 'qrcode.react';
 import axios from 'axios';
 import { useMetaTags } from '../hooks/useMetaTags';
-import MomentUploader from '../components/MomentUploader';
-import { API_BASE_URL } from '../config/api';
+import AdminSidebar from '../components/AdminSidebar';
+import { API_BASE_URL, FACE_TAGGING_BASE_URL } from '../config/api';
 import heic2any from 'heic2any';
 
 // Component to handle HEIC image conversion
@@ -89,15 +89,76 @@ const EventDetails = () => {
   const { eventId } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
-  const [activeView, setActiveView] = useState('moments'); // 'moments', 'guests'
+  const [activeView, setActiveView] = useState('media'); // 'media', 'delivery', 'guestApp'
   const [guests, setGuests] = useState([]);
   const [moments, setMoments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [activeTab, setActiveTab] = useState('pending');
+  const [activeTab, setActiveTab] = useState('all');
   const [showQRModal, setShowQRModal] = useState(false);
   const [copiedMomentId, setCopiedMomentId] = useState(null);
   const [rotatingMomentId, setRotatingMomentId] = useState(null);
+
+  // Delivery & Gallery (UI states only; backend integration can be wired later)
+  const [galleryEnabled, setGalleryEnabled] = useState(false);
+  const [galleryTheme, setGalleryTheme] = useState('light'); // 'light' | 'dark' | 'system'
+  const [galleryLayout, setGalleryLayout] = useState('grid'); // 'grid' | 'masonry' | 'slideshow'
+  const [downloadsEnabled, setDownloadsEnabled] = useState(false);
+  const [downloadsQuality, setDownloadsQuality] = useState('hires'); // 'hires' | 'original'
+
+  // Guest App configuration (UI states only)
+  const [guestAppEnabled, setGuestAppEnabled] = useState(true);
+  const [eventSettingsLoading, setEventSettingsLoading] = useState(false);
+  const [eventSettingsMessage, setEventSettingsMessage] = useState('');
+  const [eventCode, setEventCode] = useState('ABC123');
+  const [accessStart, setAccessStart] = useState('');
+  const [accessEnd, setAccessEnd] = useState('');
+  const [configMessage, setConfigMessage] = useState('');
+
+  // Delivery/Gallery additional UI states (for screenshot-matching)
+  const [expiryDate, setExpiryDate] = useState('');
+  const [autoArchiveOnExpiry, setAutoArchiveOnExpiry] = useState(false);
+  const [passwordProtected, setPasswordProtected] = useState(false);
+  const [faceRecognitionEnabled, setFaceRecognitionEnabled] = useState(false);
+  const [faceRetention, setFaceRetention] = useState('During event only');
+  const [matchConfidence, setMatchConfidence] = useState(0.6); // 0..1
+  const [moderationEnabled, setModerationEnabled] = useState(false);
+  const [approvalMethod, setApprovalMethod] = useState('Manual Review'); // Manual Review | Auto-approve
+
+  // Media toolbar UI states
+  const [mediaSearch, setMediaSearch] = useState('');
+  const [activeTag, setActiveTag] = useState('Details');
+  const [mediaView, setMediaView] = useState('grid'); // grid | list (UI only)
+  const [selectedFolder, setSelectedFolder] = useState('all-images');
+  const [isSidebarExpanded, setIsSidebarExpanded] = useState(() => {
+    const saved = localStorage.getItem('adminSidebarCollapsed');
+    return saved === '1' ? false : true;
+  });
+  const [isFoldersMinimized, setIsFoldersMinimized] = useState(() => localStorage.getItem('eventFoldersMinimized') === '1');
+  const [sortBy, setSortBy] = useState('capture-time');
+  const [orientationFilter, setOrientationFilter] = useState('all'); // all | portrait | landscape
+  const [creatorRoleFilter, setCreatorRoleFilter] = useState('all'); // all | guest | photographer | groom | bride
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [previewIndex, setPreviewIndex] = useState(0);
+  const [previewScale, setPreviewScale] = useState(1);
+  const [favoriteMomentIds, setFavoriteMomentIds] = useState(() => new Set());
+  const pinchDistanceRef = useRef(0);
+
+  // Shared admin theme across pages
+  const [theme, setTheme] = useState(() => localStorage.getItem('adminTheme') || 'light'); // dark | light
+  const isDark = theme === 'dark';
+
+  useEffect(() => {
+    localStorage.setItem('adminTheme', theme);
+  }, [theme]);
+
+  useEffect(() => {
+    localStorage.setItem('adminSidebarCollapsed', isSidebarExpanded ? '0' : '1');
+  }, [isSidebarExpanded]);
+
+  useEffect(() => {
+    localStorage.setItem('eventFoldersMinimized', isFoldersMinimized ? '1' : '0');
+  }, [isFoldersMinimized]);
 
   // Bulk upload states
   const [uploadedFiles, setUploadedFiles] = useState([]);
@@ -119,6 +180,41 @@ const EventDetails = () => {
 
   // Get event data from navigation state or fetch it
   const [eventData, setEventData] = useState(location.state?.eventData);
+
+  useEffect(() => {
+    if (!eventData) return;
+
+    const getBool = (v) => {
+      if (v === true || v === 1) return true;
+      if (v === false || v === 0 || v === null || v === undefined) return false;
+      const s = String(v).toLowerCase();
+      return s === 'true' || s === 'enabled' || s === 'active' || s === 'yes' || s === 'on';
+    };
+
+    setGalleryEnabled(
+      getBool(eventData?.galleryEnabled ?? eventData?.galleryStatus ?? eventData?.gallery_enabled)
+    );
+    setGuestAppEnabled(
+      getBool(eventData?.guestAppEnabled ?? eventData?.guestAppStatus ?? eventData?.guest_app_enabled)
+    );
+    setEventCode(
+      eventData?.eventCode ?? eventData?.code ?? eventData?.inviteCode ?? eventData?.accessCode ?? 'ABC123'
+    );
+
+    const start =
+      eventData?.accessStartDate ??
+      eventData?.accessFrom ??
+      eventData?.startDate ??
+      eventData?.access_start_date;
+    const end =
+      eventData?.accessEndDate ??
+      eventData?.accessTo ??
+      eventData?.endDate ??
+      eventData?.access_end_date;
+
+    if (start) setAccessStart(new Date(start).toISOString().slice(0, 10));
+    if (end) setAccessEnd(new Date(end).toISOString().slice(0, 10));
+  }, [eventData]);
 
   // Fetch event details for meta tags
   useEffect(() => {
@@ -205,13 +301,20 @@ const EventDetails = () => {
     const eventName = eventData.eventName;
     let formattedTitle = eventName;
     
-    // If event has a date, append it
-    if (eventData.date) {
-      const date = new Date(eventData.date);
-      const formattedDate = date.toLocaleDateString('en-US', { 
-        month: 'short', 
-        day: 'numeric', 
-        year: 'numeric' 
+    let dateForTitle = null;
+    if (eventData.eventDate) {
+      dateForTitle = new Date(`${eventData.eventDate}T12:00:00`);
+    } else if (eventData.date) {
+      dateForTitle = new Date(eventData.date);
+    } else if (eventData.startTime != null) {
+      const ms = Number(eventData.startTime);
+      if (!Number.isNaN(ms)) dateForTitle = new Date(ms);
+    }
+    if (dateForTitle && !Number.isNaN(dateForTitle.getTime())) {
+      const formattedDate = dateForTitle.toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
       });
       formattedTitle = `${eventName} | ${formattedDate}`;
     }
@@ -357,14 +460,57 @@ const EventDetails = () => {
     return moment.status?.toUpperCase() === activeTab.toUpperCase();
   });
 
+  const isVideoMoment = (moment) => {
+    const type = String(moment?.media?.type || '').toUpperCase();
+    const url = (moment?.media?.feedUrl || moment?.media?.url || moment?.feedUrl || moment?.url || '').toLowerCase();
+    return type.includes('VIDEO') || /\.(mp4|mov|webm|mkv)$/.test(url);
+  };
+
+  const isPhotographerMoment = (moment) => {
+    const creatorName = String(moment?.creatorDetails?.userName || '').toLowerCase();
+    const creatorId = String(moment?.creatorDetails?.userId || moment?.creatorId || '');
+    const adminId = String(localStorage.getItem('userId') || '');
+
+    // Heuristic: uploaded from admin panel (same logged-in user) OR explicitly marked photographer.
+    return creatorName.includes('photographer') || (!!adminId && creatorId && creatorId === adminId);
+  };
+
+  const isCandidMoment = (moment) => {
+    const url = (moment?.media?.feedUrl || moment?.media?.url || moment?.feedUrl || moment?.url || '').toLowerCase();
+    const creatorName = String(moment?.creatorDetails?.userName || '').toLowerCase();
+    return creatorName.includes('candid') || url.includes('candid');
+  };
+
   const getTabCount = (status) => {
-    if (status === 'all') return moments.length;
+    if (status === 'all') return moments.filter((m) => !isVideoMoment(m)).length;
     // Convert status to uppercase for comparison
-    return moments.filter(m => m.status?.toUpperCase() === status.toUpperCase()).length;
+    return moments.filter((m) => !isVideoMoment(m) && m.status?.toUpperCase() === status.toUpperCase()).length;
   };
 
   const formatDate = (dateString) => {
     return new Date(dateString).toLocaleString();
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem('userId');
+    localStorage.removeItem('phoneNumber');
+    localStorage.removeItem('name');
+    localStorage.removeItem('userProfile');
+    localStorage.removeItem('isAdminLoggedIn');
+    localStorage.removeItem('enteredPhoneNumber');
+    localStorage.removeItem('enteredPhoneNumberLast10');
+    localStorage.removeItem('adminToken');
+    localStorage.removeItem('emailId');
+    sessionStorage.removeItem('userId');
+    sessionStorage.removeItem('phoneNumber');
+    sessionStorage.removeItem('name');
+    sessionStorage.removeItem('userProfile');
+    sessionStorage.removeItem('isAdminLoggedIn');
+    sessionStorage.removeItem('enteredPhoneNumber');
+    sessionStorage.removeItem('enteredPhoneNumberLast10');
+    sessionStorage.removeItem('adminToken');
+    sessionStorage.removeItem('emailId');
+    navigate('/admin/login');
   };
 
   // Helper function to get tagged user names from taggedUserIds
@@ -376,6 +522,67 @@ const EventDetails = () => {
       const guest = guests.find(g => g.userId === userId || String(g.userId) === String(userId));
       return guest?.name || `User ${userId}`;
     });
+  };
+
+  const getCreatorRole = (moment) => {
+    const directRole = String(moment?.creatorDetails?.role || moment?.creatorRole || '').toLowerCase();
+    if (directRole) {
+      if (directRole.includes('photographer')) return 'photographer';
+      if (directRole.includes('groom')) return 'groom';
+      if (directRole.includes('bride')) return 'bride';
+      if (directRole.includes('guest')) return 'guest';
+    }
+    const creatorId = String(moment?.creatorDetails?.userId || moment?.creatorId || '');
+    const guest = guests.find((g) => String(g?.userId) === creatorId);
+    const guestRole = String(guest?.roleName || guest?.role || '').toLowerCase();
+    if (guestRole.includes('photographer')) return 'photographer';
+    if (guestRole.includes('groom')) return 'groom';
+    if (guestRole.includes('bride')) return 'bride';
+    if (guestRole.includes('guest')) return 'guest';
+    return isPhotographerMoment(moment) ? 'photographer' : 'guest';
+  };
+
+  const formatPlainTime = (raw) => {
+    if (raw === undefined || raw === null || raw === '') return 'N/A';
+    const n = Number(raw);
+    if (Number.isFinite(n) && n > 0) {
+      const ms = n < 1e12 ? n * 1000 : n;
+      const d = new Date(ms);
+      if (!Number.isNaN(d.getTime())) return d.toLocaleString();
+    }
+    const d = new Date(raw);
+    if (!Number.isNaN(d.getTime())) return d.toLocaleString();
+    return String(raw);
+  };
+
+  const roleIcon = (role, className = 'w-4 h-4') => {
+    if (role === 'bride') {
+      return (
+        <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor">
+          <path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M12 3l2 3 3 .5-2.2 2.1.5 3.1L12 10l-3.3 1.7.5-3.1L7 6.5l3-.5L12 3zM7 21h10M9 21v-4a3 3 0 116 0v4" />
+        </svg>
+      );
+    }
+    if (role === 'groom') {
+      return (
+        <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor">
+          <path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M8 4h8l-1 4H9L8 4zM9 10h6v11H9V10zM5 21h14" />
+        </svg>
+      );
+    }
+    if (role === 'photographer') {
+      return (
+        <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor">
+          <path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M4 7h4l2-2h4l2 2h4v11H4V7z" />
+          <circle cx="12" cy="13" r="3.5" strokeWidth="2" />
+        </svg>
+      );
+    }
+    return (
+      <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor">
+        <path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M12 12a4 4 0 100-8 4 4 0 000 8zM4 20a8 8 0 0116 0" />
+      </svg>
+    );
   };
 
 
@@ -420,7 +627,7 @@ const EventDetails = () => {
     
     try {
       const response = await axios.post(
-        `https://momentsfacetagging-673332237675.asia-south2.run.app/api/v1/face-embeddings/moment/${momentId}/rotate`,
+        `${FACE_TAGGING_BASE_URL}/api/v1/face-embeddings/moment/${momentId}/rotate`,
         {},
         {
           headers: {
@@ -465,7 +672,7 @@ const EventDetails = () => {
               <svg className="w-4 h-4 md:w-5 md:h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
               </svg>
-              <span>{eventData?.date ? new Date(eventData.date).toLocaleDateString() : 'N/A'}</span>
+              <span>{formatEventDisplayDate()}</span>
             </div>
             {eventData?.location && (
               <div className="flex items-center">
@@ -486,6 +693,18 @@ const EventDetails = () => {
           <div>
             <h3 className="text-lg md:text-xl font-semibold text-[#2a4d32] mb-3 md:mb-4">Event Information</h3>
             <div className="space-y-3 md:space-y-4">
+              {eventData?.projectType && (
+                <div>
+                  <p className="text-gray-400 text-xs md:text-sm">Project type</p>
+                  <p className="text-[#2a4d32] mt-1 text-sm md:text-base">{eventData.projectType}</p>
+                </div>
+              )}
+              {eventData?.expectedGuests != null && eventData.expectedGuests !== '' && (
+                <div>
+                  <p className="text-gray-400 text-xs md:text-sm">Expected guests</p>
+                  <p className="text-[#2a4d32] mt-1 text-sm md:text-base">{eventData.expectedGuests}</p>
+                </div>
+              )}
               {eventData?.description && (
                 <div>
                   <p className="text-gray-400 text-xs md:text-sm">Description</p>
@@ -1772,273 +1991,1343 @@ const EventDetails = () => {
     </div>
   );
 
-  return (
-    <div className="min-h-screen bg-gradient-to-b from-[#f3efe6] to-[#f3efe6] text-[#2a4d32] font-sans relative overflow-hidden">
-      {/* Sticky Header */}
-      <header className="fixed top-0 left-0 right-0 z-50 bg-[#f3efe6] bg-opacity-90 backdrop-blur-sm">
-        <div className="container mx-auto px-4 py-4 flex justify-center items-center">
-          <div className="flex items-center justify-center">
-            <img src="/logo.png" alt="Moments" className="h-[33.6px] w-[281px]" />
+  const renderDeliveryAndGallery = () => {
+    const card = isDark ? 'rounded-2xl border border-white/10 bg-[#0F172A] p-6' : 'rounded-2xl border border-black/10 bg-white p-6';
+    const inner = isDark ? 'rounded-xl border border-white/10 bg-white/5 p-4' : 'rounded-xl border border-black/10 bg-slate-50 p-4';
+    const heading = isDark ? 'text-lg font-semibold text-white' : 'text-lg font-semibold text-slate-900';
+    const textPrimary = isDark ? 'text-sm font-semibold text-white/80' : 'text-sm font-semibold text-slate-800';
+    const textSecondary = isDark ? 'text-xs text-white/50 mt-1' : 'text-xs text-slate-500 mt-1';
+    const input =
+      isDark
+        ? 'w-full bg-[#0F172A] border border-white/10 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:ring-0'
+        : 'w-full bg-white border border-black/10 rounded-xl px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-0';
+
+    return (
+    <div className="space-y-6">
+      {/* Gallery Status */}
+      <div className={card}>
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <div className="flex items-center gap-2">
+              <svg className={`w-4 h-4 ${isDark ? 'text-white/70' : 'text-slate-600'}`} viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M12 16v-4m0-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <h3 className={heading}>Gallery Status</h3>
+            </div>
+            <div className={`mt-2 text-sm ${isDark ? 'text-white/60' : 'text-slate-600'}`}>
+              {galleryEnabled ? 'Gallery is enabled for this event.' : 'Gallery is not enabled yet.'}
+            </div>
+          </div>
+          <button
+            onClick={() => setGalleryEnabled((v) => !v)}
+            className={`px-5 py-2 rounded-xl font-semibold border transition-colors ${
+              galleryEnabled
+                ? 'bg-red-600/20 border-red-500/30 text-red-200 hover:bg-red-600/30'
+                : 'bg-emerald-600/20 border-emerald-500/30 text-emerald-200 hover:bg-emerald-600/30'
+            }`}
+          >
+            {galleryEnabled ? 'Disable Gallery' : 'Enable Gallery'}
+          </button>
+        </div>
+      </div>
+
+      {/* Gallery Customization */}
+      <div className={card}>
+        <div className="flex items-center gap-2 mb-4">
+          <svg className={`w-4 h-4 ${isDark ? 'text-white/70' : 'text-slate-600'}`} viewBox="0 0 24 24" fill="none" stroke="currentColor">
+            <path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M12 5v14m-7-7h14" />
+          </svg>
+          <h3 className={heading}>Gallery Customization</h3>
+        </div>
+
+        <div className="space-y-6">
+          <div>
+            <div className={`text-sm font-semibold mb-3 ${isDark ? 'text-white/70' : 'text-slate-700'}`}>Theme</div>
+            <div className="flex flex-wrap gap-3">
+              {['light', 'dark', 'system'].map((t) => (
+                <button
+                  key={t}
+                  onClick={() => setGalleryTheme(t)}
+                  className={`px-4 py-2 rounded-xl border font-semibold transition-colors ${
+                    galleryTheme === t
+                      ? isDark
+                        ? 'bg-emerald-600/20 border-emerald-500/30 text-emerald-200'
+                        : 'bg-emerald-600/10 border-emerald-600/20 text-emerald-700'
+                      : isDark
+                        ? 'bg-white/0 border-white/10 text-white/60 hover:bg-white/5'
+                        : 'bg-white border-black/10 text-slate-700 hover:bg-slate-50'
+                  }`}
+                >
+                  {t.charAt(0).toUpperCase() + t.slice(1)}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <div className={`text-sm font-semibold mb-3 ${isDark ? 'text-white/70' : 'text-slate-700'}`}>Layout</div>
+            <div className="flex flex-wrap gap-3">
+              {[
+                { key: 'grid', label: 'Grid' },
+                { key: 'masonry', label: 'Masonry' },
+                { key: 'slideshow', label: 'Slideshow' },
+              ].map((l) => (
+                <button
+                  key={l.key}
+                  onClick={() => setGalleryLayout(l.key)}
+                  className={`px-4 py-2 rounded-xl border font-semibold transition-colors ${
+                    galleryLayout === l.key
+                      ? isDark
+                        ? 'bg-emerald-600/20 border-emerald-500/30 text-emerald-200'
+                        : 'bg-emerald-600/10 border-emerald-600/20 text-emerald-700'
+                      : isDark
+                        ? 'bg-white/0 border-white/10 text-white/60 hover:bg-white/5'
+                        : 'bg-white border-black/10 text-slate-700 hover:bg-slate-50'
+                  }`}
+                >
+                  {l.label}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
-      </header>
+      </div>
 
-      {/* Main Content */}
-      <div className="pt-24 pb-12">
-        <div className="container mx-auto px-4">
-          {/* Back Navigation */}
-          <button
-            onClick={() => navigate('/admin/events')}
-            className="mb-6 flex items-center text-[#2a4d32] hover:text-[#1e3b27] font-medium transition-colors"
-          >
-            <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />
-            </svg>
-            Back to Events
-          </button>
+      {/* Download Permissions */}
+      <div className={card}>
+        <div className="flex items-center gap-2 mb-4">
+          <svg className={`w-4 h-4 ${isDark ? 'text-white/70' : 'text-slate-600'}`} viewBox="0 0 24 24" fill="none" stroke="currentColor">
+            <path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2" />
+            <path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M7 10l5 5 5-5" />
+            <path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M12 15V3" />
+          </svg>
+          <h3 className={heading}>Download Permissions</h3>
+        </div>
 
-          {/* Event Details Header */}
-          {renderEventDetailsHeader()}
-
-          {/* Tabs Navigation - Mobile Friendly */}
-          <div className="flex space-x-2 md:space-x-4 mb-6 md:mb-8 border-b border-gray-300 overflow-x-auto">
-            {[
-              { key: 'moments', label: 'Moments', count: moments.length },
-              { key: 'guests', label: 'Guests', count: guests.length }
-            ].map((tab) => (
+        <div className="space-y-4">
+          <div className={inner}>
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <div className={textPrimary}>Enable Downloads</div>
+                <div className={textSecondary}>Allow clients to download photos</div>
+              </div>
               <button
-                key={tab.key}
-                onClick={() => setActiveView(tab.key)}
-                className={`px-3 md:px-4 py-2 text-sm md:text-base font-medium whitespace-nowrap transition-colors ${
-                  activeView === tab.key
-                    ? 'text-[#2a4d32] border-b-2 border-[#2a4d32]'
-                    : 'text-gray-400 hover:text-[#2a4d32]'
+                onClick={() => setDownloadsEnabled((v) => !v)}
+                className={`w-12 h-7 rounded-full border transition-colors ${
+                  downloadsEnabled
+                    ? 'bg-emerald-600 border-emerald-500/30'
+                    : isDark
+                      ? 'bg-white/10 border-white/10'
+                      : 'bg-slate-200 border-slate-300'
                 }`}
+                aria-label="Toggle downloads"
               >
-                {tab.label} ({tab.count})
+                <div
+                  className={`w-5 h-5 bg-white rounded-full transition-transform mx-1 ${
+                    downloadsEnabled ? 'translate-x-5' : 'translate-x-0'
+                  }`}
+                />
               </button>
-            ))}
+            </div>
           </div>
-          
-          {activeView === 'moments' && (
-            <>
-              {/* Upload Moments Component */}
-              <MomentUploader 
-                eventId={eventId} 
-                onUploadComplete={async (count) => {
-                  console.log(`Successfully uploaded ${count} moments`);
-                  // Refresh moments list after upload
-                  await fetchMoments();
-                }}
-              />
 
-              {/* Existing Moments Tabs - Mobile Friendly */}
-              <div className="flex space-x-2 md:space-x-4 mb-6 md:mb-8 border-b border-gray-300 overflow-x-auto">
-                {['pending', 'approved', 'rejected', 'all'].map((tab) => (
+          <div className={inner}>
+            <div className={`${textPrimary} mb-2`}>Quality</div>
+            <select
+              value={downloadsQuality}
+              onChange={(e) => setDownloadsQuality(e.target.value)}
+              className={input}
+            >
+              <option value="hires">Hi-res (Original quality)</option>
+              <option value="original">Original</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      {/* Expiry Controls */}
+      <div className={card}>
+        <div className="flex items-center gap-2 mb-4">
+          <svg className={`w-4 h-4 ${isDark ? 'text-white/70' : 'text-slate-600'}`} viewBox="0 0 24 24" fill="none" stroke="currentColor">
+            <path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3" />
+            <path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <h3 className={heading}>Expiry Controls</h3>
+        </div>
+
+        <div className="space-y-4">
+          <div>
+            <div className={`${textPrimary} mb-2`}>Expiry Date</div>
+            <input
+              type="date"
+              value={expiryDate}
+              onChange={(e) => setExpiryDate(e.target.value)}
+              className={input}
+            />
+          </div>
+
+          <div className={`${inner} flex items-center justify-between gap-4`}>
+            <div>
+              <div className={textPrimary}>Auto-archive on expiry</div>
+              <div className={textSecondary}>Moves to cold storage automatically</div>
+            </div>
+            <button
+              onClick={() => setAutoArchiveOnExpiry((v) => !v)}
+              className={`w-12 h-7 rounded-full border transition-colors ${
+                autoArchiveOnExpiry
+                  ? 'bg-emerald-600 border-emerald-500/30'
+                  : isDark
+                    ? 'bg-white/10 border-white/10'
+                    : 'bg-slate-200 border-slate-300'
+              }`}
+              aria-label="Toggle auto-archive"
+            >
+              <div
+                className={`w-5 h-5 bg-white rounded-full transition-transform mx-1 ${
+                  autoArchiveOnExpiry ? 'translate-x-5' : 'translate-x-0'
+                }`}
+              />
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Sharing Options */}
+      <div className={card}>
+        <div className="flex items-center gap-2 mb-4">
+          <svg className={`w-4 h-4 ${isDark ? 'text-white/70' : 'text-slate-600'}`} viewBox="0 0 24 24" fill="none" stroke="currentColor">
+            <path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8" />
+            <path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M16 6l-4-4-4 4" />
+            <path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M12 2v14" />
+          </svg>
+          <h3 className={heading}>Sharing Options</h3>
+        </div>
+
+        <div className="space-y-4">
+          <div className={`${inner} flex items-center justify-between gap-4`}>
+            <div>
+              <div className={textPrimary}>Password Protection</div>
+              <div className={textSecondary}>Require password to access gallery</div>
+            </div>
+            <button
+              onClick={() => setPasswordProtected((v) => !v)}
+              className={`w-12 h-7 rounded-full border transition-colors ${
+                passwordProtected
+                  ? 'bg-emerald-600 border-emerald-500/30'
+                  : isDark
+                    ? 'bg-white/10 border-white/10'
+                    : 'bg-slate-200 border-slate-300'
+              }`}
+              aria-label="Toggle password protection"
+            >
+              <div
+                className={`w-5 h-5 bg-white rounded-full transition-transform mx-1 ${
+                  passwordProtected ? 'translate-x-5' : 'translate-x-0'
+                }`}
+              />
+            </button>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <button
+              onClick={() => setConfigMessage('Generate QR Code (UI only)')}
+              className={`px-4 py-3 rounded-xl border font-semibold inline-flex items-center justify-center gap-2 transition-colors ${
+                isDark
+                  ? 'border-white/10 hover:bg-white/5 text-white/80'
+                  : 'border-black/10 hover:bg-slate-50 text-slate-700 bg-white'
+              }`}
+            >
+              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M7 8h10M7 12h10M7 16h10" />
+                <path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M7 4h10" />
+              </svg>
+              Generate QR Code
+            </button>
+            <button
+              onClick={() => setConfigMessage('Share Link (UI only)')}
+              className="px-4 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold transition-colors inline-flex items-center justify-center gap-2"
+            >
+              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8" />
+                <path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M16 6l-4-4-4 4" />
+              </svg>
+              Share Link
+            </button>
+          </div>
+
+          {configMessage && (
+            <div className={`text-sm font-semibold px-4 py-3 rounded-xl border ${
+              isDark
+                ? 'text-emerald-200 bg-emerald-600/10 border-emerald-500/20'
+                : 'text-emerald-700 bg-emerald-50 border-emerald-200'
+            }`}>
+              {configMessage}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Face Recognition Settings */}
+      <div className={card}>
+        <div className="flex items-center gap-2 mb-4">
+          <svg className={`w-4 h-4 ${isDark ? 'text-white/70' : 'text-slate-600'}`} viewBox="0 0 24 24" fill="none" stroke="currentColor">
+            <path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M12 2l1.5 5L19 9l-5.5 2L12 16l-1.5-5L5 9l5.5-2L12 2z" />
+            <path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M5 18h14" />
+          </svg>
+          <h3 className={heading}>Face Recognition Settings</h3>
+        </div>
+
+        <div className="space-y-5">
+          <div className={`${inner} flex items-center justify-between gap-4`}>
+            <div>
+              <div className={textPrimary}>Enable Face Recognition</div>
+              <div className={textSecondary}>AI-powered photo matching for guests</div>
+            </div>
+            <button
+              onClick={() => setFaceRecognitionEnabled((v) => !v)}
+              className={`w-12 h-7 rounded-full border transition-colors ${
+                faceRecognitionEnabled
+                  ? 'bg-emerald-600 border-emerald-500/30'
+                  : isDark
+                    ? 'bg-white/10 border-white/10'
+                    : 'bg-slate-200 border-slate-300'
+              }`}
+              aria-label="Toggle face recognition"
+            >
+              <div
+                className={`w-5 h-5 bg-white rounded-full transition-transform mx-1 ${
+                  faceRecognitionEnabled ? 'translate-x-5' : 'translate-x-0'
+                }`}
+              />
+            </button>
+          </div>
+
+          <div className={inner}>
+            <div className={`${textPrimary} mb-2`}>Face Data Retention</div>
+            <select
+              value={faceRetention}
+              onChange={(e) => setFaceRetention(e.target.value)}
+              className={input}
+            >
+              <option>During event only</option>
+              <option>Retain for 30 days</option>
+              <option>Retain for 1 year</option>
+            </select>
+          </div>
+
+          <div className={inner}>
+            <div className="flex items-center justify-between gap-4 mb-3">
+              <div className={textPrimary}>Match Confidence Threshold</div>
+              <div className={`text-sm ${isDark ? 'text-white/50' : 'text-slate-500'}`}>
+                {matchConfidence < 0.4 ? 'Low' : matchConfidence < 0.75 ? 'Medium' : 'High'}
+              </div>
+            </div>
+            <input
+              type="range"
+              min={0}
+              max={1}
+              step={0.01}
+              value={matchConfidence}
+              onChange={(e) => setMatchConfidence(Number(e.target.value))}
+              className="w-full accent-emerald-500"
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Moderation Settings */}
+      <div className={card}>
+        <div className="flex items-center gap-2 mb-4">
+          <svg className={`w-4 h-4 ${isDark ? 'text-white/70' : 'text-slate-600'}`} viewBox="0 0 24 24" fill="none" stroke="currentColor">
+            <path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M12 2l7 4v6c0 5-3 9-7 10-4-1-7-5-7-10V6l7-4z" />
+          </svg>
+          <h3 className={heading}>Moderation Settings</h3>
+        </div>
+
+        <div className="space-y-5">
+          <div className={`${inner} flex items-center justify-between gap-4`}>
+            <div>
+              <div className={textPrimary}>Enable Moderation</div>
+              <div className={textSecondary}>Review guest uploads before they appear</div>
+            </div>
+            <button
+              onClick={() => setModerationEnabled((v) => !v)}
+              className={`w-12 h-7 rounded-full border transition-colors ${
+                moderationEnabled
+                  ? 'bg-emerald-600 border-emerald-500/30'
+                  : isDark
+                    ? 'bg-white/10 border-white/10'
+                    : 'bg-slate-200 border-slate-300'
+              }`}
+              aria-label="Toggle moderation"
+            >
+              <div
+                className={`w-5 h-5 bg-white rounded-full transition-transform mx-1 ${
+                  moderationEnabled ? 'translate-x-5' : 'translate-x-0'
+                }`}
+              />
+            </button>
+          </div>
+
+          <div className={inner}>
+            <div className={`${textPrimary} mb-3`}>Approval Method</div>
+            <div className="flex flex-wrap gap-3">
+              {['Manual Review', 'Auto-approve'].map((m) => (
+                <button
+                  key={m}
+                  onClick={() => setApprovalMethod(m)}
+                  className={`px-4 py-2 rounded-xl border font-semibold transition-colors ${
+                    approvalMethod === m
+                      ? isDark
+                        ? 'bg-emerald-600/20 border-emerald-500/30 text-emerald-200'
+                        : 'bg-emerald-600/10 border-emerald-600/20 text-emerald-700'
+                      : isDark
+                        ? 'bg-white/0 border-white/10 text-white/60 hover:bg-white/5'
+                        : 'bg-white border-black/10 text-slate-700 hover:bg-slate-50'
+                  }`}
+                >
+                  {m}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+  };
+
+  const renderGuestAppConfig = () => {
+    const card = isDark ? 'rounded-2xl border border-white/10 bg-[#0F172A] p-6' : 'rounded-2xl border border-black/10 bg-white p-6';
+    const heading = isDark ? 'text-lg font-semibold text-white' : 'text-lg font-semibold text-slate-900';
+    const textMuted = isDark ? 'text-white/60' : 'text-slate-600';
+    const fieldBox = isDark ? 'border-white/10 bg-white/5' : 'border-black/10 bg-slate-50';
+    const dateInput = isDark ? 'w-full bg-transparent outline-none text-sm text-white' : 'w-full bg-transparent outline-none text-sm text-slate-900';
+
+    return (
+    <div className="space-y-6">
+      {/* Guest App Status */}
+      <div className={card}>
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <div className="flex items-center gap-2">
+              <svg className={`w-4 h-4 ${isDark ? 'text-white/70' : 'text-slate-600'}`} viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M8 21h8M12 17v4M5 4h14l-1 16H6L5 4z" />
+              </svg>
+              <h3 className={heading}>Guest App Status</h3>
+            </div>
+            <div className={`mt-2 text-sm ${textMuted}`}>
+              {guestAppEnabled ? 'Guest app is active for this event' : 'Guest app is disabled for this event'}
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => setGuestAppEnabled((v) => !v)}
+            className={`px-5 py-2 rounded-xl font-semibold border transition-colors ${
+              guestAppEnabled
+                ? 'bg-red-600/20 border-red-500/30 text-red-200 hover:bg-red-600/30'
+                : 'bg-emerald-600/20 border-emerald-500/30 text-emerald-200 hover:bg-emerald-600/30'
+            }`}
+          >
+            {guestAppEnabled ? 'Disable' : 'Enable'}
+          </button>
+        </div>
+        {eventSettingsMessage && (
+          <div
+            className={`mt-4 text-sm font-medium px-4 py-3 rounded-xl border ${
+              eventSettingsMessage.includes('saved')
+                ? isDark
+                  ? 'text-emerald-200 bg-emerald-600/10 border-emerald-500/20'
+                  : 'text-emerald-800 bg-emerald-50 border-emerald-200'
+                : isDark
+                  ? 'text-red-200 bg-red-600/10 border-red-500/20'
+                  : 'text-red-800 bg-red-50 border-red-200'
+            }`}
+          >
+            {eventSettingsMessage}
+          </div>
+        )}
+        <div className="mt-4 flex flex-wrap gap-3">
+          <button
+            type="button"
+            onClick={saveGuestAppSettings}
+            disabled={eventSettingsLoading}
+            className={`px-5 py-2 rounded-xl font-semibold text-white transition-colors ${
+              eventSettingsLoading ? 'opacity-50 cursor-not-allowed bg-emerald-800' : 'bg-emerald-600 hover:bg-emerald-500'
+            }`}
+          >
+            {eventSettingsLoading ? 'Saving…' : 'Save guest app settings'}
+          </button>
+          <button
+            type="button"
+            onClick={deleteEventOnServer}
+            disabled={eventSettingsLoading}
+            className={`px-5 py-2 rounded-xl font-semibold border transition-colors ${
+              isDark
+                ? 'border-red-500/40 text-red-200 hover:bg-red-600/20'
+                : 'border-red-300 text-red-700 hover:bg-red-50'
+            } ${eventSettingsLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
+          >
+            Delete event
+          </button>
+        </div>
+      </div>
+
+      {/* Event Access */}
+      <div className={card}>
+        <div className="flex items-center gap-2 mb-4">
+          <svg className={`w-4 h-4 ${isDark ? 'text-white/70' : 'text-slate-600'}`} viewBox="0 0 24 24" fill="none" stroke="currentColor">
+            <path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M4 4h16v16H4V4z" />
+            <path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M8 8h8M8 12h8M8 16h8" />
+          </svg>
+          <h3 className={heading}>Event Access</h3>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+          <div className="flex flex-col items-center">
+            <div className="w-56 h-56 rounded-2xl bg-white flex items-center justify-center border border-black/5">
+              <QRCodeSVG
+                value={`https://admin.moments.live/event/${eventId}`}
+                size={200}
+                level="H"
+                includeMargin={true}
+              />
+            </div>
+            <div className={`mt-3 text-sm ${textMuted}`}>Scan to join event</div>
+            <div className={`mt-2 text-xs ${isDark ? 'text-white/40' : 'text-slate-500'}`}>
+              Download PNG · Download PDF
+            </div>
+          </div>
+
+          <div className="space-y-4">
+            {configMessage && (
+              <div className={`text-sm font-semibold px-4 py-3 rounded-xl border ${
+                isDark
+                  ? 'text-emerald-200 bg-emerald-600/10 border-emerald-500/20'
+                  : 'text-emerald-700 bg-emerald-50 border-emerald-200'
+              }`}>
+                {configMessage}
+              </div>
+            )}
+
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <div className={`text-sm font-semibold mb-1 ${isDark ? 'text-white/60' : 'text-slate-600'}`}>Event Code</div>
+                <div className={`text-2xl font-bold ${isDark ? 'text-white' : 'text-slate-900'}`}>{eventCode}</div>
+              </div>
+              <button
+                onClick={async () => {
+                  try {
+                    await navigator.clipboard.writeText(eventCode);
+                    setConfigMessage('Event code copied!');
+                    setTimeout(() => setConfigMessage(''), 1500);
+                  } catch {
+                    setConfigMessage('Copy failed in this browser');
+                    setTimeout(() => setConfigMessage(''), 1500);
+                  }
+                }}
+                className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold transition-colors"
+              >
+                Copy
+              </button>
+            </div>
+
+            <div>
+              <div className={`text-xs font-semibold mb-2 ${isDark ? 'text-white/60' : 'text-slate-600'}`}>Access Period</div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className={`block text-xs mb-1 ${isDark ? 'text-white/45' : 'text-slate-500'}`}>From</label>
+                  <div className={`flex items-center gap-2 rounded-xl border ${fieldBox} px-3 py-2`}>
+                    <svg className={`w-4 h-4 ${isDark ? 'text-white/50' : 'text-slate-500'}`} viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                      <path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                      <path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M8 11h8" />
+                    </svg>
+                    <input
+                      type="date"
+                      value={accessStart}
+                      onChange={(e) => setAccessStart(e.target.value)}
+                      className={dateInput}
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className={`block text-xs mb-1 ${isDark ? 'text-white/45' : 'text-slate-500'}`}>To</label>
+                  <div className={`flex items-center gap-2 rounded-xl border ${fieldBox} px-3 py-2`}>
+                    <svg className={`w-4 h-4 ${isDark ? 'text-white/50' : 'text-slate-500'}`} viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                      <path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                      <path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M8 11h8" />
+                    </svg>
+                    <input
+                      type="date"
+                      value={accessEnd}
+                      onChange={(e) => setAccessEnd(e.target.value)}
+                      className={dateInput}
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <button
+              onClick={() => setConfigMessage('Regenerate Event Code (UI only)')}
+              className={`w-full px-4 py-3 rounded-xl font-semibold border transition-colors ${
+                isDark
+                  ? 'bg-white/5 hover:bg-white/10 border-white/10 text-white'
+                  : 'bg-white hover:bg-slate-50 border-black/10 text-slate-800'
+              }`}
+            >
+              Regenerate Event Code
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+  };
+
+  const renderSidebar = () => {
+    const sidebarBg = isDark ? 'bg-[#0A1220]' : 'bg-white';
+    const sidebarBorder = isDark ? 'border-white/10' : 'border-[#d4d4d8]';
+    const textMuted = isDark ? 'text-white/55' : 'text-slate-500';
+    const imageMoments = moments.filter((m) => !isVideoMoment(m));
+    const photographerMoments = imageMoments.filter((m) => isPhotographerMoment(m));
+    const candidMoments = photographerMoments.filter((m) => isCandidMoment(m));
+    const traditionalMoments = photographerMoments.filter((m) => !isCandidMoment(m));
+    const videoMoments = moments.filter((m) => isVideoMoment(m));
+
+    const folderItems = [
+      { id: 'all-images', label: 'All Images', count: imageMoments.length, level: 0, isSection: false },
+      { id: 'images', label: 'Images', count: imageMoments.length, level: 0, isSection: true },
+      { id: 'guest-images', label: 'Guest', count: 0, level: 1, isSection: false },
+      { id: 'photographer-images', label: 'Photographer', count: photographerMoments.length, level: 1, isSection: false },
+      { id: 'photographer-candid', label: 'Candid', count: candidMoments.length, level: 2, isSection: false },
+      { id: 'photographer-traditional', label: 'Traditional', count: traditionalMoments.length, level: 2, isSection: false },
+      { id: 'videos', label: 'Videos', count: videoMoments.length, level: 0, isSection: false },
+    ];
+
+    return (
+      <div className="sticky top-0 h-screen flex">
+        <AdminSidebar
+          isDark={isDark}
+          collapsed={!isSidebarExpanded}
+          onToggleCollapsed={() => setIsSidebarExpanded((v) => !v)}
+          onToggleTheme={() => setTheme((t) => (t === 'dark' ? 'light' : 'dark'))}
+          onLogout={handleLogout}
+          activeKey="projects"
+          onNavigate={(key) => {
+            if (key === 'home') navigate('/admin/homepage');
+            else if (key === 'projects') navigate('/admin/events', { state: { openProjects: true } });
+            else if (key === 'uploads') navigate('/admin/uploads');
+            else if (key === 'storage') navigate('/admin/storage');
+            else if (key === 'notifications') navigate('/admin/notifications');
+            else if (key === 'team') navigate('/admin/team');
+            else if (key === 'settings') navigate('/admin/settings');
+          }}
+        />
+
+        {/* Folder panel (visible on desktop/tablet) */}
+        <aside className={`hidden md:flex h-screen flex-col ${sidebarBg} border-r ${sidebarBorder} transition-all duration-300 overflow-hidden ${isFoldersMinimized ? 'w-0 opacity-0 border-r-0' : 'w-[300px] opacity-100'}`}>
+          <div className={`px-5 py-4 border-b ${isDark ? 'border-white/5' : 'border-black/10'}`}>
+            <div className="flex items-center justify-between">
+              <div className={`text-sm font-semibold ${isDark ? 'text-white/80' : 'text-slate-700'}`}>Folders</div>
+              <button
+                onClick={() => setIsFoldersMinimized(true)}
+                className={`w-9 h-9 rounded-xl border ${isDark ? 'border-white/10 bg-white/5 hover:bg-white/10' : 'border-black/10 bg-slate-50 hover:bg-slate-100'} flex items-center justify-center`}
+                aria-label="Minimize folders"
+                title="Minimize folders"
+              >
+                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                  <path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M19 12H5" />
+                </svg>
+              </button>
+            </div>
+          </div>
+
+          <div className="flex-1 px-2 py-3">
+            <nav className="space-y-1">
+              {folderItems.map((f) => {
+                if (f.isSection) {
+                  return (
+                    <div key={f.id} className={`px-4 pt-2 pb-1 text-[11px] uppercase tracking-[0.16em] ${textMuted}`}>
+                      {f.label}
+                    </div>
+                  );
+                }
+                const active = selectedFolder === f.id;
+                const indentClass = f.level === 2 ? 'pl-12' : f.level === 1 ? 'pl-9' : 'pl-4';
+                return (
                   <button
-                    key={tab}
-                    onClick={() => setActiveTab(tab)}
-                    className={`px-3 md:px-4 py-2 text-xs md:text-sm font-medium capitalize whitespace-nowrap transition-colors ${
-                      activeTab === tab
-                        ? 'text-[#2a4d32] border-b-2 border-[#2a4d32]'
-                        : 'text-gray-400 hover:text-[#2a4d32]'
+                    key={f.id}
+                    onClick={() => setSelectedFolder(f.id)}
+                    className={`w-full flex items-center justify-between pr-4 py-2 rounded-xl border transition-colors ${indentClass} ${
+                      active
+                        ? isDark
+                          ? 'bg-white/5 border-white/10 text-white'
+                          : 'bg-emerald-50 border-emerald-100 text-emerald-900'
+                        : isDark
+                          ? 'border-transparent text-white/70 hover:bg-white/5 hover:border-white/10'
+                          : 'border-transparent text-slate-700 hover:bg-slate-50 hover:border-black/10'
                     }`}
                   >
-                    {tab} ({getTabCount(tab)})
+                    <span className="flex items-center gap-3 min-w-0">
+                      <span className={`w-7 h-7 rounded-lg flex items-center justify-center ${isDark ? 'bg-white/5 border border-white/10' : 'bg-slate-50 border border-black/10'}`}>
+                        <svg className={`w-4 h-4 ${isDark ? 'text-white/70' : 'text-slate-600'}`} viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                          <path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M3 7a2 2 0 012-2h5l2 2h7a2 2 0 012 2v10a2 2 0 01-2 2H5a2 2 0 01-2-2V7z" />
+                        </svg>
+                      </span>
+                      <span className="truncate text-sm">{f.label}</span>
+                    </span>
+                    <span className={`text-xs ${textMuted}`}>{f.count.toLocaleString()}</span>
+                  </button>
+                );
+              })}
+            </nav>
+          </div>
+
+          <div className="px-4 pb-5">
+            <div className="pt-2">
+              <button
+                type="button"
+                onClick={() => navigate('/admin/uploads', { state: { selectedProjectId: eventId } })}
+                className={`w-full px-4 py-3 rounded-xl font-semibold border transition-colors ${
+                  isDark
+                    ? 'bg-[#2a4d32] hover:bg-[#1e3b27] border-emerald-500/20 text-white'
+                    : 'bg-[#2a4d32] hover:bg-[#1e3b27] border-emerald-600/20 text-white'
+                }`}
+              >
+                Upload to this project
+              </button>
+            </div>
+          </div>
+        </aside>
+        {isFoldersMinimized && (
+          <button
+            onClick={() => setIsFoldersMinimized(false)}
+            className={`hidden md:flex h-screen w-8 border-r ${sidebarBorder} ${sidebarBg} items-center justify-center transition-colors ${isDark ? 'hover:bg-white/5 text-white/70' : 'hover:bg-slate-50 text-slate-600'}`}
+            title="Expand folders"
+            aria-label="Expand folders"
+          >
+            <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+            </svg>
+          </button>
+        )}
+      </div>
+    );
+  };
+
+  const renderMediaTab = () => {
+    const searched = filteredMoments.filter((m) => {
+      if (!mediaSearch.trim()) return true;
+      const name = m.creatorDetails?.userName || '';
+      const id = m.id || m.momentId || '';
+      return `${name} ${id}`.toLowerCase().includes(mediaSearch.trim().toLowerCase());
+    });
+
+    const filtered = searched.filter((m) => {
+      if (selectedFolder === 'all-images' || selectedFolder === 'images') return !isVideoMoment(m);
+      if (selectedFolder === 'videos') return isVideoMoment(m);
+      if (selectedFolder === 'guest-images') return false;
+      if (selectedFolder === 'photographer-images') return !isVideoMoment(m) && isPhotographerMoment(m);
+      if (selectedFolder === 'photographer-candid') return !isVideoMoment(m) && isPhotographerMoment(m) && isCandidMoment(m);
+      if (selectedFolder === 'photographer-traditional') return !isVideoMoment(m) && isPhotographerMoment(m) && !isCandidMoment(m);
+      return true;
+    });
+    const withOrientation = filtered.filter((m) => {
+      if (orientationFilter === 'all') return true;
+      const w = Number(m?.media?.width || m?.media?.imageWidth || m?.width || 0);
+      const h = Number(m?.media?.height || m?.media?.imageHeight || m?.height || 0);
+      if (!w || !h) return true;
+      if (orientationFilter === 'portrait') return h > w;
+      if (orientationFilter === 'landscape') return w >= h;
+      return true;
+    });
+    const withCreatorRole = withOrientation.filter((m) => {
+      if (creatorRoleFilter === 'all') return true;
+      return getCreatorRole(m) === creatorRoleFilter;
+    });
+    const sorted = [...withCreatorRole].sort((a, b) => {
+      const getCreationEpoch = (m) => Number(m?.creationTime ?? m?.media?.creationTime ?? m?.createdAt ?? 0) || 0;
+      const getUploadEpoch = (m) => Number(m?.uploadTime ?? m?.uploadedAt ?? m?.media?.uploadTime ?? 0) || 0;
+      if (sortBy === 'creation-asc') return getCreationEpoch(a) - getCreationEpoch(b);
+      if (sortBy === 'creation-desc') return getCreationEpoch(b) - getCreationEpoch(a);
+      if (sortBy === 'upload-asc') return getUploadEpoch(a) - getUploadEpoch(b);
+      return getUploadEpoch(b) - getUploadEpoch(a); // upload-desc
+    });
+
+    const openPreview = (idx) => {
+      setPreviewIndex(idx);
+      setPreviewScale(1);
+      setPreviewOpen(true);
+    };
+
+    const movePreview = (direction) => {
+      if (sorted.length === 0) return;
+      const next = (previewIndex + direction + sorted.length) % sorted.length;
+      setPreviewIndex(next);
+      setPreviewScale(1);
+    };
+
+    const clampScale = (value) => Math.min(4, Math.max(1, value));
+    const handleWheelZoom = (e) => {
+      e.preventDefault();
+      const delta = e.deltaY > 0 ? -0.15 : 0.15;
+      setPreviewScale((s) => clampScale(s + delta));
+    };
+    const handleClickZoom = () => {
+      setPreviewScale((s) => (s >= 3.5 ? 1 : clampScale(s + 0.5)));
+    };
+    const getPinchDistance = (touches) => {
+      if (touches.length < 2) return 0;
+      const dx = touches[0].clientX - touches[1].clientX;
+      const dy = touches[0].clientY - touches[1].clientY;
+      return Math.sqrt(dx * dx + dy * dy);
+    };
+    const handleTouchStart = (e) => {
+      if (e.touches.length === 2) {
+        pinchDistanceRef.current = getPinchDistance(e.touches);
+      }
+    };
+    const handleTouchMove = (e) => {
+      if (e.touches.length !== 2) return;
+      const nextDistance = getPinchDistance(e.touches);
+      if (!pinchDistanceRef.current) {
+        pinchDistanceRef.current = nextDistance;
+        return;
+      }
+      const diff = nextDistance - pinchDistanceRef.current;
+      if (Math.abs(diff) > 2) {
+        setPreviewScale((s) => clampScale(s + diff / 250));
+        pinchDistanceRef.current = nextDistance;
+      }
+    };
+    const handleTouchEnd = () => {
+      pinchDistanceRef.current = 0;
+    };
+
+    const toggleFavorite = (moment) => {
+      const key = String(moment?.id || moment?.momentId || '');
+      if (!key) return;
+      setFavoriteMomentIds((prev) => {
+        const next = new Set(prev);
+        if (next.has(key)) next.delete(key);
+        else next.add(key);
+        return next;
+      });
+    };
+
+    const pillForStatus = (statusRaw) => {
+      const s = String(statusRaw || '').toUpperCase();
+      if (s === 'APPROVED') {
+        return {
+          label: 'Approved',
+          className: isDark
+            ? 'bg-emerald-600/20 text-emerald-200 border border-emerald-500/30'
+            : 'bg-emerald-600/10 text-emerald-700 border border-emerald-600/20',
+          icon: (
+            <svg className="w-3.5 h-3.5 text-emerald-200" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M20 6L9 17l-5-5" />
+            </svg>
+          ),
+        };
+      }
+      if (s === 'REJECTED') {
+        return {
+          label: 'Rejected',
+          className: isDark
+            ? 'bg-red-600/20 text-red-200 border border-red-500/30'
+            : 'bg-red-600/10 text-red-700 border border-red-600/20',
+          icon: (
+            <svg className="w-3.5 h-3.5 text-red-200" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M18 6L6 18M6 6l12 12" />
+            </svg>
+          ),
+        };
+      }
+      if (s === 'PENDING') {
+        return {
+          label: 'Pending',
+          className: isDark
+            ? 'bg-amber-500/20 text-amber-200 border border-amber-400/30'
+            : 'bg-amber-500/10 text-amber-700 border border-amber-600/20',
+          icon: (
+            <svg className="w-3.5 h-3.5 text-amber-200" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3" />
+              <path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          ),
+        };
+      }
+      return {
+        label: s || 'Pending',
+        className: isDark
+          ? 'bg-white/5 text-white/60 border border-white/10'
+          : 'bg-slate-100 text-slate-600 border border-slate-200',
+        icon: null,
+      };
+    };
+
+    const rawDate = eventData?.date || eventData?.eventDate || eventData?.createdAt;
+    const eventDateLabel = rawDate ? new Date(rawDate).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }) : '';
+
+    return (
+      <div className="space-y-5">
+        {/* Toolbar header */}
+        <div className={`rounded-2xl border ${isDark ? 'border-white/10 bg-white/5' : 'border-black/10 bg-white'} p-4`}>
+          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
+            <div className="flex-1">
+              <div className="flex items-center gap-3">
+                <div className={`text-sm font-medium inline-flex items-center gap-2 ${isDark ? 'text-white/80' : 'text-slate-700'}`}>
+                  <svg className={`w-4 h-4 ${isDark ? 'text-white/70' : 'text-slate-600'}`} viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                    <path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M4 4h7l2 2h7v14H4V4z" />
+                  </svg>
+                  <span>{eventData?.eventName || eventData?.name || 'Project'}</span>
+                </div>
+                {eventDateLabel && <div className={`text-xs ${isDark ? 'text-white/45' : 'text-slate-500'}`}>{eventDateLabel}</div>}
+              </div>
+              <div className={`mt-1 text-xs ${isDark ? 'text-white/50' : 'text-slate-500'}`}>
+                {moments.length.toLocaleString()} Photos · {guests.length.toLocaleString()} Contributors
+              </div>
+            </div>
+
+            <div className="lg:w-[420px]">
+              <div className={`flex items-center gap-2 ${isDark ? 'bg-black/20 border-white/10' : 'bg-slate-50 border-black/10'} border px-3 py-2 rounded-xl`}>
+                <svg className={`w-4 h-4 ${isDark ? 'text-white/60' : 'text-slate-600'}`} viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                  <path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35m1.85-5.65a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+                <input
+                  value={mediaSearch}
+                  onChange={(e) => setMediaSearch(e.target.value)}
+                  className={`w-full bg-transparent outline-none text-sm ${isDark ? 'text-white placeholder:text-white/40' : 'text-slate-900 placeholder:text-slate-400'}`}
+                  placeholder="Search photos..."
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-white/5 pt-4">
+            <div className="flex items-center gap-2">
+              {[
+                { key: 'all', label: 'All', count: getTabCount('all') },
+                { key: 'pending', label: 'Pending', count: getTabCount('pending') },
+                { key: 'approved', label: 'Approved', count: getTabCount('approved') },
+              ].map((t) => (
+                <button
+                  key={t.key}
+                  onClick={() => setActiveTab(t.key)}
+                  className={`px-4 py-2 rounded-xl text-sm font-semibold border transition-colors ${
+                    activeTab === t.key
+                      ? isDark
+                        ? 'bg-emerald-600/20 text-emerald-200 border-emerald-500/30'
+                        : 'bg-emerald-600/10 text-emerald-700 border-emerald-600/20'
+                      : isDark
+                        ? 'bg-white/0 text-white/60 border-white/10 hover:bg-white/5'
+                        : 'bg-white text-slate-700 border-black/10 hover:bg-slate-50'
+                  }`}
+                >
+                  {t.label}
+                </button>
+              ))}
+            </div>
+
+            <div className="flex items-center gap-2">
+              <select
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value)}
+                className={`h-10 px-3 rounded-xl border text-sm outline-none ${
+                  isDark
+                    ? 'bg-white/0 border-white/10 text-white/80'
+                    : 'bg-white border-black/10 text-slate-700'
+                }`}
+              >
+                <option value="creation-asc">Creation time (asc)</option>
+                <option value="creation-desc">Creation time (desc)</option>
+                <option value="upload-asc">Upload time (asc)</option>
+                <option value="upload-desc">Upload time (desc)</option>
+              </select>
+              <button
+                onClick={() => setMediaView('grid')}
+                className={`w-10 h-10 rounded-xl border flex items-center justify-center transition-colors ${
+                  mediaView === 'grid'
+                    ? isDark
+                      ? 'bg-emerald-600/20 border-emerald-500/30'
+                      : 'bg-emerald-600/10 border-emerald-600/20'
+                    : isDark
+                      ? 'border-white/10 bg-white/0 hover:bg-white/5'
+                      : 'border-black/10 bg-white hover:bg-slate-50'
+                }`}
+                aria-label="Grid view"
+              >
+                <svg className={`w-4 h-4 ${isDark ? 'text-white/70' : 'text-slate-600'}`} viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                  <path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M4 4h6v6H4V4zm10 0h6v6h-6V4zM4 14h6v6H4v-6zm10 0h6v6h-6v-6z" />
+                </svg>
+              </button>
+              <button
+                onClick={() => setMediaView('list')}
+                className={`w-10 h-10 rounded-xl border flex items-center justify-center transition-colors ${
+                  mediaView === 'list'
+                    ? isDark
+                      ? 'bg-emerald-600/20 border-emerald-500/30'
+                      : 'bg-emerald-600/10 border-emerald-600/20'
+                    : isDark
+                      ? 'border-white/10 bg-white/0 hover:bg-white/5'
+                      : 'border-black/10 bg-white hover:bg-slate-50'
+                }`}
+                aria-label="List view"
+              >
+                <svg className={`w-4 h-4 ${isDark ? 'text-white/70' : 'text-slate-600'}`} viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                  <path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+                </svg>
+              </button>
+              <div className="flex items-center gap-2">
+                {[
+                  { key: 'all', label: 'All', icon: null },
+                  { key: 'guest', label: 'Guest', icon: roleIcon('guest') },
+                  { key: 'photographer', label: 'Photographer', icon: roleIcon('photographer') },
+                  { key: 'groom', label: 'Groom', icon: roleIcon('groom') },
+                  { key: 'bride', label: 'Bride', icon: roleIcon('bride') },
+                ].map((r) => (
+                  <button
+                    key={r.key}
+                    onClick={() => setCreatorRoleFilter(r.key)}
+                    className={`h-10 px-3 rounded-xl border text-xs font-semibold inline-flex items-center gap-1.5 ${
+                      creatorRoleFilter === r.key
+                        ? isDark
+                          ? 'bg-emerald-600/20 text-emerald-200 border-emerald-500/30'
+                          : 'bg-emerald-600/10 text-emerald-700 border-emerald-600/20'
+                        : isDark
+                          ? 'bg-white/0 border-white/10 text-white/70 hover:bg-white/5'
+                          : 'bg-white border-black/10 text-slate-700 hover:bg-slate-50'
+                    }`}
+                  >
+                    {r.icon}
+                    <span>{r.label}</span>
                   </button>
                 ))}
               </div>
+            </div>
+          </div>
 
-              {/* Error Message */}
-              {error && (
-                <div className="bg-[#2a4d32]/20 border border-[#2a4d32] text-[#2a4d32] px-4 py-3 rounded mb-4">
-                  {error}
-                </div>
-              )}
-
-              {/* Loading State */}
-              {loading ? (
-                <div className="flex justify-center items-center h-64">
-                  <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#2a4d32]"></div>
-                </div>
-              ) : (
-                /* Moments Grid */
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {filteredMoments.map((moment) => (
-                    <div
-                      key={moment.id}
-                      className="bg-white bg-opacity-90 rounded-xl shadow-2xl overflow-hidden border border-[#d4d4d8]"
-                    >
-                      {/* Moment Image - Updated to show full image */}
-                      <div className="relative group">
-                        <HeicImage
-                          src={moment.media?.feedUrl || moment.media?.url || moment.feedUrl || moment.url}
-                          alt="Moment"
-                          className="w-full h-auto"
-                          style={{ maxHeight: 'none' }}
-                          onError={(e) => {
-                            e.target.onerror = null;
-                            // Try fallback to url if feedUrl fails
-                            const fallbackUrl = moment.media?.url || moment.url;
-                            if (fallbackUrl && e.target.src !== fallbackUrl) {
-                              e.target.src = fallbackUrl;
-                            } else {
-                              e.target.src = '/default-event.jpg';
-                            }
-                          }}
-                        />
-                        {/* Rotate Button */}
-                        <button
-                          onClick={() => rotateMoment(moment)}
-                          disabled={rotatingMomentId === (moment.id || moment.momentId)}
-                          className="absolute top-2 right-2 p-2 bg-black bg-opacity-50 hover:bg-opacity-70 rounded-full transition-all disabled:opacity-50 disabled:cursor-not-allowed z-10"
-                          title="Rotate Image"
-                        >
-                          {rotatingMomentId === (moment.id || moment.momentId) ? (
-                            <svg className="w-5 h-5 text-white animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                            </svg>
-                          ) : (
-                            <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                            </svg>
-                          )}
-                        </button>
-                      </div>
-
-                      {/* Moment Details */}
-                      <div className="p-6">
-                        <div className="flex justify-between items-start mb-4">
-                          <div className="flex-1">
-                            <h3 className="text-lg font-semibold text-[#2a4d32] mb-2">
-                              {moment.creatorDetails?.userName || 'Unknown User'}
-                            </h3>
-                            <p className="text-sm text-gray-400 mb-2">
-                              {formatDate(moment.uploadTime)}
-                            </p>
-                            {/* Tagged Users and Moment ID */}
-                            <div className="flex items-start justify-between gap-4 mt-2">
-                              {/* Tagged Users */}
-                              {(() => {
-                                const taggedNames = getTaggedUserNames(moment);
-                                if (taggedNames.length > 0) {
-                                  return (
-                                    <div className="flex-1">
-                                      <p className="text-xs text-gray-500 mb-1">Tagged:</p>
-                                      <div className="flex flex-wrap gap-1">
-                                        {taggedNames.map((name, index) => (
-                                          <span
-                                            key={index}
-                                            className="inline-block px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full"
-                                          >
-                                            {name}
-                                          </span>
-                                        ))}
-                                      </div>
-                                    </div>
-                                  );
-                                }
-                                return null;
-                              })()}
-                              {/* Moment ID */}
-                              {(moment.id || moment.momentId) && (
-                                <div className="flex items-center gap-1 flex-shrink-0">
-                                  <span className="text-xs text-gray-500 font-mono">
-                                    ID: {moment.id || moment.momentId}
-                                  </span>
-                                  <button
-                                    onClick={() => copyMomentId(moment.id || moment.momentId)}
-                                    className="p-1 hover:bg-gray-100 rounded transition-colors"
-                                    title={copiedMomentId === (moment.id || moment.momentId) ? 'Copied!' : 'Copy ID'}
-                                  >
-                                    {copiedMomentId === (moment.id || moment.momentId) ? (
-                                      <svg className="w-3 h-3 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
-                                      </svg>
-                                    ) : (
-                                      <svg className="w-3 h-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                                      </svg>
-                                    )}
-                                  </button>
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                          <span className={`px-2 py-1 rounded text-xs font-medium ${
-                            moment.status?.toUpperCase() === 'APPROVED' ? 'bg-green-900/50 text-green-300' :
-                            moment.status?.toUpperCase() === 'REJECTED' ? 'bg-[#2a4d32]/20 text-red-300' :
-                            'bg-yellow-900/50 text-yellow-300'
-                          }`}>
-                            {moment.status}
-                          </span>
-                        </div>
-
-                        {/* Action Buttons */}
-                        <div className="flex space-x-2 mt-4">
-                          {moment.status?.toUpperCase() === 'PENDING' && (
-                            <>
-                              <button
-                                onClick={() => handleStatusChange(moment, 'APPROVED')}
-                                className="flex-1 bg-[#2a4d32] hover:bg-[#1e3b27] text-white py-2 px-4 rounded-md transition-colors"
-                              >
-                                Approve
-                              </button>
-                              <button
-                                onClick={() => handleStatusChange(moment, 'REJECTED')}
-                                className="flex-1 bg-red-600 hover:bg-red-700 text-white py-2 px-4 rounded-md transition-colors"
-                              >
-                                Reject
-                              </button>
-                            </>
-                          )}
-                          {moment.status?.toUpperCase() === 'APPROVED' && (
-                            <>
-                              <button
-                                onClick={() => handleStatusChange(moment, 'PENDING')}
-                                className="flex-1 bg-yellow-600 hover:bg-yellow-700 text-black py-2 px-4 rounded-md transition-colors"
-                              >
-                                Re-Review
-                              </button>
-                              <button
-                                onClick={() => handleStatusChange(moment, 'REJECTED')}
-                                className="flex-1 bg-red-600 hover:bg-red-700 text-white py-2 px-4 rounded-md transition-colors"
-                              >
-                                Reject
-                              </button>
-                            </>
-                          )}
-                          {moment.status?.toUpperCase() === 'REJECTED' && (
-                            <>
-                              <button
-                                onClick={() => handleStatusChange(moment, 'APPROVED')}
-                                className="flex-1 bg-[#2a4d32] hover:bg-[#1e3b27] text-white py-2 px-4 rounded-md transition-colors"
-                              >
-                                Approve
-                              </button>
-                              <button
-                                onClick={() => handleStatusChange(moment, 'PENDING')}
-                                className="flex-1 bg-yellow-600 hover:bg-yellow-700 text-black py-2 px-4 rounded-md transition-colors"
-                              >
-                                Re-Review
-                              </button>
-                            </>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </>
-          )}
-
-          {activeView === 'guests' && renderGuests()}
-          
-          {/* QR Code Modal */}
-          {showQRModal && renderQRModal()}
+          <div className="mt-4 border-t border-white/5 pt-4">
+            <div className="flex items-center gap-2">
+              {[
+                { key: 'all', label: 'All' },
+                { key: 'portrait', label: 'Portrait' },
+                { key: 'landscape', label: 'Landscape' },
+              ].map((o) => (
+                <button
+                  key={o.key}
+                  onClick={() => setOrientationFilter(o.key)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors ${
+                    orientationFilter === o.key
+                      ? isDark
+                        ? 'bg-emerald-600/20 text-emerald-200 border-emerald-500/30'
+                        : 'bg-emerald-600/10 text-emerald-700 border-emerald-600/20'
+                      : isDark
+                        ? 'bg-white/0 text-white/60 border-white/10 hover:bg-white/5'
+                        : 'bg-white text-slate-700 border-black/10 hover:bg-slate-50'
+                  }`}
+                >
+                  {o.label}
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
+
+        {error && (
+          <div className={`rounded-xl border px-4 py-3 ${isDark ? 'border-red-500/30 bg-red-500/10 text-red-200' : 'border-red-200 bg-red-50 text-red-700'}`}>
+            {error}
+          </div>
+        )}
+
+        {loading ? (
+          <div className="h-64 flex items-center justify-center">
+            <div className="animate-spin rounded-full h-10 w-10 border-2 border-emerald-500/40 border-t-emerald-500" />
+          </div>
+        ) : sorted.length === 0 ? (
+          <div className={`rounded-2xl border p-8 text-center ${isDark ? 'border-white/10 bg-white/5' : 'border-black/10 bg-white'}`}>
+            <div className={`mx-auto w-16 h-16 rounded-2xl border flex items-center justify-center ${isDark ? 'border-white/10 bg-white/5' : 'border-slate-200 bg-slate-50'}`}>
+              <svg className={`w-8 h-8 ${isDark ? 'text-white/50' : 'text-slate-400'}`} viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M3 7a2 2 0 012-2h5l2 2h7a2 2 0 012 2v10a2 2 0 01-2 2H5a2 2 0 01-2-2V7z" />
+              </svg>
+            </div>
+            <div className={`mt-4 text-base font-semibold ${isDark ? 'text-white/85' : 'text-slate-700'}`}>This folder is empty</div>
+            <div className={`mt-1 text-sm ${isDark ? 'text-white/55' : 'text-slate-500'}`}>
+              Upload media or choose another folder to view moments.
+            </div>
+          </div>
+        ) : (
+          <div className="columns-2 sm:columns-3 xl:columns-4 gap-4 [column-fill:_balance]">
+            {sorted.map((moment, idx) => {
+              const pill = pillForStatus(moment.status);
+              const mDateRaw =
+                moment?.creationTime ??
+                moment?.media?.creationTime ??
+                moment?.media?.capturedAt ??
+                moment?.capturedAt ??
+                moment?.captureTime ??
+                moment?.uploadedAt ??
+                moment?.createdAt;
+              const mDateLabel = formatPlainTime(mDateRaw);
+              const mName = moment?.media?.fileName || moment?.fileName || moment?.media?.name || moment?.name || `Moment ${moment?.id || moment?.momentId || ''}`;
+              const mCreator = moment?.creatorDetails?.userName || 'Guest';
+              const momentKey = String(moment?.id || moment?.momentId || '');
+              const isFav = favoriteMomentIds.has(momentKey);
+              return (
+                <button
+                  key={moment.id || moment.momentId}
+                  onClick={() => openPreview(idx)}
+                  className={`relative rounded-xl overflow-hidden border group ${
+                    isDark ? 'border-white/10 bg-white/0' : 'border-black/10 bg-white'
+                  } mb-4 w-full text-left break-inside-avoid hover:border-emerald-500/30 transition-colors`}
+                >
+                  <div className="bg-black/10">
+                    <HeicImage
+                      src={moment.media?.feedUrl || moment.media?.url || moment.feedUrl || moment.url}
+                      alt="Moment"
+                      className="w-full h-auto object-cover"
+                      style={{ maxHeight: 'none' }}
+                      onError={(e) => {
+                        e.target.onerror = null;
+                        e.target.src = '/default-event.jpg';
+                      }}
+                    />
+                  </div>
+                  <div className={`px-3 py-2 border-t ${isDark ? 'border-white/10 bg-white/[0.02]' : 'border-black/10 bg-white'}`}>
+                    <div className={`text-xs font-semibold truncate ${isDark ? 'text-white/80' : 'text-slate-800'}`}>{mName}</div>
+                    <div className={`mt-1 text-[11px] ${isDark ? 'text-white/55' : 'text-slate-500'}`}>
+                      {mCreator} • {mDateLabel}
+                    </div>
+                  </div>
+                  <div className={`absolute top-2 right-2 px-2.5 py-1 rounded-full text-[11px] font-semibold border flex items-center gap-1 ${pill.className}`}>
+                    {pill.icon}
+                    <span>{pill.label}</span>
+                  </div>
+                  {isFav && (
+                    <div className="absolute top-2 left-2 px-2 py-1 rounded-lg bg-amber-500 text-white text-[10px] font-semibold">
+                      Favorite
+                    </div>
+                  )}
+
+                  {/* Hover actions: center approve/reject like reference */}
+                </button>
+              );
+            })}
+          </div>
+        )}
+
+        {previewOpen && sorted[previewIndex] && (
+          <div
+            className="fixed inset-0 z-[120] bg-black/85 backdrop-blur-sm flex items-center justify-center p-6"
+            onClick={() => setPreviewScale(1)}
+          >
+            <button
+              onClick={() => {
+                setPreviewOpen(false);
+                setPreviewScale(1);
+              }}
+              className="absolute top-5 right-5 w-10 h-10 rounded-xl border border-white/20 text-white hover:bg-white/10"
+              aria-label="Close preview"
+            >
+              <svg className="w-5 h-5 mx-auto" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+
+            <button
+              onClick={() => movePreview(-1)}
+              className="absolute left-5 top-1/2 -translate-y-1/2 w-12 h-12 rounded-2xl border border-white/20 text-white hover:bg-white/10"
+              aria-label="Previous image"
+            >
+              <svg className="w-6 h-6 mx-auto" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+              </svg>
+            </button>
+
+            <button
+              onClick={() => movePreview(1)}
+              className="absolute right-5 top-1/2 -translate-y-1/2 w-12 h-12 rounded-2xl border border-white/20 text-white hover:bg-white/10"
+              aria-label="Next image"
+            >
+              <svg className="w-6 h-6 mx-auto" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+              </svg>
+            </button>
+
+            <div className="w-full max-w-5xl" onClick={(e) => e.stopPropagation()}>
+              <div className="rounded-2xl overflow-hidden border border-white/15 bg-black/40">
+                <div
+                  className={`w-full max-h-[78vh] overflow-auto touch-none ${previewScale > 1 ? 'cursor-zoom-out' : 'cursor-zoom-in'}`}
+                  onWheel={handleWheelZoom}
+                  onClick={handleClickZoom}
+                  onTouchStart={handleTouchStart}
+                  onTouchMove={handleTouchMove}
+                  onTouchEnd={handleTouchEnd}
+                >
+                  <HeicImage
+                    src={sorted[previewIndex].media?.feedUrl || sorted[previewIndex].media?.url || sorted[previewIndex].feedUrl || sorted[previewIndex].url}
+                    alt="Preview"
+                    className="w-full max-h-[78vh] object-contain origin-center transition-transform duration-150"
+                    style={{ transform: `scale(${previewScale})` }}
+                  />
+                </div>
+              </div>
+              <div className={`mt-3 rounded-xl border p-3 flex items-center justify-between gap-3 text-sm ${
+                isDark ? 'bg-[#0B1220] border-white/15 text-white/90' : 'bg-white border-black/10 text-slate-800'
+              }`}>
+                <div className="min-w-0 pr-4 space-y-1 text-xs md:text-sm">
+                  <div className="truncate">
+                    {sorted[previewIndex].media?.fileName || sorted[previewIndex].fileName || sorted[previewIndex].media?.name || sorted[previewIndex].name || `Moment ${sorted[previewIndex].id || sorted[previewIndex].momentId || ''}`}
+                  </div>
+                  <div>creationTime: {formatPlainTime(sorted[previewIndex].creationTime ?? sorted[previewIndex].media?.creationTime)}</div>
+                  <div>uploadTime: {formatPlainTime(sorted[previewIndex].uploadTime ?? sorted[previewIndex].uploadedAt ?? sorted[previewIndex].media?.uploadTime)}</div>
+                  <div>uploaded by: {sorted[previewIndex]?.creatorDetails?.userName || 'Unknown'}</div>
+                  <div className="inline-flex items-center gap-2">
+                    <span>creator role:</span>
+                    {roleIcon(getCreatorRole(sorted[previewIndex]))}
+                    <span className="capitalize">{getCreatorRole(sorted[previewIndex])}</span>
+                  </div>
+                  <div className="truncate">
+                    TaggedUserIds: {(() => {
+                      const tags = getTaggedUserNames(sorted[previewIndex]);
+                      return tags.length ? tags.join(', ') : 'None';
+                    })()}
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => handleStatusChange(sorted[previewIndex], 'APPROVED')}
+                    className="px-3 h-9 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold border border-emerald-400/40"
+                  >
+                    Accept
+                  </button>
+                  <button
+                    onClick={() => handleStatusChange(sorted[previewIndex], 'REJECTED')}
+                    className="px-3 h-9 rounded-lg bg-red-600 hover:bg-red-500 text-white text-xs font-semibold border border-red-400/40"
+                  >
+                    Reject
+                  </button>
+                  <button
+                    onClick={() => toggleFavorite(sorted[previewIndex])}
+                    className={`px-3 h-9 rounded-lg text-xs font-semibold border ${
+                      favoriteMomentIds.has(String(sorted[previewIndex].id || sorted[previewIndex].momentId || ''))
+                        ? 'bg-amber-500 border-amber-300/40 text-white'
+                        : 'bg-white/10 border-white/20 text-white'
+                    }`}
+                  >
+                    Favorite
+                  </button>
+                  <div>{previewIndex + 1} / {sorted.length}</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
+    );
+  };
+
+  const rootBg = isDark ? 'bg-[#0B1220]' : 'bg-white';
+  const rootText = isDark ? 'text-white' : 'text-slate-900';
+
+  return (
+    <div className={`min-h-screen ${rootBg} ${rootText} font-sans`}>
+      <div className="flex min-h-screen">
+        {renderSidebar()}
+        <main className="flex-1 overflow-x-hidden transition-all duration-300">
+          <div className="px-6 py-5 border-b border-white/10">
+            <div className="flex flex-col gap-4">
+              <div className="flex items-center justify-between gap-4">
+                <div className="min-w-0">
+                  <div className={`text-sm ${isDark ? 'text-white/60' : 'text-slate-500'} flex items-center gap-2`}>
+                    <span className="truncate">Projects</span>
+                    <span className={isDark ? 'text-white/30' : 'text-slate-400'}>›</span>
+                    <span className={`font-semibold truncate ${isDark ? 'text-white/80' : 'text-slate-700'}`}>
+                      {eventData?.eventName || eventData?.name || 'Project'}
+                    </span>
+                  </div>
+                </div>
+                <button
+                  onClick={() => navigate('/admin/events')}
+                  className={`hidden md:inline-flex items-center gap-2 px-4 py-2 rounded-xl border text-sm font-semibold transition-colors ${
+                    isDark
+                      ? 'bg-white/5 border-white/10 text-white/70 hover:bg-white/10'
+                      : 'bg-white border-black/10 text-slate-700 hover:bg-slate-50'
+                  }`}
+                >
+                  <svg className={`w-4 h-4 ${isDark ? 'text-white/70' : 'text-slate-600'}`} viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                    <path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+                  </svg>
+                  Back
+                </button>
+              </div>
+
+              {/* 3 top tabs */}
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => setActiveView('media')}
+                  className={`px-4 py-2 rounded-xl border text-sm font-semibold inline-flex items-center gap-2 transition-colors ${
+                    activeView === 'media'
+                      ? 'bg-emerald-600/20 border-emerald-500/30 text-emerald-200'
+                      : isDark
+                        ? 'bg-white/0 border-white/10 text-white/60 hover:bg-white/5'
+                        : 'bg-white border-black/10 text-slate-700 hover:bg-slate-50'
+                  }`}
+                >
+                  <svg className={`w-4 h-4 ${activeView === 'media' ? 'text-emerald-200' : isDark ? 'text-white/70' : 'text-slate-600'}`} viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                    <path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M4 16l4-4 4 4 4-8 4 8v4H4v-4z" />
+                  </svg>
+                  Media
+                </button>
+
+                <button
+                  onClick={() => setActiveView('delivery')}
+                  className={`px-4 py-2 rounded-xl border text-sm font-semibold inline-flex items-center gap-2 transition-colors ${
+                    activeView === 'delivery'
+                      ? 'bg-emerald-600/20 border-emerald-500/30 text-emerald-200'
+                      : isDark
+                        ? 'bg-white/0 border-white/10 text-white/60 hover:bg-white/5'
+                        : 'bg-white border-black/10 text-slate-700 hover:bg-slate-50'
+                  }`}
+                >
+                  <svg className={`w-4 h-4 ${activeView === 'delivery' ? 'text-emerald-200' : isDark ? 'text-white/70' : 'text-slate-600'}`} viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                    <path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M21 16V8a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v8" />
+                    <path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M7 16l5 5 5-5" />
+                  </svg>
+                  Delivery &amp; Gallery
+                </button>
+
+                <button
+                  onClick={() => setActiveView('guestApp')}
+                  className={`px-4 py-2 rounded-xl border text-sm font-semibold inline-flex items-center gap-2 transition-colors ${
+                    activeView === 'guestApp'
+                      ? 'bg-emerald-600/20 border-emerald-500/30 text-emerald-200'
+                      : isDark
+                        ? 'bg-white/0 border-white/10 text-white/60 hover:bg-white/5'
+                        : 'bg-white border-black/10 text-slate-700 hover:bg-slate-50'
+                  }`}
+                >
+                  <svg className={`w-4 h-4 ${activeView === 'guestApp' ? 'text-emerald-200' : isDark ? 'text-white/70' : 'text-slate-600'}`} viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                    <path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M16 2H8a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2z" />
+                    <path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M11 16h2" />
+                  </svg>
+                  Guest App
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div className="px-6 py-6">
+            {activeView === 'media' && renderMediaTab()}
+            {activeView === 'delivery' && renderDeliveryAndGallery()}
+            {activeView === 'guestApp' && renderGuestAppConfig()}
+          </div>
+        </main>
+      </div>
+
+      {/* QR Code Modal */}
+      {showQRModal && renderQRModal()}
     </div>
   );
 };

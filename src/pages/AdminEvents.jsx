@@ -1,24 +1,70 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import Crop from 'react-easy-crop';
+import 'react-easy-crop/react-easy-crop.css';
 import { API_BASE_URL } from '../config/api';
+import AdminSidebar from '../components/AdminSidebar';
+import { getCroppedImg } from '../utils/imageCrop';
+import {
+  fetchEventsForUserWithFallback,
+  mergeEventsWithProfileDetails,
+  syncProfileEventDetails,
+} from '../utils/fetchUserEvents';
 
-const AdminEvents = () => {
+const BYTES_PER_GB = 1024 ** 3;
+
+function storageBytesToGb(bytes) {
+  const n = Number(bytes);
+  if (!Number.isFinite(n) || n <= 0) return 0;
+  return Math.round((n / BYTES_PER_GB) * 100) / 100;
+}
+
+function formatStorageGb(gb) {
+  if (gb <= 0) return '0';
+  if (gb < 0.01) return '<0.01';
+  return gb.toFixed(2);
+}
+
+const AdminEvents = ({ initialSection = 'dashboard' }) => {
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [userProfile, setUserProfile] = useState(null);
   const [theme, setTheme] = useState(() => localStorage.getItem('adminTheme') || 'light'); // 'light' | 'dark'
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => localStorage.getItem('adminSidebarCollapsed') === '1');
-  const [activeSection, setActiveSection] = useState(() => 'dashboard'); // 'dashboard' | 'projects'
+  const [activeSection, setActiveSection] = useState(() => initialSection); // 'dashboard' | 'projects'
   const [projectsTab, setProjectsTab] = useState(() => 'All'); // 'All' | 'Active' | 'Delivered' | 'Archived'
   const [projectsSearch, setProjectsSearch] = useState('');
-  const [projectsLayout, setProjectsLayout] = useState(() => 'list'); // 'grid' | 'list'
+  const [projectsLayout, setProjectsLayout] = useState(() => 'grid'); // 'grid' | 'list'
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [createStep, setCreateStep] = useState(1);
   const [newEventName, setNewEventName] = useState('');
   const [selectedImage, setSelectedImage] = useState(null);
+  const [projectType, setProjectType] = useState('');
+  const [eventDate, setEventDate] = useState('');
+  const [eventStartTime, setEventStartTime] = useState('');
+  const [eventEndTime, setEventEndTime] = useState('');
+  const [locationQuery, setLocationQuery] = useState('');
+  const [expectedGuestCount, setExpectedGuestCount] = useState('');
+  const [teamMemberDropdownOpen, setTeamMemberDropdownOpen] = useState(false);
+  const [selectedTeamMemberIds, setSelectedTeamMemberIds] = useState([]);
+  const [guestAppEnabled, setGuestAppEnabled] = useState(true);
+  const [guestAppThumbnail, setGuestAppThumbnail] = useState(null);
+  /** Reuse uploaded event cover URL for guest app thumbnail (no second upload). */
+  const [guestAppUseEventThumbnail, setGuestAppUseEventThumbnail] = useState(false);
+  const [guestThumbCropOpen, setGuestThumbCropOpen] = useState(false);
+  const [guestThumbCropSrc, setGuestThumbCropSrc] = useState('');
+  const [guestCrop, setGuestCrop] = useState({ x: 0, y: 0 });
+  const [guestZoom, setGuestZoom] = useState(1);
+  const [guestCroppedAreaPixels, setGuestCroppedAreaPixels] = useState(null);
+  const guestThumbCropUrlRef = useRef(null);
   const [uploading, setUploading] = useState(false);
+  /** From GET /api/moments/storage/overview — dashboard storage card */
+  const [dashStorageOverview, setDashStorageOverview] = useState(null);
   const fileInputRef = useRef(null);
+  const guestAppFileInputRef = useRef(null);
+  const location = useLocation();
   const navigate = useNavigate();
 
   const isDark = theme === 'dark';
@@ -32,14 +78,20 @@ const AdminEvents = () => {
   }, [sidebarCollapsed]);
 
   useEffect(() => {
-    // Get user profile and userId from storage
-    const profile = localStorage.getItem('userProfile') || sessionStorage.getItem('userProfile');
-    const userId = localStorage.getItem('userId');
-    
-    console.log('UserId:', userId); // Debug log
-    console.log('Raw Profile:', profile); // Debug log
+    if (location.state?.openProjects) {
+      setActiveSection('projects');
+      setProjectsTab('All');
+      setProjectsLayout('grid');
+      setProjectsSearch('');
+      // clear transient state so refresh/back doesn't repeatedly force it
+      navigate(location.pathname, { replace: true, state: {} });
+    }
+  }, [location.state, location.pathname, navigate]);
 
-    // Check if we have userId and profile
+  useEffect(() => {
+    const profile = localStorage.getItem('userProfile') || sessionStorage.getItem('userProfile');
+    const userId = localStorage.getItem('userId') || sessionStorage.getItem('userId');
+
     if (!userId) {
       setError('No user ID found. Please login again.');
       setLoading(false);
@@ -47,90 +99,31 @@ const AdminEvents = () => {
       return;
     }
 
-    // Safely parse the profile if it exists
     let parsedProfile = null;
     if (profile) {
       try {
         parsedProfile = JSON.parse(profile);
-        console.log('Parsed Profile:', parsedProfile); // Debug log
         setUserProfile(parsedProfile);
       } catch (err) {
         console.error('Error parsing user profile:', err);
       }
     }
 
-    // Fetch events - use stored eventDetails or fetch from API
-    const fetchEvents = async () => {
+    const load = async () => {
       try {
-        // First, check if eventDetails are already in the stored userProfile
-        if (parsedProfile && parsedProfile.eventDetails && Array.isArray(parsedProfile.eventDetails)) {
-          console.log('Using stored eventDetails from userProfile');
-          setEvents(parsedProfile.eventDetails);
-          setLoading(false);
-          return;
-        }
-
-        // If not in storage, fetch from API
-        if (!parsedProfile) {
-          throw new Error('User profile not found');
-        }
-        
-        // Try to get phone number from user profile, fallback to stored entered phone number
-        let phoneNumber = parsedProfile?.phoneNumber;
-        let last10Digits = null;
-
-        // If phone number not in profile, use the one entered during login
-        if (!phoneNumber) {
-          const storedPhoneNumber = localStorage.getItem('enteredPhoneNumber');
-          const storedLast10 = localStorage.getItem('enteredPhoneNumberLast10');
-          
-          if (storedLast10) {
-            last10Digits = storedLast10;
-            console.log('Using stored entered phone number (last 10 digits):', last10Digits);
-          } else if (storedPhoneNumber) {
-            const cleanedPhone = storedPhoneNumber.replace(/\D/g, '');
-            last10Digits = cleanedPhone.slice(-10);
-            console.log('Extracted last 10 digits from stored entered phone number:', last10Digits);
-          }
-        } else {
-          // Extract last 10 digits from phone number in profile
-          const cleanedPhone = phoneNumber.replace(/\D/g, ''); // Remove all non-digit characters
-          last10Digits = cleanedPhone.slice(-10); // Get last 10 digits
-        }
-
-        if (!last10Digits || last10Digits.length !== 10) {
-          throw new Error('Phone number not found. Please login again.');
-        }
-
-        console.log('Fetching user profile and events with phone number:', last10Digits);
-        
-        const response = await axios.get(
-          `${API_BASE_URL}/api/userProfile/phone?phoneNumber=${last10Digits}`,
-          {
-            headers: {
-              'Content-Type': 'application/json'
-            }
-          }
-        );
-        
-        console.log('User profile and events response:', response.data); // Debug log
-        
-        // Update stored userProfile with fresh data
-        const userProfileData = response.data;
-        if (userProfileData) {
-          localStorage.setItem('userProfile', JSON.stringify(userProfileData));
-          sessionStorage.setItem('userProfile', JSON.stringify(userProfileData));
-          setUserProfile(userProfileData);
-        }
-        
-        // Extract eventDetails from response.data.eventDetails
-        const eventsData = userProfileData?.eventDetails || response.data?.data?.eventDetails || [];
-        console.log('Events data:', eventsData); // Debug log
-        setEvents(Array.isArray(eventsData) ? eventsData : []);
+        const token = localStorage.getItem('adminToken') || sessionStorage.getItem('adminToken');
+        const fromApi = await fetchEventsForUserWithFallback(userId, { token });
+        const merged = mergeEventsWithProfileDetails(fromApi, parsedProfile?.eventDetails);
+        setEvents(merged);
+        syncProfileEventDetails(merged);
+        setUserProfile((prev) => ({
+          ...(prev || parsedProfile || {}),
+          eventDetails: merged,
+        }));
+        setError('');
       } catch (err) {
         console.error('Error fetching events:', err.response || err);
         if (err.response?.status === 401) {
-          // If unauthorized, redirect to login
           navigate('/admin/login');
         } else {
           setError(err.message || 'Failed to fetch events. Please try again.');
@@ -140,8 +133,38 @@ const AdminEvents = () => {
       }
     };
 
-    fetchEvents();
+    load();
   }, [navigate]);
+
+  useEffect(() => {
+    if (activeSection !== 'dashboard') {
+      setDashStorageOverview(null);
+      return;
+    }
+    const userId = localStorage.getItem('userId') || sessionStorage.getItem('userId');
+    const token = localStorage.getItem('adminToken') || sessionStorage.getItem('adminToken');
+    if (!userId || !token) {
+      setDashStorageOverview(null);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      try {
+        const { data: body } = await axios.get(`${API_BASE_URL}/api/moments/storage/overview`, {
+          params: { userId },
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!cancelled) {
+          setDashStorageOverview(body?.data ?? body);
+        }
+      } catch {
+        if (!cancelled) setDashStorageOverview(null);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [activeSection, events]);
 
   const handleEventClick = (eventId) => {
     navigate(`/admin/events/${eventId}`);
@@ -156,12 +179,18 @@ const AdminEvents = () => {
     localStorage.removeItem('isAdminLoggedIn');
     localStorage.removeItem('enteredPhoneNumber');
     localStorage.removeItem('enteredPhoneNumberLast10');
+    localStorage.removeItem('adminToken');
+    localStorage.removeItem('emailId');
     sessionStorage.removeItem('userId');
     sessionStorage.removeItem('phoneNumber');
     sessionStorage.removeItem('name');
     sessionStorage.removeItem('userProfile');
     sessionStorage.removeItem('isAdminLoggedIn');
-    
+    sessionStorage.removeItem('enteredPhoneNumber');
+    sessionStorage.removeItem('enteredPhoneNumberLast10');
+    sessionStorage.removeItem('adminToken');
+    sessionStorage.removeItem('emailId');
+
     // Redirect to login
     navigate('/admin/login');
   };
@@ -172,6 +201,80 @@ const AdminEvents = () => {
       console.log('Selected file:', file); // Debug log
       setSelectedImage(file);
     }
+  };
+
+  const closeGuestThumbCrop = useCallback(() => {
+    if (guestThumbCropUrlRef.current) {
+      URL.revokeObjectURL(guestThumbCropUrlRef.current);
+      guestThumbCropUrlRef.current = null;
+    }
+    setGuestThumbCropSrc('');
+    setGuestThumbCropOpen(false);
+    setGuestCrop({ x: 0, y: 0 });
+    setGuestZoom(1);
+    setGuestCroppedAreaPixels(null);
+  }, []);
+
+  const openGuestThumbCrop = useCallback(
+    (file) => {
+      if (!file) return;
+      if (guestThumbCropUrlRef.current) {
+        URL.revokeObjectURL(guestThumbCropUrlRef.current);
+        guestThumbCropUrlRef.current = null;
+      }
+      const url = URL.createObjectURL(file);
+      guestThumbCropUrlRef.current = url;
+      setGuestThumbCropSrc(url);
+      setGuestThumbCropOpen(true);
+      setGuestCrop({ x: 0, y: 0 });
+      setGuestZoom(1);
+      setGuestCroppedAreaPixels(null);
+    },
+    []
+  );
+
+  const onGuestCropComplete = useCallback((_croppedArea, croppedAreaPixels) => {
+    setGuestCroppedAreaPixels(croppedAreaPixels);
+  }, []);
+
+  const handleGuestAppThumbnailSelect = (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    setGuestAppUseEventThumbnail(false);
+    openGuestThumbCrop(file);
+    event.target.value = '';
+  };
+
+  const handleGuestThumbCropConfirm = async () => {
+    if (!guestThumbCropSrc || !guestCroppedAreaPixels) return;
+    try {
+      const blob = await getCroppedImg(guestThumbCropSrc, guestCroppedAreaPixels);
+      const file = new File([blob], 'guest-thumbnail.jpg', { type: 'image/jpeg' });
+      setGuestAppThumbnail(file);
+      setGuestAppUseEventThumbnail(false);
+      closeGuestThumbCrop();
+    } catch (e) {
+      console.error(e);
+      setError('Could not crop image. Try another file.');
+    }
+  };
+
+  const resetCreateForm = () => {
+    setCreateStep(1);
+    setNewEventName('');
+    setSelectedImage(null);
+    setProjectType('');
+    setEventDate('');
+    setEventStartTime('');
+    setEventEndTime('');
+    setLocationQuery('');
+    setExpectedGuestCount('');
+    setTeamMemberDropdownOpen(false);
+    setSelectedTeamMemberIds([]);
+    setGuestAppEnabled(true);
+    setGuestAppThumbnail(null);
+    setGuestAppUseEventThumbnail(false);
+    closeGuestThumbCrop();
   };
 
   const uploadImage = async (file) => {
@@ -214,8 +317,8 @@ const AdminEvents = () => {
   };
 
   const handleCreateEvent = async () => {
-    if (!newEventName || !selectedImage) {
-      setError('Please provide both event name and image');
+    if (!newEventName || !eventStartTime || !eventEndTime) {
+      setError('Please fill project name, start time, and end time');
       return;
     }
 
@@ -224,17 +327,33 @@ const AdminEvents = () => {
       setError('');
 
       // First upload the image
-      let imageUrl;
+      let imageUrl = '';
       try {
-        imageUrl = await uploadImage(selectedImage);
-        console.log('Uploaded Image URL:', imageUrl);
-        
-        if (!imageUrl) {
-          throw new Error('No image URL received from upload');
+        if (selectedImage) {
+          imageUrl = await uploadImage(selectedImage);
+          console.log('Uploaded Image URL:', imageUrl);
+          if (!imageUrl) throw new Error('No image URL received from upload');
         }
       } catch (uploadError) {
         console.error('Image upload failed:', uploadError);
         throw new Error('Failed to upload image: ' + uploadError.message);
+      }
+
+      let guestAppThumbnailUrl = '';
+      try {
+        if (guestAppEnabled) {
+          if (guestAppUseEventThumbnail) {
+            if (!imageUrl) {
+              throw new Error('Add a cover photo in step 1 to reuse it as the guest app thumbnail, or upload a square thumbnail instead.');
+            }
+            guestAppThumbnailUrl = imageUrl;
+          } else if (guestAppThumbnail) {
+            guestAppThumbnailUrl = await uploadImage(guestAppThumbnail);
+          }
+        }
+      } catch (uploadError) {
+        console.error('Guest app thumbnail upload failed:', uploadError);
+        throw new Error(uploadError.message || 'Failed to set guest app thumbnail.');
       }
 
       // Get creator ID from userProfile - try multiple possible field names
@@ -303,10 +422,29 @@ const AdminEvents = () => {
       const userId = localStorage.getItem('userId');
       const phoneNumber = localStorage.getItem('phoneNumber');
       
+      const toEpoch = (value) => {
+        if (!value) return null;
+        const d = new Date(value);
+        return Number.isNaN(d.getTime()) ? null : d.getTime();
+      };
+      const startEpoch = toEpoch(eventStartTime);
+      const endEpoch = toEpoch(eventEndTime);
+
       const eventData = {
         creatorId: creatorId,
-        eventThumbnail: imageUrl, // This will now be the publicUrl from the upload response
-        eventName: newEventName
+        eventThumbnail: imageUrl, // optional
+        eventName: newEventName,
+        projectType: projectType || null,
+        eventDate: eventDate || null,
+        startTime: startEpoch,
+        endTime: endEpoch,
+        location: locationQuery || null,
+        expectedGuests: expectedGuestCount ? Number(expectedGuestCount) : null,
+        teamMemberIds: selectedTeamMemberIds,
+        guestApp: {
+          enabled: !!guestAppEnabled,
+          thumbnailImage: guestAppThumbnailUrl || null,
+        }
       };
 
       console.log('Creating event with data:', eventData);
@@ -325,12 +463,17 @@ const AdminEvents = () => {
 
       console.log('Event creation response:', response.data);
 
-      // Add the new event to the list
-      setEvents(prevEvents => [...prevEvents, response.data]);
+      const createdEvent = response.data?.data ?? response.data;
+      if (createdEvent && typeof createdEvent === 'object') {
+        setEvents((prevEvents) => {
+          const next = [...prevEvents, createdEvent];
+          syncProfileEventDetails(next);
+          return next;
+        });
+      }
       
       // Reset form and close modal
-      setNewEventName('');
-      setSelectedImage(null);
+      resetCreateForm();
       setShowCreateModal(false);
     } catch (error) {
       console.error('Error creating event:', error);
@@ -340,121 +483,365 @@ const AdminEvents = () => {
     }
   };
 
-  const renderCreateEventModal = () => (
-    <div className={`fixed inset-0 ${isDark ? 'bg-black/60' : 'bg-black/40'} flex items-center justify-center z-50`}>
-      <div
-        className={`rounded-2xl p-6 max-w-md w-full mx-4 shadow-2xl ${
-          isDark ? 'bg-[#101827] border border-white/10' : 'bg-white border border-black/10'
-        }`}
-      >
-        <h2 className={`text-2xl font-semibold mb-6 ${isDark ? 'text-white' : 'text-slate-900'}`}>New Project</h2>
-        
-        {error && (
-          <div className="bg-red-500/10 border border-red-500/30 text-red-200 px-4 py-3 rounded-lg mb-4">
-            {error}
+  const renderCreateEventModal = () => {
+    const cardBg = isDark ? 'bg-[#101827] border-white/10' : 'bg-white border-black/10';
+    const inputCls = isDark
+      ? 'bg-[#0B1220] border-white/10 text-white placeholder:text-white/40'
+      : 'bg-white border-black/10 text-slate-900 placeholder:text-slate-400';
+    const memberLabel = teamMemberOptions
+      .filter((m) => selectedTeamMemberIds.includes(m.id))
+      .map((m) => m.name)
+      .join(', ');
+    const mapsUrl = locationQuery ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(locationQuery)}` : 'https://www.google.com/maps';
+
+    return (
+      <>
+        {guestThumbCropOpen && (
+          <div
+            className={`fixed inset-0 z-[60] flex flex-col ${isDark ? 'bg-black/85' : 'bg-black/70'}`}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Crop guest thumbnail"
+          >
+            <div className={`px-4 py-3 flex items-center justify-between border-b ${isDark ? 'border-white/10 bg-[#0B1220]' : 'border-black/10 bg-white'}`}>
+              <div>
+                <p className={`text-sm font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}>Crop square thumbnail (1:1)</p>
+                <p className={`text-xs mt-0.5 ${isDark ? 'text-white/50' : 'text-slate-500'}`}>Drag to reposition · Pinch or scroll to zoom</p>
+              </div>
+              <button
+                type="button"
+                onClick={closeGuestThumbCrop}
+                className={`w-9 h-9 rounded-lg border text-sm ${isDark ? 'border-white/15 text-white/80 hover:bg-white/10' : 'border-black/10 text-slate-600 hover:bg-slate-50'}`}
+              >
+                ✕
+              </button>
+            </div>
+            <div className="relative flex-1 min-h-[min(360px,50vh)] w-full">
+              {guestThumbCropSrc ? (
+                <Crop
+                  image={guestThumbCropSrc}
+                  crop={guestCrop}
+                  zoom={guestZoom}
+                  aspect={1}
+                  cropShape="rect"
+                  showGrid={false}
+                  onCropChange={setGuestCrop}
+                  onZoomChange={setGuestZoom}
+                  onCropComplete={onGuestCropComplete}
+                />
+              ) : null}
+            </div>
+            <div className={`px-4 py-3 flex items-center justify-between gap-3 border-t ${isDark ? 'border-white/10 bg-[#0B1220]' : 'border-black/10 bg-white'}`}>
+              <label className={`flex items-center gap-2 text-sm ${isDark ? 'text-white/80' : 'text-slate-700'}`}>
+                <span className="whitespace-nowrap">Zoom</span>
+                <input
+                  type="range"
+                  min={1}
+                  max={3}
+                  step={0.05}
+                  value={guestZoom}
+                  onChange={(e) => setGuestZoom(Number(e.target.value))}
+                  className="w-40 accent-emerald-600"
+                />
+              </label>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={closeGuestThumbCrop}
+                  className={`px-4 py-2 rounded-xl border text-sm ${isDark ? 'border-white/15 text-white hover:bg-white/10' : 'border-black/10 text-slate-800 hover:bg-slate-50'}`}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleGuestThumbCropConfirm}
+                  disabled={!guestCroppedAreaPixels}
+                  className={`px-4 py-2 rounded-xl text-sm text-white bg-emerald-700 hover:bg-emerald-600 border border-emerald-500/20 disabled:opacity-50 disabled:cursor-not-allowed`}
+                >
+                  Apply square crop
+                </button>
+              </div>
+            </div>
           </div>
         )}
 
-        <div className="space-y-4">
-          <div>
-            <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-white/80' : 'text-slate-700'}`}>Project name</label>
-            <input
-              type="text"
-              value={newEventName}
-              onChange={(e) => setNewEventName(e.target.value)}
-              className={`w-full rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500/40 ${
-                isDark
-                  ? 'bg-[#0B1220] border border-white/10 text-white placeholder:text-white/40'
-                  : 'bg-white border border-black/10 text-slate-900 placeholder:text-slate-400'
-              }`}
-              placeholder="e.g., Ritwik Weds Shivani"
-            />
-          </div>
-
-          <div>
-            <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-white/80' : 'text-slate-700'}`}>Project cover</label>
-            <div 
-              onClick={() => fileInputRef.current?.click()}
-              className={`border-2 border-dashed rounded-2xl p-4 text-center cursor-pointer hover:border-emerald-500/40 transition-colors ${
-                isDark ? 'border-white/15 bg-[#0B1220]' : 'border-black/10 bg-slate-50'
-              }`}
-            >
-              {selectedImage ? (
-                <div className="relative">
-                  <img 
-                    src={URL.createObjectURL(selectedImage)} 
-                    alt="Selected" 
-                    className="max-h-44 mx-auto rounded-xl"
-                  />
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setSelectedImage(null);
-                    }}
-                    className="absolute top-2 right-2 bg-black/60 text-white rounded-full p-2 hover:bg-black/80 transition-colors"
-                  >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                  </button>
-                </div>
-              ) : (
-                <div className={isDark ? 'text-white/60' : 'text-slate-500'}>
-                  <svg className="w-12 h-12 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                  </svg>
-                  <p>Click to upload an image</p>
-                </div>
-              )}
+        <div className={`fixed inset-0 ${isDark ? 'bg-black/60' : 'bg-black/40'} flex items-center justify-center z-50`}>
+        <div className={`rounded-2xl max-w-[820px] w-full mx-4 shadow-2xl border ${cardBg}`}>
+          <div className={`px-6 py-5 border-b ${isDark ? 'border-white/10' : 'border-black/10'} flex items-start justify-between`}>
+            <div>
+              <h2 className={`text-3xl font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}>Create New Project</h2>
+              <p className={`${isDark ? 'text-white/55' : 'text-slate-500'} mt-1`}>Basic Information</p>
             </div>
-            <input
-              type="file"
-              ref={fileInputRef}
-              onChange={handleImageSelect}
-              accept="image/*"
-              className="hidden"
-            />
-          </div>
-
-          <div className="flex space-x-3 mt-6">
             <button
               onClick={() => {
                 setError('');
+                resetCreateForm();
                 setShowCreateModal(false);
               }}
-              className={`flex-1 py-3 px-4 rounded-xl transition-colors border ${
-                isDark
-                  ? 'bg-white/5 text-white hover:bg-white/10 border-white/10'
-                  : 'bg-slate-100 text-slate-900 hover:bg-slate-200 border-black/10'
-              }`}
+              className={`w-10 h-10 rounded-xl border ${isDark ? 'border-white/10 text-white/70 hover:bg-white/5' : 'border-black/10 text-slate-600 hover:bg-slate-50'}`}
+              aria-label="Close"
             >
-              Cancel
+              ✕
             </button>
-            <button
-              onClick={handleCreateEvent}
-              disabled={uploading || !newEventName || !selectedImage}
-              className={`flex-1 bg-emerald-600 text-white py-3 px-4 rounded-xl hover:bg-emerald-500 transition-colors ${
-                (uploading || !newEventName || !selectedImage) ? 'opacity-50 cursor-not-allowed' : ''
-              } border border-emerald-400/20`}
-            >
-              {uploading ? (
-                <div className="flex items-center justify-center">
-                  <div className="w-5 h-5 border-t-2 border-b-2 border-white rounded-full animate-spin mr-2"></div>
-                  Creating…
+          </div>
+
+          <div className={`px-6 py-4 border-b ${isDark ? 'border-white/10' : 'border-black/10'} flex items-center gap-4`}>
+            {[1, 2, 3].map((s, idx) => (
+              <React.Fragment key={s}>
+                <div className="flex items-center gap-2">
+                  <span className={`w-8 h-8 rounded-full inline-flex items-center justify-center text-sm font-semibold ${
+                    createStep === s
+                      ? 'bg-emerald-700 text-white'
+                      : isDark ? 'bg-white/10 text-white/70' : 'bg-slate-100 text-slate-500'
+                  }`}>{s}</span>
+                  <span className={`${createStep === s ? 'text-emerald-700 font-semibold' : isDark ? 'text-white/60' : 'text-slate-500'}`}>
+                    {s === 1 ? 'Basic Info' : s === 2 ? 'Details' : 'Guest App'}
+                  </span>
                 </div>
-              ) : (
-                'Create Project'
-              )}
+                {idx < 2 && <div className={`flex-1 h-px ${isDark ? 'bg-white/10' : 'bg-slate-200'}`} />}
+              </React.Fragment>
+            ))}
+          </div>
+
+          {error && (
+            <div className="mx-6 mt-4 bg-red-500/10 border border-red-500/30 text-red-500 px-4 py-3 rounded-lg">
+              {error}
+            </div>
+          )}
+
+          <div className="px-6 py-6 space-y-4">
+            {createStep === 1 && (
+              <>
+                <div>
+                  <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-white/80' : 'text-slate-700'}`}>Project Name *</label>
+                  <input value={newEventName} onChange={(e) => setNewEventName(e.target.value)} className={`w-full rounded-xl px-4 py-3 border ${inputCls}`} placeholder="e.g., Ritwik Weds Shivani" />
+                </div>
+                <div>
+                  <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-white/80' : 'text-slate-700'}`}>Cover Photo (Optional)</label>
+                  <div onClick={() => fileInputRef.current?.click()} className={`border-2 border-dashed rounded-2xl p-4 text-center cursor-pointer ${
+                    isDark ? 'border-white/15 bg-[#0B1220]' : 'border-black/10 bg-slate-50'
+                  }`}>
+                    {selectedImage ? <img src={URL.createObjectURL(selectedImage)} alt="Selected" className="max-h-36 mx-auto rounded-xl" /> : <p className={isDark ? 'text-white/60' : 'text-slate-500'}>Click to upload from computer</p>}
+                  </div>
+                  <input type="file" ref={fileInputRef} onChange={handleImageSelect} accept="image/*" className="hidden" />
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-white/80' : 'text-slate-700'}`}>Start Time *</label>
+                    <input type="datetime-local" value={eventStartTime} onChange={(e) => setEventStartTime(e.target.value)} className={`w-full rounded-xl px-4 py-3 border ${inputCls}`} />
+                  </div>
+                  <div>
+                    <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-white/80' : 'text-slate-700'}`}>End Time *</label>
+                    <input type="datetime-local" value={eventEndTime} onChange={(e) => setEventEndTime(e.target.value)} className={`w-full rounded-xl px-4 py-3 border ${inputCls}`} />
+                  </div>
+                </div>
+              </>
+            )}
+
+            {createStep === 2 && (
+              <>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-white/80' : 'text-slate-700'}`}>Project Type</label>
+                    <select value={projectType} onChange={(e) => setProjectType(e.target.value)} className={`w-full rounded-xl px-4 py-3 border ${inputCls}`}>
+                      <option value="">Select project type</option>
+                      <option>Wedding</option><option>Birthday</option><option>Corporate Event</option><option>Conference</option>
+                      <option>Party</option><option>Sports Event</option><option>Concert</option><option>Other</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-white/80' : 'text-slate-700'}`}>Project Date</label>
+                    <input type="date" value={eventDate} onChange={(e) => setEventDate(e.target.value)} className={`w-full rounded-xl px-4 py-3 border ${inputCls}`} />
+                  </div>
+                </div>
+                <div>
+                  <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-white/80' : 'text-slate-700'}`}>Location (Google Maps)</label>
+                  <div className="flex gap-2">
+                    <input value={locationQuery} onChange={(e) => setLocationQuery(e.target.value)} className={`flex-1 rounded-xl px-4 py-3 border ${inputCls}`} placeholder="Search / paste address" />
+                    <a href={mapsUrl} target="_blank" rel="noreferrer" className="px-4 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white border border-emerald-400/20">Map</a>
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-white/80' : 'text-slate-700'}`}>Expected Guests</label>
+                    <input type="number" min="0" value={expectedGuestCount} onChange={(e) => setExpectedGuestCount(e.target.value)} className={`w-full rounded-xl px-4 py-3 border ${inputCls}`} placeholder="e.g., 200" />
+                  </div>
+                  <div className="relative">
+                    <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-white/80' : 'text-slate-700'}`}>Add Team Members</label>
+                    <button onClick={() => setTeamMemberDropdownOpen((v) => !v)} className={`w-full rounded-xl px-4 py-3 border text-left ${inputCls}`}>
+                      {memberLabel || 'Select team members'}
+                    </button>
+                    {teamMemberDropdownOpen && (
+                      <div className={`absolute z-20 mt-2 w-full rounded-xl border p-2 max-h-44 overflow-auto ${isDark ? 'bg-[#0B1220] border-white/10' : 'bg-white border-black/10'}`}>
+                        {teamMemberOptions.length === 0 ? (
+                          <div className={`px-2 py-1 text-sm ${isDark ? 'text-white/60' : 'text-slate-500'}`}>No team members found</div>
+                        ) : teamMemberOptions.map((m) => (
+                          <label key={m.id} className="flex items-center gap-2 px-2 py-1 text-sm cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={selectedTeamMemberIds.includes(m.id)}
+                              onChange={() =>
+                                setSelectedTeamMemberIds((prev) => prev.includes(m.id) ? prev.filter((id) => id !== m.id) : [...prev, m.id])
+                              }
+                            />
+                            <span>{m.name}</span>
+                          </label>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </>
+            )}
+
+            {createStep === 3 && (
+              <>
+                <label className="inline-flex items-center gap-2">
+                  <input type="checkbox" checked={guestAppEnabled} onChange={(e) => setGuestAppEnabled(e.target.checked)} />
+                  <span className={isDark ? 'text-white/80' : 'text-slate-700'}>Enable Guest App</span>
+                </label>
+
+                <div className={`rounded-xl border p-4 space-y-3 ${isDark ? 'border-white/10 bg-[#0B1220]' : 'border-black/10 bg-slate-50'}`}>
+                  <label className={`flex items-start gap-3 ${selectedImage ? 'cursor-pointer' : 'opacity-50 cursor-not-allowed'}`}>
+                    <input
+                      type="checkbox"
+                      className="mt-1"
+                      checked={guestAppUseEventThumbnail}
+                      disabled={!selectedImage}
+                      onChange={(e) => {
+                        const on = e.target.checked;
+                        setGuestAppUseEventThumbnail(on);
+                        if (on) {
+                          setGuestAppThumbnail(null);
+                          closeGuestThumbCrop();
+                        }
+                      }}
+                    />
+                    <div>
+                      <span className={`text-sm font-medium ${isDark ? 'text-white' : 'text-slate-900'}`}>Use event cover as guest app thumbnail</span>
+                      <p className={`text-xs mt-1 ${isDark ? 'text-white/50' : 'text-slate-500'}`}>
+                        Same image URL as the project cover (no second upload). Add a cover in step 1 first.
+                      </p>
+                    </div>
+                  </label>
+
+                  {!guestAppUseEventThumbnail && (
+                    <>
+                      <p className={`text-xs font-medium uppercase tracking-wide ${isDark ? 'text-white/45' : 'text-slate-500'}`}>
+                        Or create a square (1:1) thumbnail
+                      </p>
+                      {selectedImage && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setGuestAppUseEventThumbnail(false);
+                            openGuestThumbCrop(selectedImage);
+                          }}
+                          className={`w-full py-2.5 rounded-xl border text-sm font-medium ${
+                            isDark
+                              ? 'border-emerald-500/35 text-emerald-300 hover:bg-emerald-900/25'
+                              : 'border-emerald-600/40 text-emerald-800 hover:bg-emerald-50'
+                          }`}
+                        >
+                          Crop square from cover photo
+                        </button>
+                      )}
+                      <div>
+                        <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-white/80' : 'text-slate-700'}`}>
+                          Guest Moments Thumbnail
+                        </label>
+                        <div
+                          onClick={() => guestAppFileInputRef.current?.click()}
+                          className={`border-2 border-dashed rounded-2xl p-4 text-center cursor-pointer ${
+                            isDark ? 'border-white/15 bg-[#101827]' : 'border-black/10 bg-white'
+                          }`}
+                        >
+                          {guestAppThumbnail ? (
+                            <img
+                              src={URL.createObjectURL(guestAppThumbnail)}
+                              alt="Guest app thumb"
+                              className="max-h-36 w-36 mx-auto rounded-xl object-cover aspect-square"
+                            />
+                          ) : (
+                            <p className={isDark ? 'text-white/60' : 'text-slate-500'}>
+                              Click to upload an image — you’ll crop to a 1:1 square next
+                            </p>
+                          )}
+                        </div>
+                        <input
+                          type="file"
+                          ref={guestAppFileInputRef}
+                          onChange={handleGuestAppThumbnailSelect}
+                          accept="image/*"
+                          className="hidden"
+                        />
+                      </div>
+                    </>
+                  )}
+
+                  {guestAppUseEventThumbnail && selectedImage && (
+                    <div className="flex flex-col items-center gap-2 pt-1">
+                      <span className={`text-xs ${isDark ? 'text-emerald-400/90' : 'text-emerald-700'}`}>Preview — using event cover</span>
+                      <img
+                        src={URL.createObjectURL(selectedImage)}
+                        alt="Event cover preview"
+                        className="max-h-36 w-36 rounded-xl object-cover border border-emerald-500/40 aspect-square"
+                      />
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
+          </div>
+
+          <div className={`px-6 py-4 border-t ${isDark ? 'border-white/10' : 'border-black/10'} flex items-center justify-between`}>
+            <button
+              onClick={() => {
+                if (createStep === 1) {
+                  setError('');
+                  resetCreateForm();
+                  setShowCreateModal(false);
+                } else {
+                  setCreateStep((s) => Math.max(1, s - 1));
+                }
+              }}
+              className={`px-6 py-2.5 rounded-xl border ${isDark ? 'bg-white/5 text-white border-white/10 hover:bg-white/10' : 'bg-slate-100 text-slate-900 border-black/10 hover:bg-slate-200'}`}
+            >
+              {createStep === 1 ? 'Cancel' : 'Back'}
             </button>
+            {createStep < 3 ? (
+              <button
+                onClick={() => setCreateStep((s) => Math.min(3, s + 1))}
+                className="px-6 py-2.5 rounded-xl bg-emerald-700 hover:bg-emerald-600 text-white border border-emerald-500/20"
+              >
+                Next
+              </button>
+            ) : (
+              <button
+                onClick={handleCreateEvent}
+                disabled={uploading || !newEventName || !eventStartTime || !eventEndTime}
+                className={`px-6 py-2.5 rounded-xl bg-emerald-700 hover:bg-emerald-600 text-white border border-emerald-500/20 ${
+                  (uploading || !newEventName || !eventStartTime || !eventEndTime) ? 'opacity-50 cursor-not-allowed' : ''
+                }`}
+              >
+                {uploading ? 'Creating…' : 'Create Project'}
+              </button>
+            )}
           </div>
         </div>
       </div>
-    </div>
-  );
+      </>
+    );
+  };
 
   const totalUploadsThisMonth = events.reduce((sum, ev) => sum + (Number(ev?.totalMoments) || 0), 0);
   const teamMembers = events.reduce((sum, ev) => sum + (Number(ev?.memberCount) || 0), 0);
   const activeProjects = events.length;
+  const teamMemberOptions = (userProfile?.teamMembers || userProfile?.members || userProfile?.memberDetails || [])
+    .map((m, idx) => ({
+      id: String(m?.userId || m?.id || m?.memberId || `member-${idx}`),
+      name: m?.name || m?.userName || m?.fullName || `Member ${idx + 1}`,
+    }));
 
   const getProjectStatus = (ev) => {
     const raw =
@@ -484,6 +871,28 @@ const AdminEvents = () => {
       return d.toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' });
     }
     return '';
+  };
+
+  const getProjectDateValue = (ev) => {
+    const raw =
+      ev?.eventDate ??
+      ev?.date ??
+      ev?.createdAt ??
+      ev?.created_at ??
+      ev?.createdOn ??
+      ev?.timestamp;
+    const d = raw ? new Date(raw) : null;
+    return d && !Number.isNaN(d.getTime()) ? d : null;
+  };
+
+  const getDaysUntilProject = (ev) => {
+    const eventDate = getProjectDateValue(ev);
+    if (!eventDate) return null;
+    const today = new Date();
+    const startToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    const startEvent = new Date(eventDate.getFullYear(), eventDate.getMonth(), eventDate.getDate());
+    const diff = Math.ceil((startEvent.getTime() - startToday.getTime()) / (1000 * 60 * 60 * 24));
+    return diff;
   };
 
   const getStorageNumbers = (ev) => {
@@ -602,7 +1011,10 @@ const AdminEvents = () => {
               </div>
 
               <button
-                onClick={() => setShowCreateModal(true)}
+                onClick={() => {
+                  resetCreateForm();
+                  setShowCreateModal(true);
+                }}
                 className="h-11 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 transition-colors font-semibold border border-emerald-400/20 text-white inline-flex items-center gap-2"
               >
                 <span className="inline-flex w-5 h-5 rounded-md bg-black/20 items-center justify-center">
@@ -690,7 +1102,10 @@ const AdminEvents = () => {
             />
           </div>
           <button
-            onClick={() => setShowCreateModal(true)}
+            onClick={() => {
+              resetCreateForm();
+              setShowCreateModal(true);
+            }}
             className="h-11 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 transition-colors font-semibold border border-emerald-400/20 text-white"
           >
             + New
@@ -841,144 +1256,45 @@ const AdminEvents = () => {
     );
   };
 
-  const appBg = isDark ? 'bg-[#0B1220]' : 'bg-white';
+  const appBg = isDark ? 'bg-[#0B1220]' : 'bg-[#FDFCFA]';
   const appText = isDark ? 'text-white' : 'text-slate-900';
   const dividerBorder = isDark ? 'border-white/10' : 'border-black/10';
-
-  const sidebarBg = isDark ? 'bg-[#08101D]' : 'bg-white';
-  const sidebarItemBase = `w-full flex items-center rounded-xl text-sm font-medium transition-colors ${
-    sidebarCollapsed ? 'justify-center px-0 py-3' : 'gap-3 px-4 py-2'
-  }`;
-  const sidebarItemActive = `${sidebarItemBase} ${isDark ? 'bg-emerald-600/20 text-white border border-emerald-500/20' : 'bg-emerald-600/10 text-slate-900 border border-emerald-600/20'}`;
-  const sidebarItemIdle = `${sidebarItemBase} ${isDark ? 'text-white/70 hover:text-white hover:bg-white/5' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'}`;
 
   const surface = isDark ? 'bg-white/5' : 'bg-white';
   const surfaceBorder = isDark ? 'border-white/10' : 'border-black/10';
   const surfaceSubtle = isDark ? 'text-white/55' : 'text-slate-500';
   const surfaceMuted = isDark ? 'text-white/60' : 'text-slate-600';
+  const dashboardPanel = isDark ? `${surface} ${surfaceBorder}` : 'bg-white border-black/10';
 
   return (
     <div className={`min-h-screen ${appBg} ${appText} font-sans`}>
       <div className="flex min-h-screen">
         {/* Sidebar */}
-        <aside
-          className={`hidden md:flex md:flex-col border-r ${dividerBorder} ${sidebarBg} ${
-            sidebarCollapsed ? 'md:w-20' : 'md:w-72'
-          } transition-[width] duration-200`}
-        >
-          <div className={`flex items-center ${sidebarCollapsed ? 'px-3 py-4 justify-center' : 'px-6 py-6'} gap-3`}>
-            <img src="/logo.png" alt="Moments" className="h-9 w-9" />
-            {!sidebarCollapsed && (
-              <div className="leading-tight">
-                <div className="text-lg font-semibold tracking-wide">MOMENTS</div>
-                <div className={`text-xs ${isDark ? 'text-white/50' : 'text-slate-500'}`}>Studio dashboard</div>
-              </div>
-            )}
-            <button
-              onClick={() => setSidebarCollapsed((v) => !v)}
-              className={`ml-auto w-9 h-9 rounded-xl border ${surfaceBorder} ${isDark ? 'bg-white/5 hover:bg-white/10' : 'bg-white hover:bg-slate-50'} transition-colors flex items-center justify-center`}
-              aria-label={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-              title={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-            >
-              <svg
-                className={`w-5 h-5 ${isDark ? 'text-white/80' : 'text-slate-700'} transition-transform ${sidebarCollapsed ? 'rotate-180' : ''}`}
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-              >
-                <path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
-              </svg>
-            </button>
-          </div>
-
-          <nav className={`${sidebarCollapsed ? 'px-3' : 'px-4'} space-y-1`}>
-            <button
-              className={sidebarItemActive}
-              onClick={() => setActiveSection('dashboard')}
-              title="Homepage"
-            >
-              <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                <path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M3 12l2-2 7-7 7 7 2 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2v-9z" />
-              </svg>
-              {!sidebarCollapsed && 'Homepage'}
-            </button>
-            <button
-              className={sidebarItemIdle}
-              onClick={() => {
-                setActiveSection('projects');
-                setProjectsTab('All');
-                setProjectsLayout('list');
-              }}
-              title="Projects"
-            >
-              <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                <path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M3 7h6l2 2h10v10a2 2 0 01-2 2H5a2 2 0 01-2-2V7z" />
-              </svg>
-              {!sidebarCollapsed && 'Projects'}
-            </button>
-            <button className={sidebarItemIdle} onClick={() => navigate('/admin/events')} title="Uploads">
-              <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                <path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M12 5v14m7-7H5" />
-              </svg>
-              {!sidebarCollapsed && 'Uploads'}
-            </button>
-            <button className={sidebarItemIdle} onClick={() => navigate('/admin/events')} title="Storage">
-              <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                <path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M4 7h16M4 12h16M4 17h16" />
-              </svg>
-              {!sidebarCollapsed && 'Storage'}
-            </button>
-            <button className={sidebarItemIdle} onClick={() => navigate('/admin/events')} title="Notifications">
-              <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                <path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6 6 0 10-12 0v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0a3 3 0 11-6 0m6 0H9" />
-              </svg>
-              {!sidebarCollapsed && 'Notifications'}
-            </button>
-            <button className={sidebarItemIdle} onClick={() => navigate('/admin/events')} title="Team Management">
-              <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                <path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
-              </svg>
-              {!sidebarCollapsed && 'Team Management'}
-            </button>
-          </nav>
-
-          <div className={`mt-auto ${sidebarCollapsed ? 'px-3' : 'px-4'} py-6 space-y-2`}>
-            <button
-              className={sidebarItemIdle}
-              onClick={() => setTheme((t) => (t === 'dark' ? 'light' : 'dark'))}
-              title={isDark ? 'Light Mode' : 'Dark Mode'}
-            >
-              {isDark ? (
-                <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                  <path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M12 3v2m0 14v2m9-9h-2M5 12H3m15.364-6.364l-1.414 1.414M7.05 16.95l-1.414 1.414m0-11.314L7.05 7.05m9.9 9.9l1.414 1.414" />
-                  <path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M12 8a4 4 0 100 8 4 4 0 000-8z" />
-                </svg>
-              ) : (
-                <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                  <path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M21 12.79A9 9 0 1111.21 3a7 7 0 009.79 9.79z" />
-                </svg>
-              )}
-              {!sidebarCollapsed && (isDark ? 'Light Mode' : 'Dark Mode')}
-            </button>
-            <button className={sidebarItemIdle} onClick={() => { /* UI-only for now */ }}>
-              <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                <path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M12 15l3.5-3.5M7 12a5 5 0 0110 0v1a3 3 0 01-3 3H10a3 3 0 01-3-3v-1z" />
-                <path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M12 3a7 7 0 00-7 7v2a7 7 0 0014 0v-2a7 7 0 00-7-7z" />
-              </svg>
-              {!sidebarCollapsed && 'Account Settings'}
-            </button>
-            <button
-              className={`${sidebarItemIdle} ${isDark ? 'text-red-200 hover:text-red-100' : 'text-red-600 hover:text-red-700'}`}
-              onClick={handleLogout}
-              title="Log Out"
-            >
-              <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                <path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M10 16l4-4-4-4m4 4H3m12 7a2 2 0 002-2V7a2 2 0 00-2-2h-3" />
-              </svg>
-              {!sidebarCollapsed && 'Log Out'}
-            </button>
-          </div>
-        </aside>
+        <AdminSidebar
+          isDark={isDark}
+          collapsed={sidebarCollapsed}
+          onToggleCollapsed={() => setSidebarCollapsed((v) => !v)}
+          onToggleTheme={() => setTheme((t) => (t === 'dark' ? 'light' : 'dark'))}
+          onLogout={handleLogout}
+          activeKey={activeSection === 'dashboard' ? 'home' : 'projects'}
+          onNavigate={(key) => {
+            if (key === 'home') {
+              setActiveSection('dashboard');
+              navigate('/admin/events');
+            } else if (key === 'projects') {
+              setActiveSection('projects');
+              setProjectsTab('All');
+              setProjectsLayout('grid');
+              setProjectsSearch('');
+              navigate('/admin/events');
+            }
+            else if (key === 'uploads') navigate('/admin/uploads');
+            else if (key === 'storage') navigate('/admin/storage');
+            else if (key === 'notifications') navigate('/admin/notifications');
+            else if (key === 'team') navigate('/admin/team');
+            else if (key === 'settings') navigate('/admin/settings');
+          }}
+        />
 
         {/* Main */}
         <main className="flex-1">
@@ -1011,6 +1327,7 @@ const AdminEvents = () => {
                 <button
                   onClick={() => {
                     setError('');
+                    resetCreateForm();
                     setShowCreateModal(true);
                   }}
                   className="px-4 h-10 rounded-xl bg-emerald-600 hover:bg-emerald-500 transition-colors font-semibold flex items-center gap-2 border border-emerald-400/20"
@@ -1056,7 +1373,7 @@ const AdminEvents = () => {
                             onClick={() => {
                               setActiveSection('projects');
                               setProjectsTab('All');
-                              setProjectsLayout('list');
+                                setProjectsLayout('grid');
                               setProjectsSearch('');
                             }}
                           >
@@ -1114,7 +1431,7 @@ const AdminEvents = () => {
                   </div>
 
                   {/* Projects */}
-                  <div id="projects-section" className={`rounded-2xl ${surface} border ${surfaceBorder} p-5 shadow-sm`}>
+                  <div id="projects-section" className={`rounded-2xl border p-5 shadow-sm ${dashboardPanel}`}>
                     <div className="flex items-center justify-between mb-4">
                       <div className="text-lg font-semibold">Active Projects</div>
                       <button
@@ -1122,7 +1439,7 @@ const AdminEvents = () => {
                           onClick={() => {
                             setActiveSection('projects');
                             setProjectsTab('All');
-                            setProjectsLayout('list');
+                            setProjectsLayout('grid');
                             setProjectsSearch('');
                           }}
                       >
@@ -1147,26 +1464,28 @@ const AdminEvents = () => {
                                 : 'bg-white border-black/10 hover:border-emerald-600/30'
                             }`}
                           >
-                            <div className={`h-44 ${isDark ? 'bg-black/20' : 'bg-slate-100'}`}>
-                              {event.eventThumbnail ? (
-                                <img
-                                  src={event.eventThumbnail}
-                                  alt={event.eventName || 'Project'}
-                                  className="w-full h-full object-cover"
-                                  onError={(e) => {
-                                    e.target.onerror = null;
-                                    e.target.style.display = 'none';
-                                  }}
-                                />
-                              ) : (
-                                <div className="w-full h-full flex items-center justify-center text-white/40">
-                                  <svg className="w-10 h-10" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                                    <path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                                  </svg>
-                                </div>
-                              )}
-                            </div>
                             <div className="p-4">
+                              <div className="mb-4">
+                                <div className={`w-full h-28 rounded-2xl overflow-hidden border ${isDark ? 'bg-black/20 border-white/10' : 'bg-slate-100 border-[#d4d4d8]'}`}>
+                                  {event.eventThumbnail ? (
+                                    <img
+                                      src={event.eventThumbnail}
+                                      alt={event.eventName || 'Project'}
+                                      className="w-full h-full object-cover"
+                                      onError={(e) => {
+                                        e.target.onerror = null;
+                                        e.target.style.display = 'none';
+                                      }}
+                                    />
+                                  ) : (
+                                    <div className="w-full h-full flex items-center justify-center text-white/40">
+                                      <svg className="w-10 h-10" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                        <path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                      </svg>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
                               <div className="font-semibold truncate">{event.eventName || 'Untitled project'}</div>
                               <div className={`mt-1 text-xs ${isDark ? 'text-white/45' : 'text-slate-500'}`}>Project ID: {event.eventId}</div>
                               <div className={`mt-3 flex items-center justify-between text-xs ${isDark ? 'text-white/60' : 'text-slate-600'}`}>
@@ -1191,7 +1510,7 @@ const AdminEvents = () => {
                   </div>
 
                   {/* Recent uploads strip */}
-                  <div className={`rounded-2xl ${surface} border ${surfaceBorder} p-5 shadow-sm`}>
+                  <div className={`rounded-2xl border p-5 shadow-sm ${dashboardPanel}`}>
                     <div className="text-lg font-semibold">Recent Uploads</div>
                     <div className={`text-sm ${surfaceSubtle}`}>Last 12 uploaded media items</div>
                     <div className="mt-4 flex gap-3 overflow-x-auto pb-2">
@@ -1222,10 +1541,10 @@ const AdminEvents = () => {
                 {/* Right column */}
                 <div className="xl:col-span-3 space-y-6">
                   {/* Upcoming projects */}
-                  <div className={`rounded-2xl ${surface} border ${surfaceBorder} p-5 shadow-sm`}>
+                  <div className={`rounded-2xl border p-5 shadow-sm ${dashboardPanel}`}>
                     <div className="text-lg font-semibold">Upcoming Projects</div>
                     <div className="mt-4 space-y-3">
-                      {events.slice(0, 3).map((ev, idx) => (
+                      {events.slice(0, 3).map((ev) => (
                         <button
                           key={`upcoming-${ev.eventId}`}
                           onClick={() => handleEventClick(ev.eventId)}
@@ -1235,17 +1554,24 @@ const AdminEvents = () => {
                               : 'border-black/10 hover:border-emerald-600/30 bg-white'
                           }`}
                         >
+                          {(() => {
+                            const days = getDaysUntilProject(ev);
+                            const dayLabel = days === null ? '--' : Math.abs(days);
+                            const dayState = days === null ? '' : days < 0 ? 'ago' : days === 0 ? 'today' : 'days';
+                            return (
+                              <>
                           <div className="flex items-center justify-between">
                             <div className="text-sm font-semibold truncate">{ev.eventName || 'Untitled project'}</div>
-                            <div className={`text-xs ${isDark ? 'text-white/45' : 'text-slate-500'}`}>{3 + idx * 5} days</div>
+                            <div className={`text-xs ${isDark ? 'text-white/45' : 'text-slate-500'}`}>
+                              {dayLabel} {dayState}
+                            </div>
                           </div>
                           <div className={`mt-1 text-xs ${isDark ? 'text-white/45' : 'text-slate-500'}`}>
-                            {new Date(Date.now() + (3 + idx * 5) * 24 * 60 * 60 * 1000).toLocaleDateString(undefined, {
-                              year: 'numeric',
-                              month: 'long',
-                              day: 'numeric',
-                            })}
+                            {getProjectDate(ev) || 'Date unavailable'}
                           </div>
+                              </>
+                            );
+                          })()}
                         </button>
                       ))}
                       {events.length === 0 && <div className="text-white/50">No projects found.</div>}
@@ -1253,7 +1579,7 @@ const AdminEvents = () => {
                   </div>
 
                   {/* Notifications */}
-                  <div className={`rounded-2xl ${surface} border ${surfaceBorder} p-5 shadow-sm`}>
+                  <div className={`rounded-2xl border p-5 shadow-sm ${dashboardPanel}`}>
                     <div className="flex items-center justify-between">
                       <div className="text-lg font-semibold">Notifications</div>
                       <span className="text-xs px-2 py-1 rounded-full bg-red-500 text-white font-semibold">2</span>
@@ -1278,19 +1604,46 @@ const AdminEvents = () => {
                   </div>
 
                   {/* Storage */}
-                  <div className={`rounded-2xl ${surface} border ${surfaceBorder} p-5 shadow-sm`}>
+                  <div className={`rounded-2xl border p-5 shadow-sm ${dashboardPanel}`}>
                     <div className="text-lg font-semibold">Storage Usage</div>
                     <div className={`mt-4 rounded-xl border px-4 py-4 ${isDark ? 'bg-[#0B1220] border-white/10' : 'bg-white border-black/10'}`}>
-                      <div className={`flex items-center justify-between text-sm ${isDark ? 'text-white/70' : 'text-slate-600'}`}>
-                        <div>Used</div>
-                        <div className={`${isDark ? 'text-white/80' : 'text-slate-900'} font-semibold`}>12.9GB / 50GB</div>
-                      </div>
-                      <div className={`mt-3 h-2 rounded-full overflow-hidden ${isDark ? 'bg-white/10' : 'bg-slate-200'}`}>
-                        <div className="h-full w-[26%] bg-emerald-500 rounded-full"></div>
-                      </div>
-                      <button className="mt-4 w-full h-10 rounded-xl bg-emerald-600 hover:bg-emerald-500 transition-colors font-semibold border border-emerald-400/20">
-                        Manage Storage
-                      </button>
+                      {(() => {
+                        const o = dashStorageOverview;
+                        const totalBytes =
+                          o != null
+                            ? (Number(o.totalOriginalSizeBytes) || 0) +
+                              (Number(o.totalOptimisedSizeBytes) || 0) +
+                              (Number(o.totalThumbnailSizeBytes) || 0)
+                            : 0;
+                        const usedGb = storageBytesToGb(totalBytes);
+                        const limitGb = 50;
+                        const pct =
+                          totalBytes > 0 ? Math.min(100, Math.round((usedGb / limitGb) * 100)) : 0;
+                        const usedLabel = `${formatStorageGb(usedGb)}GB / ${limitGb}GB`;
+                        return (
+                          <>
+                            <div className={`flex items-center justify-between text-sm ${isDark ? 'text-white/70' : 'text-slate-600'}`}>
+                              <div>Used</div>
+                              <div className={`${isDark ? 'text-white/80' : 'text-slate-900'} font-semibold`}>
+                                {o ? usedLabel : '—'}
+                              </div>
+                            </div>
+                            <div className={`mt-3 h-2 rounded-full overflow-hidden ${isDark ? 'bg-white/10' : 'bg-slate-200'}`}>
+                              <div
+                                className="h-full bg-emerald-500 rounded-full transition-all"
+                                style={{ width: `${o ? pct : 0}%` }}
+                              />
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => navigate('/admin/storage')}
+                              className="mt-4 w-full h-10 rounded-xl bg-emerald-600 hover:bg-emerald-500 transition-colors font-semibold border border-emerald-400/20"
+                            >
+                              Manage Storage
+                            </button>
+                          </>
+                        );
+                      })()}
                     </div>
                   </div>
                 </div>

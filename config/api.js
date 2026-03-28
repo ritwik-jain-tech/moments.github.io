@@ -1,12 +1,9 @@
-// Shared API Configuration (can be used by both Node.js scripts and React)
-const API_BASE_URL = 'http://127.0.0.1:8080'
-// CommonJS export for Node.js scripts
+// Node scripts (e.g. scripts/prerender-events.js). Defaults match production.
+const PROD_API_BASE_URL = 'https://momentsbackend-673332237675.us-central1.run.app';
+
+const API_BASE_URL =
+  process.env.API_BASE_URL || process.env.VITE_API_BASE_URL || PROD_API_BASE_URL;
+
 module.exports = {
-  API_BASE_URL
+  API_BASE_URL,
 };
-
-// ES6 export for React (if using bundler that supports it)
-if (typeof module !== 'undefined' && module.exports) {
-  // Already exported via CommonJS
-}
-

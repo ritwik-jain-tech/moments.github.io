@@ -46,6 +46,8 @@ export default defineConfig({
     copyPublicDir: true,
   },
   server: {
+    port: 5173,
+    strictPort: false,
     // Handle SPA routing - redirect all routes to index.html
     // This allows direct access to /event/123456 to work
     historyApiFallback: true,

@@ -43,7 +43,13 @@ const getBrowserInfo = () => {
   return browser;
 };
 
-const MomentUploader = ({ eventId, onUploadComplete }) => {
+const MomentUploader = ({
+  eventId,
+  onUploadComplete,
+  triggerText = 'Upload Media',
+  triggerClassName = '',
+  uploaderTitle = 'Upload Moments',
+}) => {
   const [files, setFiles] = useState([]);
   const [uploadQueue, setUploadQueue] = useState([]);
   const [uploadStatus, setUploadStatus] = useState({}); // { fileId: { status, progress, error } }
@@ -51,6 +57,10 @@ const MomentUploader = ({ eventId, onUploadComplete }) => {
   const [dragActive, setDragActive] = useState(false);
   const [showUploader, setShowUploader] = useState(false);
   const [successMessage, setSuccessMessage] = useState(null); // { count: number }
+  const [driveFolderUrl, setDriveFolderUrl] = useState('');
+  const [driveImporting, setDriveImporting] = useState(false);
+  const [driveImportMessage, setDriveImportMessage] = useState(null);
+  const [driveImportError, setDriveImportError] = useState(null);
   const [totalFilesEverAdded, setTotalFilesEverAdded] = useState(0); // Total files ever added (never decreases)
   const [completedCount, setCompletedCount] = useState(0); // Count of completed files (even after removal)
   const [estimatedTimeRemaining, setEstimatedTimeRemaining] = useState(null); // Estimated time in seconds
@@ -373,6 +383,66 @@ const MomentUploader = ({ eventId, onUploadComplete }) => {
   };
 
   // Handle folder selection via separate button or context menu
+  const importFromGoogleDrive = useCallback(async () => {
+    if (!isAuthenticated()) {
+      alert('Please log in to import moments.');
+      return;
+    }
+    const url = driveFolderUrl.trim();
+    if (!url) {
+      alert('Paste a Google Drive folder link (e.g. https://drive.google.com/drive/folders/…).');
+      return;
+    }
+    const userInfo = getUserInfo();
+    if (!userInfo.userId) {
+      alert('Missing user id. Please log in again.');
+      return;
+    }
+    const userId = localStorage.getItem('userId');
+    const phoneNumber = localStorage.getItem('phoneNumber');
+    const adminToken = localStorage.getItem('adminToken');
+    const headers = { 'Content-Type': 'application/json' };
+    if (adminToken) {
+      headers['Authorization'] = `Bearer ${adminToken}`;
+    } else {
+      if (userId) headers['X-User-Id'] = userId;
+      if (phoneNumber) headers['X-Phone-Number'] = phoneNumber;
+    }
+    setDriveImporting(true);
+    setDriveImportMessage(null);
+    setDriveImportError(null);
+    try {
+      const { data } = await axios.post(
+        `${API_BASE_URL}/api/files/import-google-drive-folder`,
+        {
+          folderUrl: url,
+          eventId: String(eventId),
+          creatorId: userInfo.userId,
+          creatorUserName: userInfo.userName,
+        },
+        { headers, timeout: 30000 }
+      );
+      setDriveImportMessage(
+        data?.message ||
+        'Your Drive import has started. Photos will appear in Moments shortly - you can continue with other work.'
+      );
+      setDriveFolderUrl('');
+    } catch (err) {
+      const status = err.response?.status;
+      if (status === 403) {
+        setDriveImportError('This appears to be a private Google Drive link. Please provide a public link (Anyone with the link can view).');
+      } else {
+        const msg =
+          err.response?.data?.message ||
+          err.message ||
+          'Google Drive import failed.';
+        setDriveImportError(msg);
+      }
+    } finally {
+      setDriveImporting(false);
+    }
+  }, [driveFolderUrl, eventId, onUploadComplete]);
+
   const handleFolderSelectClick = (e) => {
     e.preventDefault(); // Prevent default behavior
     e.stopPropagation(); // Prevent triggering the upload zone click
@@ -1370,12 +1440,12 @@ const MomentUploader = ({ eventId, onUploadComplete }) => {
       {!showUploader && (
         <button
           onClick={() => setShowUploader(true)}
-          className="w-full bg-[#2a4d32] hover:bg-[#1e3b27] text-white px-6 py-3 rounded-lg font-medium transition-colors flex items-center justify-center space-x-2"
+          className={`w-full bg-[#2a4d32] hover:bg-[#1e3b27] text-white px-6 py-3 rounded-lg font-medium transition-colors flex items-center justify-center space-x-2 ${triggerClassName}`}
         >
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
           </svg>
-          <span>Upload Moments</span>
+          <span>{triggerText}</span>
         </button>
       )}
 
@@ -1384,7 +1454,7 @@ const MomentUploader = ({ eventId, onUploadComplete }) => {
         <div className="bg-white bg-opacity-90 rounded-xl shadow-2xl p-6 border border-[#d4d4d8]">
           {/* Header */}
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-xl font-semibold text-[#2a4d32]">Upload Moments</h3>
+            <h3 className="text-xl font-semibold text-[#2a4d32]">{uploaderTitle}</h3>
             <button
               onClick={() => setShowUploader(false)}
               className="text-gray-400 hover:text-[#2a4d32]"
@@ -1517,6 +1587,45 @@ const MomentUploader = ({ eventId, onUploadComplete }) => {
             >
               Or select a folder
             </button>
+          </div>
+
+          <div className="border-t border-[#d4d4d8] pt-4 mb-4">
+            <p className="text-sm font-medium text-[#2a4d32] mb-1">Import from Google Drive</p>
+            <p className="text-xs text-gray-500 mb-3">
+              Paste a Google Drive link and start import. If the link is private, we will ask for a public link.
+            </p>
+            <div className="flex flex-col sm:flex-row gap-2">
+              <input
+                type="url"
+                value={driveFolderUrl}
+                onChange={(e) => setDriveFolderUrl(e.target.value)}
+                placeholder="https://drive.google.com/drive/folders/…"
+                disabled={driveImporting || isUploading}
+                className="flex-1 px-3 py-2 border border-[#d4d4d8] rounded-lg text-sm text-[#2a4d32] placeholder:text-gray-400 disabled:bg-gray-100"
+              />
+              <button
+                type="button"
+                onClick={importFromGoogleDrive}
+                disabled={driveImporting || isUploading || !driveFolderUrl.trim()}
+                className={`px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${
+                  driveImporting || isUploading || !driveFolderUrl.trim()
+                    ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
+                    : 'bg-[#2a4d32] hover:bg-[#1e3b27] text-white'
+                }`}
+              >
+                {driveImporting ? 'Starting…' : 'Start Drive Import'}
+              </button>
+            </div>
+            {driveImportMessage && (
+              <div className="mt-2 text-xs text-green-700 bg-green-50 border border-green-200 rounded px-3 py-2">
+                {driveImportMessage}
+              </div>
+            )}
+            {driveImportError && (
+              <div className="mt-2 text-xs text-red-700 bg-red-50 border border-red-200 rounded px-3 py-2">
+                {driveImportError}
+              </div>
+            )}
           </div>
 
           {/* File List */}
