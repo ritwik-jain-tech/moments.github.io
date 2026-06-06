@@ -8,6 +8,8 @@ module.exports = {
     extend: {
       fontFamily: {
         script: ['"Petit Formal Script"', "cursive"],
+        display: ['"Space Grotesk"', "Inter", "sans-serif"],
+        playfair: ['"Playfair Display"', "serif"],
       },
     },
   },

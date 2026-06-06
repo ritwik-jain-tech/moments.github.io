@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Petit+Formal+Script&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Petit+Formal+Script&family=Space+Grotesk:wght@400;500;600;700&family=Playfair+Display:wght@400;500;600;700&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -7,6 +7,28 @@
 html {
   scroll-behavior: smooth;
 }
+
+/* ========== B2B THEME — Space Grotesk headings ========== */
+.font-display { font-family: 'Space Grotesk', 'Inter', sans-serif; }
+.font-playfair { font-family: 'Playfair Display', serif; }
+
+@keyframes marquee { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
+.animate-marquee { animation: marquee 20s linear infinite; }
+.mask-gradient { -webkit-mask-image: linear-gradient(to right, transparent 0%, black 10%, black 90%, transparent 100%); mask-image: linear-gradient(to right, transparent 0%, black 10%, black 90%, transparent 100%); }
+
+.glass-warm { background: rgba(255,255,255,0.30); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border: 1px solid rgba(255,255,255,0.40); }
+.glass-card { background: rgba(255,255,255,0.50); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border: 1px solid rgba(209,215,201,0.30); }
+.dashboard-screenshot { border-radius: 16px; border: 1px solid rgba(0,0,0,0.08); box-shadow: 0 25px 60px rgba(0,0,0,0.12), 0 8px 20px rgba(0,0,0,0.06); }
+.gradient-text-green { background: linear-gradient(135deg, #294D32 0%, #3a6b44 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+.gradient-text-purple { background: linear-gradient(135deg, #AC5BC0 0%, #8B3FA0 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+
+@keyframes shine { 0% { left: -100%; } 100% { left: 200%; } }
+.btn-shine { position: relative; overflow: hidden; }
+.btn-shine::after { content: ''; position: absolute; top: 0; left: -100%; width: 50%; height: 100%; background: linear-gradient(90deg, transparent, rgba(255,255,255,0.18), transparent); animation: shine 3s infinite; }
+
+.scrollbar-hide::-webkit-scrollbar { display: none; }
+.scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+.noise-overlay { position: relative; }
 
 /* Add these CSS resets at the top of your index.css */
 * {

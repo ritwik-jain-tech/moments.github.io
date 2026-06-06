@@ -10,8 +10,9 @@ import ProtectedRoute from "./components/ProtectedRoute";
 import EventDetails from "./pages/EventDetails";
 import PublicEvent from "./pages/PublicEvent";
 import AdminRedirect from "./components/AdminRedirect";
-import HomeOrAdmin from "./components/HomeOrAdmin";
 import AdminPlaceholder from "./pages/AdminPlaceholder";
+import B2BLanding from "./pages/B2BLanding";
+import Landing from "./pages/Landing";
 import AdminStorage from "./pages/AdminStorage";
 import AdminUploads from "./pages/AdminUploads";
 import "./index.css";
@@ -93,9 +94,10 @@ ReactDOM.createRoot(document.getElementById("root")).render(
           }
         />
         <Route path="/admin" element={<AdminRedirect />} />
-        
-        {/* Root: landing on moments.live, admin redirect on admin.moments.live */}
-        <Route path="/" element={<HomeOrAdmin />} />
+
+        {/* moments.live/ → B2B landing, /guestApp → consumer landing */}
+        <Route path="/guestApp" element={<Landing />} />
+        <Route path="/" element={<B2BLanding />} />
       </Routes>
     </BrowserRouter>
   </React.StrictMode>
