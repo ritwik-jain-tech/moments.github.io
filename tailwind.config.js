@@ -10,6 +10,7 @@ module.exports = {
         script: ['"Petit Formal Script"', "cursive"],
         display: ['"Space Grotesk"', "Inter", "sans-serif"],
         playfair: ['"Playfair Display"', "serif"],
+        tight: ['"Inter Tight"', "Inter", "sans-serif"],
       },
     },
   },
