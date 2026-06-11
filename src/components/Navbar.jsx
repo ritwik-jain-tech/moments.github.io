@@ -1,17 +1,28 @@
 import React, { useState, useEffect } from 'react';
 import { navLinks } from '../data/mockData';
-import { Menu, X, ArrowRight } from 'lucide-react';
+import { Menu, X, ArrowRight, ExternalLink } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate, useLocation } from 'react-router-dom';
 
 const LOGO_SMALL = 'https://customer-assets.emergentagent.com/job_moment-keeper-7/artifacts/c8l9vrm3_small%20moments%20logo.png';
 const LOGO_FULL = 'https://customer-assets.emergentagent.com/job_moment-keeper-7/artifacts/i9w6b5xn_Full%20moments%20logo.png';
+const WHATSAPP = 'https://wa.me/918962364626';
+const STUDIO = 'https://studio.moments.live';
+
+const guestNavLinks = [
+  { label: 'Features', href: '#features' },
+  { label: 'How It Works', href: '#how-it-works' },
+  { label: 'For Photographers', href: STUDIO, isExternal: true },
+];
 
 const Navbar = () => {
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
+
+  const isGuestApp = location.pathname === '/guestApp';
+  const links = isGuestApp ? guestNavLinks : navLinks;
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 50);
@@ -21,19 +32,28 @@ const Navbar = () => {
 
   const handleNavClick = (link) => {
     setMobileOpen(false);
-    if (link.isRoute) {
+    if (link.isExternal) {
+      window.open(link.href, '_blank', 'noopener noreferrer');
+    } else if (link.isRoute) {
       navigate(link.href);
     } else {
-      if (location.pathname !== '/') {
+      if (location.pathname !== '/' && location.pathname !== '/guestApp') {
         navigate('/');
         setTimeout(() => {
-          const el = document.querySelector(link.href);
-          if (el) el.scrollIntoView({ behavior: 'smooth' });
+          document.querySelector(link.href)?.scrollIntoView({ behavior: 'smooth' });
         }, 300);
       } else {
-        const el = document.querySelector(link.href);
-        if (el) el.scrollIntoView({ behavior: 'smooth' });
+        document.querySelector(link.href)?.scrollIntoView({ behavior: 'smooth' });
       }
+    }
+  };
+
+  const handleCTA = () => {
+    setMobileOpen(false);
+    if (isGuestApp) {
+      window.open(WHATSAPP, '_blank', 'noopener noreferrer');
+    } else {
+      document.querySelector('#pricing')?.scrollIntoView({ behavior: 'smooth' });
     }
   };
 
@@ -50,22 +70,23 @@ const Navbar = () => {
         </button>
 
         <div className="hidden lg:flex items-center gap-8">
-          {navLinks.map((link) => (
+          {links.map((link) => (
             <button
               key={link.label}
               onClick={() => handleNavClick(link)}
-              className="text-[#68798B] hover:text-[#000000] text-[13px] font-semibold transition-colors duration-300 tracking-wide"
+              className="text-[#68798B] hover:text-[#000000] text-[13px] font-semibold transition-colors duration-300 tracking-wide flex items-center gap-1"
             >
               {link.label}
+              {link.isExternal && <ExternalLink size={10} className="opacity-50" />}
             </button>
           ))}
           <motion.button
             whileHover={{ scale: 1.03 }}
             whileTap={{ scale: 0.97 }}
-            onClick={() => handleNavClick({ href: '#pricing' })}
+            onClick={handleCTA}
             className="bg-[#294D32] text-white px-5 py-2.5 rounded-full text-[13px] font-bold hover:bg-[#1e3a25] transition-colors duration-300 flex items-center gap-2 shadow-md shadow-[#294D32]/15"
           >
-            Start Free Trial
+            {isGuestApp ? 'Contact Us' : 'Start Free Trial'}
             <ArrowRight size={13} />
           </motion.button>
         </div>
@@ -84,13 +105,16 @@ const Navbar = () => {
             className="lg:hidden bg-white/95 backdrop-blur-xl border-t border-[#D1D7C9]/20 overflow-hidden"
           >
             <div className="p-6 flex flex-col gap-3">
-              {navLinks.map((link) => (
-                <button key={link.label} onClick={() => handleNavClick(link)} className="text-[#68798B] hover:text-[#000000] text-sm font-semibold py-2.5 text-left transition-colors">
+              {links.map((link) => (
+                <button key={link.label} onClick={() => handleNavClick(link)}
+                  className="text-[#68798B] hover:text-[#000000] text-sm font-semibold py-2.5 text-left transition-colors flex items-center gap-1.5">
                   {link.label}
+                  {link.isExternal && <ExternalLink size={10} className="opacity-40" />}
                 </button>
               ))}
-              <button onClick={() => handleNavClick({ href: '#pricing' })} className="bg-[#294D32] text-white px-5 py-3 rounded-full text-sm font-bold w-full mt-2">
-                Start Free Trial
+              <button onClick={handleCTA}
+                className="bg-[#294D32] text-white px-5 py-3 rounded-full text-sm font-bold w-full mt-2">
+                {isGuestApp ? 'Contact Us' : 'Start Free Trial'}
               </button>
             </div>
           </motion.div>
