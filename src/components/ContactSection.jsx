@@ -5,14 +5,27 @@ import { EASE } from '../lib/motion';
 import LiquidButton from './LiquidButton';
 import { LEADS_ENDPOINT } from '../config/leads';
 
+// --- validators ---
+const isEmail = (v) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.trim());
+const isPhone = (v) => {
+  const d = v.replace(/\D/g, '');
+  return d.length >= 8 && d.length <= 15;
+};
+const contactKind = (v) => (isEmail(v) ? 'Email' : isPhone(v) ? 'Phone' : '');
+
 // One question at a time — warm, human prompts. Max 5 questions.
 const STEPS = [
   { name: 'name', q: 'First — what should we call you?', hint: 'Just your name. We like to keep things personal.', placeholder: 'e.g. Ritwik', required: true },
-  { name: 'contact', q: 'Where can we reach you?', hint: 'Phone or email — whichever you actually check.', placeholder: 'WhatsApp number or email', required: true },
+  { name: 'contact', q: 'Where can we reach you?', hint: 'A phone number or email — whichever you actually check.', placeholder: 'WhatsApp number or email', required: true,
+    validate: (v) => (isEmail(v) || isPhone(v) ? '' : 'Please enter a valid phone number or email address.') },
   { name: 'link', q: 'Show us the magic you make.', hint: 'Your website or Instagram so we can fall in love with your work.', placeholder: '@yourstudio or yoursite.com', required: true },
   { name: 'studio', q: 'Does your studio have a name?', hint: 'Optional — but every great brand deserves a mention.', placeholder: 'Your studio / brand name', required: false },
-  { name: 'message', q: 'What would make Moments perfect for you?', hint: 'Optional. Dreams, wishlists, and big ideas all welcome.', placeholder: 'Tell us what you need…', required: false, textarea: true },
+  { name: 'message', q: 'What would make Moments perfect for you?', hint: 'Optional — wishlists and big ideas welcome.', placeholder: 'Tell us what you need…', required: false, textarea: true },
 ];
+
+// Detect whether the visitor is on a phone or a web/desktop browser.
+const getDevice = () =>
+  /Mobi|Android|iPhone|iPad|iPod|Windows Phone/i.test(navigator.userAgent) ? 'Phone' : 'Web';
 
 const ContactSection = () => {
   const [step, setStep] = useState(0);
@@ -35,7 +48,13 @@ const ContactSection = () => {
 
   const submit = async (finalValues) => {
     setStatus('submitting');
-    const payload = { ...finalValues, submittedAt: new Date().toISOString(), source: 'moments.live' };
+    const payload = {
+      ...finalValues,
+      contactType: contactKind(finalValues.contact || ''),
+      device: getDevice(),
+      submittedAt: new Date().toISOString(),
+      source: 'moments.live',
+    };
     try {
       if (LEADS_ENDPOINT) {
         await fetch(LEADS_ENDPOINT, {
@@ -62,6 +81,10 @@ const ContactSection = () => {
       setError('This one helps us reach you — mind filling it in?');
       return;
     }
+    if (val && current.validate) {
+      const msg = current.validate(val);
+      if (msg) { setError(msg); return; }
+    }
     if (isLast) { submit(values); return; }
     setDir(1);
     setStep((s) => s + 1);
@@ -82,7 +105,7 @@ const ContactSection = () => {
   const progress = status === 'done' ? 100 : ((step + 1) / total) * 100;
 
   return (
-    <section id="free-trial" className="bg-canvas py-20 md:py-28 relative overflow-hidden scroll-mt-24">
+    <section id="free-trial" className="bg-canvas py-20 md:py-28 relative overflow-hidden scroll-mt-32 md:scroll-mt-36">
       <div className="absolute inset-0 pointer-events-none overflow-hidden">
         <div className="animate-aurora absolute top-1/4 left-1/5 w-[34vw] h-[34vw] max-w-[440px] max-h-[440px] rounded-full bg-brand/15 blur-[130px]" />
         <div className="animate-aurora absolute bottom-0 right-1/5 w-[30vw] h-[30vw] max-w-[400px] max-h-[400px] rounded-full bg-accent/20 blur-[120px]" style={{ animationDelay: '-9s' }} />
@@ -151,7 +174,7 @@ const ContactSection = () => {
                   />
                 )}
 
-                {error && <p className="text-accent-2 text-[13px] font-medium mt-3">{error}</p>}
+                {error && <p className="text-rose-500 dark:text-rose-400 text-[13px] font-medium mt-3">{error}</p>}
 
                 <div className="mt-auto pt-8 flex items-center justify-between gap-3">
                   {step > 0 ? (
