@@ -1,5 +1,5 @@
 import React from 'react';
-import { whyNowData, ctaData } from '../data/mockData';
+import { whyNowData, ctaData, STUDIO_SIGNUP } from '../data/mockData';
 import { motion } from 'framer-motion';
 import { ArrowRight, Clock, Cpu, Users, MessageCircle } from 'lucide-react';
 
@@ -48,10 +48,10 @@ const WhyNowAndCTA = () => {
             </h2>
             <p className="text-[#68798B] text-base leading-relaxed mb-10 max-w-xl mx-auto">{ctaData.description}</p>
             <div className="flex flex-col sm:flex-row gap-3 justify-center">
-              <motion.button whileHover={{ scale: 1.03, y: -1 }} whileTap={{ scale: 0.98 }}
+              <motion.a href={STUDIO_SIGNUP} whileHover={{ scale: 1.03, y: -1 }} whileTap={{ scale: 0.98 }}
                 className="bg-[#294D32] text-white px-7 py-3.5 rounded-full text-sm font-bold hover:bg-[#1e3a25] transition-colors duration-300 flex items-center justify-center gap-2 btn-shine shadow-lg shadow-[#294D32]/15">
                 {ctaData.primaryCTA}<ArrowRight size={14} />
-              </motion.button>
+              </motion.a>
               <motion.a whileHover={{ scale: 1.03 }} href={ctaData.contactLink} target="_blank" rel="noopener noreferrer"
                 className="border border-[#D1D7C9] text-[#68798B] px-7 py-3.5 rounded-full text-sm font-semibold hover:border-[#294D32]/30 hover:text-[#000000] transition-all duration-300 flex items-center justify-center gap-2">
                 <MessageCircle size={14} />Let&apos;s Talk

@@ -1,3 +1,7 @@
+export const STUDIO_URL = 'https://studio.moments.live';
+export const STUDIO_LOGIN = `${STUDIO_URL}/admin/login`;
+export const STUDIO_SIGNUP = `${STUDIO_URL}/admin/signup`;
+
 export const navLinks = [
   { label: 'Platform', href: '#platform' },
   { label: 'Guest App', href: '/guestApp', isRoute: true },

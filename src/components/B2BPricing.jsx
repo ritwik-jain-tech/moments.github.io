@@ -1,5 +1,5 @@
 import React from 'react';
-import { pricingData } from '../data/mockData';
+import { pricingData, STUDIO_SIGNUP } from '../data/mockData';
 import { motion } from 'framer-motion';
 import { Check, Sparkles } from 'lucide-react';
 
@@ -31,14 +31,14 @@ const PricingCard = ({ plan, index }) => (
       <span className="text-[#000000] font-bold text-3xl md:text-4xl tracking-tight">₹{plan.price}</span>
       <span className="text-[#68798B]/40 text-xs font-medium">{plan.period}</span>
     </div>
-    <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
-      className={`w-full py-3 rounded-full text-[13px] font-bold transition-colors mb-6 ${
+    <motion.a href={STUDIO_SIGNUP} whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
+      className={`w-full py-3 rounded-full text-[13px] font-bold transition-colors mb-6 text-center block ${
         plan.popular
           ? 'bg-[#294D32] text-white hover:bg-[#1e3a25] shadow-sm'
           : 'border border-[#D1D7C9] text-[#68798B] hover:border-[#294D32]/30 hover:text-[#000]'
       }`}>
       Start Free Trial
-    </motion.button>
+    </motion.a>
     <ul className="space-y-2.5 flex-1">
       {plan.features.map((f) => (
         <li key={f} className="flex items-start gap-2">

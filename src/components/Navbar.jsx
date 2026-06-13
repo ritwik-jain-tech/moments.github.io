@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { navLinks } from '../data/mockData';
+import { navLinks, STUDIO_URL, STUDIO_LOGIN, STUDIO_SIGNUP } from '../data/mockData';
 import { Menu, X, ArrowRight, ExternalLink } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -7,7 +7,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 const LOGO_SMALL = 'https://customer-assets.emergentagent.com/job_moment-keeper-7/artifacts/c8l9vrm3_small%20moments%20logo.png';
 const LOGO_FULL = 'https://customer-assets.emergentagent.com/job_moment-keeper-7/artifacts/i9w6b5xn_Full%20moments%20logo.png';
 const WHATSAPP = 'https://wa.me/918962364626';
-const STUDIO = 'https://studio.moments.live';
+const STUDIO = STUDIO_URL;
 
 const guestNavLinks = [
   { label: 'Features', href: '#features' },
@@ -53,7 +53,7 @@ const Navbar = () => {
     if (isGuestApp) {
       window.open(WHATSAPP, '_blank', 'noopener noreferrer');
     } else {
-      document.querySelector('#pricing')?.scrollIntoView({ behavior: 'smooth' });
+      window.location.href = STUDIO_SIGNUP;
     }
   };
 
@@ -80,6 +80,14 @@ const Navbar = () => {
               {link.isExternal && <ExternalLink size={10} className="opacity-50" />}
             </button>
           ))}
+          {!isGuestApp && (
+            <a
+              href={STUDIO_LOGIN}
+              className="text-[#68798B] hover:text-[#000000] text-[13px] font-semibold transition-colors duration-300 tracking-wide"
+            >
+              Login
+            </a>
+          )}
           <motion.button
             whileHover={{ scale: 1.03 }}
             whileTap={{ scale: 0.97 }}
@@ -112,6 +120,12 @@ const Navbar = () => {
                   {link.isExternal && <ExternalLink size={10} className="opacity-40" />}
                 </button>
               ))}
+              {!isGuestApp && (
+                <a href={STUDIO_LOGIN}
+                  className="text-[#68798B] hover:text-[#000000] text-sm font-semibold py-2.5 text-left transition-colors">
+                  Login
+                </a>
+              )}
               <button onClick={handleCTA}
                 className="bg-[#294D32] text-white px-5 py-3 rounded-full text-sm font-bold w-full mt-2">
                 {isGuestApp ? 'Contact Us' : 'Start Free Trial'}

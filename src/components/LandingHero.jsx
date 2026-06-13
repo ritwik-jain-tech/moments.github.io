@@ -1,5 +1,5 @@
 import React from 'react';
-import { heroData } from '../data/mockData';
+import { heroData, STUDIO_SIGNUP } from '../data/mockData';
 import { motion } from 'framer-motion';
 import { ArrowRight, Play } from 'lucide-react';
 
@@ -57,14 +57,15 @@ const LandingHero = () => {
               transition={{ duration: 0.5, delay: 0.4 }}
               className="flex flex-col sm:flex-row gap-3"
             >
-              <motion.button
+              <motion.a
+                href={STUDIO_SIGNUP}
                 whileHover={{ scale: 1.03, y: -1 }}
                 whileTap={{ scale: 0.98 }}
                 className="bg-[#294D32] text-white px-7 py-3.5 rounded-full text-sm font-bold hover:bg-[#1e3a25] transition-colors flex items-center justify-center gap-2 btn-shine shadow-md shadow-[#294D32]/15"
               >
                 Start Free Trial
                 <ArrowRight size={14} />
-              </motion.button>
+              </motion.a>
               <motion.button
                 whileHover={{ scale: 1.03 }}
                 onClick={() => { const el = document.querySelector('#how-it-works'); if (el) el.scrollIntoView({ behavior: 'smooth' }); }}
