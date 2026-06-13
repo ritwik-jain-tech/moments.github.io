@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { navLinks, STUDIO_URL, STUDIO_LOGIN, STUDIO_SIGNUP } from '../data/mockData';
+import { navLinks, STUDIO_URL, STUDIO_LOGIN } from '../data/mockData';
 import { Menu, X, ArrowRight, ExternalLink } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -53,8 +53,14 @@ const Navbar = () => {
     setMobileOpen(false);
     if (isGuestApp) {
       window.open(WHATSAPP, '_blank', 'noopener noreferrer');
+      return;
+    }
+    // B2B: scroll to the Free Trial form (navigate home first if needed)
+    if (location.pathname !== '/') {
+      navigate('/');
+      setTimeout(() => document.querySelector('#free-trial')?.scrollIntoView({ behavior: 'smooth' }), 300);
     } else {
-      window.location.href = STUDIO_SIGNUP;
+      document.querySelector('#free-trial')?.scrollIntoView({ behavior: 'smooth' });
     }
   };
 
@@ -105,7 +111,7 @@ const Navbar = () => {
               onClick={handleCTA}
               className="liquid-btn hidden sm:flex bg-brand text-on-brand px-4 lg:px-5 py-2 rounded-full text-[13px] font-bold hover:opacity-90 transition-all duration-300 items-center gap-1.5 shadow-md shadow-brand/20"
             >
-              {isGuestApp ? 'Contact' : 'Start Free Trial'}
+              {isGuestApp ? 'Contact' : 'Free Trial'}
               <ArrowRight size={13} />
             </motion.button>
             <button className="lg:hidden text-brand ml-1" onClick={() => setMobileOpen(!mobileOpen)}>
@@ -138,7 +144,7 @@ const Navbar = () => {
                 )}
                 <button onClick={handleCTA}
                   className="bg-brand text-on-brand px-5 py-3 rounded-full text-sm font-bold w-full mt-1">
-                  {isGuestApp ? 'Contact Us' : 'Start Free Trial'}
+                  {isGuestApp ? 'Contact Us' : 'Free Trial'}
                 </button>
               </div>
             </motion.div>

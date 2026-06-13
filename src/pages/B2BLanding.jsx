@@ -9,6 +9,7 @@ import BusinessCase from '../components/BusinessCase';
 import B2BTestimonials from '../components/B2BTestimonials';
 import B2BPricing from '../components/B2BPricing';
 import WhyNowAndCTA from '../components/WhyNowAndCTA';
+import ContactSection from '../components/ContactSection';
 import Footer from '../components/Footer';
 
 const B2BLanding = () => {
@@ -26,6 +27,7 @@ const B2BLanding = () => {
       <B2BTestimonials />
       <B2BPricing />
       <WhyNowAndCTA />
+      <ContactSection />
       <Footer />
     </div>
   );
