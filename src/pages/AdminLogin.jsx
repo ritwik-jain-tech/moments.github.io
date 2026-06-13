@@ -189,7 +189,19 @@ const AdminLogin = () => {
     }
   };
 
-  const handleSendOtp = async () => {
+  const fetchProfileByPhone = async (cleanedPhone) => {
+    try {
+      const { data } = await axios.get(`${API_BASE_URL}/api/userProfile/phone`, {
+        params: { phoneNumber: cleanedPhone },
+      });
+      return data?.data || null;
+    } catch (err) {
+      if (err.response?.status === 404) return null;
+      throw err;
+    }
+  };
+
+  const handlePhoneContinue = async () => {
     try {
       setError('');
       setLoading(true);
@@ -198,13 +210,25 @@ const AdminLogin = () => {
 
       if (cleanedPhone.length < 10) {
         setError('Please enter a valid 10-digit phone number');
-        setLoading(false);
         return;
       }
 
-      if (!isWhitelistedPhone(cleanedPhone)) {
-        setError('This phone number is not authorized to access the admin dashboard.');
-        setLoading(false);
+      const profile = await fetchProfileByPhone(cleanedPhone);
+      const whitelisted = isWhitelistedPhone(cleanedPhone);
+
+      // Whitelisted numbers sign in directly — no OTP verification.
+      if (whitelisted) {
+        if (profile?.userId) {
+          finishLogin(profile, cleanedPhone, null);
+        } else {
+          setError('No admin account exists for this number yet.');
+        }
+        return;
+      }
+
+      // Everyone else: only send an OTP if an account already exists.
+      if (!profile?.userId) {
+        setError('No account found for this number.');
         return;
       }
 
@@ -216,8 +240,8 @@ const AdminLogin = () => {
 
       setShowOtpInput(true);
     } catch (err) {
-      console.error('OTP Error:', err);
-      let errorMessage = 'Failed to send OTP. Please try again.';
+      console.error('Phone login error:', err);
+      let errorMessage = 'Failed to continue. Please try again.';
       if (err.response?.data?.message) errorMessage = err.response.data.message;
       else if (err.message) errorMessage = err.message;
       setError(errorMessage);
@@ -236,12 +260,6 @@ const AdminLogin = () => {
 
       if (isNaN(otpNumber) || otp.length !== 4) {
         setError('Please enter a valid 4-digit OTP');
-        setLoading(false);
-        return;
-      }
-
-      if (!isWhitelistedPhone(cleanedPhone)) {
-        setError('This phone number is not authorized to access the admin dashboard.');
         setLoading(false);
         return;
       }
@@ -426,11 +444,11 @@ const AdminLogin = () => {
                       </div>
                       <button
                         type="button"
-                        onClick={handleSendOtp}
+                        onClick={handlePhoneContinue}
                         disabled={loading || phoneNumber.length < 10}
                         className={`w-full py-3 rounded-lg text-sm font-semibold transition-opacity disabled:opacity-50 ${t.primaryBtn}`}
                       >
-                        {loading ? 'Sending…' : 'Send OTP'}
+                        {loading ? 'Please wait…' : 'Continue'}
                       </button>
                     </>
                   ) : (
