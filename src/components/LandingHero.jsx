@@ -42,6 +42,13 @@ const LandingHero = () => {
           <span className="gradient-text-shimmer">Manage &amp; Deliver Seamlessly.</span>
         </motion.h1>
 
+        <motion.p
+          initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, delay: 0.2 }}
+          className="text-muted text-[13px] md:text-sm font-medium tracking-wide max-w-md mb-9"
+        >
+          Media management &amp; instant delivery, built for professional photographers.
+        </motion.p>
+
         <motion.div
           initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, delay: 0.28 }}
           className="flex flex-col sm:flex-row gap-3 mb-14"

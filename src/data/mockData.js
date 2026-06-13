@@ -4,8 +4,8 @@ export const STUDIO_SIGNUP = `${STUDIO_URL}/admin/signup`;
 
 export const navLinks = [
   { label: 'Reality', href: '#reality' },
-  { label: 'Moments Studio', href: '#features' },
-  { label: 'Moments App', href: '/guestApp', isRoute: true },
+  { label: 'Moments Studio', href: '#features', brand: 'studio' },
+  { label: 'Moments App', href: '/guestApp', isRoute: true, brand: 'app' },
   { label: 'Pricing', href: '#pricing' },
 ];
 

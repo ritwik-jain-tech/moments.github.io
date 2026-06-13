@@ -1992,14 +1992,14 @@ const EventDetails = () => {
   );
 
   const renderDeliveryAndGallery = () => {
-    const card = isDark ? 'rounded-2xl border border-white/10 bg-[#13201A] p-6' : 'rounded-2xl border border-black/10 bg-white p-6';
+    const card = isDark ? 'rounded-2xl border border-white/10 bg-[#1A241E] p-6' : 'rounded-2xl border border-black/10 bg-white p-6';
     const inner = isDark ? 'rounded-xl border border-white/10 bg-white/5 p-4' : 'rounded-xl border border-black/10 bg-slate-50 p-4';
     const heading = isDark ? 'text-lg font-semibold text-white' : 'text-lg font-semibold text-slate-900';
     const textPrimary = isDark ? 'text-sm font-semibold text-white/80' : 'text-sm font-semibold text-slate-800';
     const textSecondary = isDark ? 'text-xs text-white/50 mt-1' : 'text-xs text-slate-500 mt-1';
     const input =
       isDark
-        ? 'w-full bg-[#13201A] border border-white/10 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:ring-0'
+        ? 'w-full bg-[#1A241E] border border-white/10 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:ring-0'
         : 'w-full bg-white border border-black/10 rounded-xl px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-0';
 
     return (
@@ -2398,7 +2398,7 @@ const EventDetails = () => {
   };
 
   const renderGuestAppConfig = () => {
-    const card = isDark ? 'rounded-2xl border border-white/10 bg-[#13201A] p-6' : 'rounded-2xl border border-black/10 bg-white p-6';
+    const card = isDark ? 'rounded-2xl border border-white/10 bg-[#1A241E] p-6' : 'rounded-2xl border border-black/10 bg-white p-6';
     const heading = isDark ? 'text-lg font-semibold text-white' : 'text-lg font-semibold text-slate-900';
     const textMuted = isDark ? 'text-white/60' : 'text-slate-600';
     const fieldBox = isDark ? 'border-white/10 bg-white/5' : 'border-black/10 bg-slate-50';
@@ -2586,7 +2586,7 @@ const EventDetails = () => {
   };
 
   const renderSidebar = () => {
-    const sidebarBg = isDark ? 'bg-[#0B140E]' : 'bg-white';
+    const sidebarBg = isDark ? 'bg-[#101611]' : 'bg-white';
     const sidebarBorder = isDark ? 'border-white/10' : 'border-[#d4d4d8]';
     const textMuted = isDark ? 'text-white/55' : 'text-slate-500';
     const imageMoments = moments.filter((m) => !isVideoMoment(m));
@@ -3174,7 +3174,7 @@ const EventDetails = () => {
                 </div>
               </div>
               <div className={`mt-3 rounded-xl border p-3 flex items-center justify-between gap-3 text-sm ${
-                isDark ? 'bg-[#0E1712] border-white/15 text-white/90' : 'bg-white border-black/10 text-slate-800'
+                isDark ? 'bg-[#1F2A23] border-white/15 text-white/90' : 'bg-white border-black/10 text-slate-800'
               }`}>
                 <div className="min-w-0 pr-4 space-y-1 text-xs md:text-sm">
                   <div className="truncate">
@@ -3228,7 +3228,7 @@ const EventDetails = () => {
     );
   };
 
-  const rootBg = isDark ? 'bg-[#0E1712]' : 'bg-white';
+  const rootBg = isDark ? 'bg-[#141C17]' : 'bg-white';
   const rootText = isDark ? 'text-white' : 'text-slate-900';
 
   return (
@@ -3236,7 +3236,7 @@ const EventDetails = () => {
       <div className="flex min-h-screen">
         {renderSidebar()}
         <main className="flex-1 overflow-x-hidden transition-all duration-300">
-          <div className={`sticky top-0 z-30 px-6 py-3.5 border-b backdrop-blur-xl ${isDark ? 'border-white/10 bg-[#0E1712]/80' : 'border-black/10 bg-white/80'}`}>
+          <div className={`sticky top-0 z-30 px-6 py-3.5 border-b backdrop-blur-xl ${isDark ? 'border-white/10 bg-[#141C17]/80' : 'border-black/10 bg-white/80'}`}>
             <div className="flex flex-col gap-3">
               <div className="flex items-center justify-between gap-4">
                 <div className="min-w-0">

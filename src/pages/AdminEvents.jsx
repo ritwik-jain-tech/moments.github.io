@@ -484,9 +484,9 @@ const AdminEvents = ({ initialSection = 'dashboard' }) => {
   };
 
   const renderCreateEventModal = () => {
-    const cardBg = isDark ? 'bg-[#15201A] border-white/10' : 'bg-white border-black/10';
+    const cardBg = isDark ? 'bg-[#1A241E] border-white/10' : 'bg-white border-black/10';
     const inputCls = isDark
-      ? 'bg-[#0E1712] border-white/10 text-white placeholder:text-white/40'
+      ? 'bg-[#1F2A23] border-white/10 text-white placeholder:text-white/40'
       : 'bg-white border-black/10 text-slate-900 placeholder:text-slate-400';
     const memberLabel = teamMemberOptions
       .filter((m) => selectedTeamMemberIds.includes(m.id))
@@ -503,7 +503,7 @@ const AdminEvents = ({ initialSection = 'dashboard' }) => {
             aria-modal="true"
             aria-label="Crop guest thumbnail"
           >
-            <div className={`px-4 py-3 flex items-center justify-between border-b ${isDark ? 'border-white/10 bg-[#0E1712]' : 'border-black/10 bg-white'}`}>
+            <div className={`px-4 py-3 flex items-center justify-between border-b ${isDark ? 'border-white/10 bg-[#1F2A23]' : 'border-black/10 bg-white'}`}>
               <div>
                 <p className={`text-sm font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}>Crop square thumbnail (1:1)</p>
                 <p className={`text-xs mt-0.5 ${isDark ? 'text-white/50' : 'text-slate-500'}`}>Drag to reposition · Pinch or scroll to zoom</p>
@@ -531,7 +531,7 @@ const AdminEvents = ({ initialSection = 'dashboard' }) => {
                 />
               ) : null}
             </div>
-            <div className={`px-4 py-3 flex items-center justify-between gap-3 border-t ${isDark ? 'border-white/10 bg-[#0E1712]' : 'border-black/10 bg-white'}`}>
+            <div className={`px-4 py-3 flex items-center justify-between gap-3 border-t ${isDark ? 'border-white/10 bg-[#1F2A23]' : 'border-black/10 bg-white'}`}>
               <label className={`flex items-center gap-2 text-sm ${isDark ? 'text-white/80' : 'text-slate-700'}`}>
                 <span className="whitespace-nowrap">Zoom</span>
                 <input
@@ -619,7 +619,7 @@ const AdminEvents = ({ initialSection = 'dashboard' }) => {
                 <div>
                   <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-white/80' : 'text-slate-700'}`}>Cover Photo (Optional)</label>
                   <div onClick={() => fileInputRef.current?.click()} className={`border-2 border-dashed rounded-2xl p-4 text-center cursor-pointer ${
-                    isDark ? 'border-white/15 bg-[#0E1712]' : 'border-black/10 bg-slate-50'
+                    isDark ? 'border-white/15 bg-[#1F2A23]' : 'border-black/10 bg-slate-50'
                   }`}>
                     {selectedImage ? <img src={URL.createObjectURL(selectedImage)} alt="Selected" className="max-h-36 mx-auto rounded-xl" /> : <p className={isDark ? 'text-white/60' : 'text-slate-500'}>Click to upload from computer</p>}
                   </div>
@@ -672,7 +672,7 @@ const AdminEvents = ({ initialSection = 'dashboard' }) => {
                       {memberLabel || 'Select team members'}
                     </button>
                     {teamMemberDropdownOpen && (
-                      <div className={`absolute z-20 mt-2 w-full rounded-xl border p-2 max-h-44 overflow-auto ${isDark ? 'bg-[#0E1712] border-white/10' : 'bg-white border-black/10'}`}>
+                      <div className={`absolute z-20 mt-2 w-full rounded-xl border p-2 max-h-44 overflow-auto ${isDark ? 'bg-[#1F2A23] border-white/10' : 'bg-white border-black/10'}`}>
                         {teamMemberOptions.length === 0 ? (
                           <div className={`px-2 py-1 text-sm ${isDark ? 'text-white/60' : 'text-slate-500'}`}>No team members found</div>
                         ) : teamMemberOptions.map((m) => (
@@ -701,7 +701,7 @@ const AdminEvents = ({ initialSection = 'dashboard' }) => {
                   <span className={isDark ? 'text-white/80' : 'text-slate-700'}>Enable Guest App</span>
                 </label>
 
-                <div className={`rounded-xl border p-4 space-y-3 ${isDark ? 'border-white/10 bg-[#0E1712]' : 'border-black/10 bg-slate-50'}`}>
+                <div className={`rounded-xl border p-4 space-y-3 ${isDark ? 'border-white/10 bg-[#1F2A23]' : 'border-black/10 bg-slate-50'}`}>
                   <label className={`flex items-start gap-3 ${selectedImage ? 'cursor-pointer' : 'opacity-50 cursor-not-allowed'}`}>
                     <input
                       type="checkbox"
@@ -753,7 +753,7 @@ const AdminEvents = ({ initialSection = 'dashboard' }) => {
                         <div
                           onClick={() => guestAppFileInputRef.current?.click()}
                           className={`border-2 border-dashed rounded-2xl p-4 text-center cursor-pointer ${
-                            isDark ? 'border-white/15 bg-[#15201A]' : 'border-black/10 bg-white'
+                            isDark ? 'border-white/15 bg-[#1A241E]' : 'border-black/10 bg-white'
                           }`}
                         >
                           {guestAppThumbnail ? (
@@ -979,7 +979,7 @@ const AdminEvents = ({ initialSection = 'dashboard' }) => {
       { key: 'Archived', label: 'Archived' },
     ];
 
-    const headerBg = isDark ? 'bg-[#0E1712]/60 border-white/10' : 'bg-white/70 border-black/10';
+    const headerBg = isDark ? 'bg-[#1F2A23]/60 border-white/10' : 'bg-white/70 border-black/10';
     const inputBg = isDark ? 'bg-black/20 border-white/10 text-white' : 'bg-white border-black/10 text-slate-900';
     const inputPh = isDark ? 'placeholder:text-white/40' : 'placeholder:text-slate-400';
     const inputBorder = isDark ? 'focus:border-emerald-500/40' : 'focus:border-emerald-600/40';
@@ -1117,7 +1117,7 @@ const AdminEvents = ({ initialSection = 'dashboard' }) => {
             No projects found.
           </div>
         ) : projectsLayout === 'list' ? (
-          <div className={`rounded-2xl border overflow-hidden ${isDark ? 'border-white/10 bg-[#0E1712]' : 'border-black/10 bg-white'}`}>
+          <div className={`rounded-2xl border overflow-hidden ${isDark ? 'border-white/10 bg-[#1F2A23]' : 'border-black/10 bg-white'}`}>
             <table className="w-full text-sm">
               <thead className={isDark ? 'bg-white/0' : 'bg-slate-50'}>
                 <tr className={isDark ? 'text-white/60' : 'text-slate-500'}>
@@ -1198,7 +1198,7 @@ const AdminEvents = ({ initialSection = 'dashboard' }) => {
                 <button
                   key={p.id}
                   onClick={() => handleEventClick(p.id)}
-                  className={`group text-left rounded-2xl border overflow-hidden hover:border-emerald-500/40 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-emerald-900/20 transition-all duration-300 ${isDark ? 'border-white/10 bg-[#0E1712]' : 'border-black/10 bg-white'}`}
+                  className={`group text-left rounded-2xl border overflow-hidden hover:border-emerald-500/40 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-emerald-900/20 transition-all duration-300 ${isDark ? 'border-white/10 bg-[#1F2A23]' : 'border-black/10 bg-white'}`}
                 >
                   <div className="aspect-square bg-black/20 overflow-hidden">
                     {p.thumbnail ? (
@@ -1256,7 +1256,7 @@ const AdminEvents = ({ initialSection = 'dashboard' }) => {
     );
   };
 
-  const appBg = isDark ? 'bg-[#0E1712]' : 'bg-[#FDFCFA]';
+  const appBg = isDark ? 'bg-[#141C17]' : 'bg-[#FDFCFA]';
   const appText = isDark ? 'text-white' : 'text-slate-900';
   const dividerBorder = isDark ? 'border-white/10' : 'border-black/10';
 
@@ -1301,7 +1301,7 @@ const AdminEvents = ({ initialSection = 'dashboard' }) => {
           {/* Top bar */}
           {activeSection !== 'projects' && (
             <div
-              className={`sticky top-0 z-40 backdrop-blur border-b ${dividerBorder} ${isDark ? 'bg-[#0E1712]/80' : 'bg-white/80'}`}
+              className={`sticky top-0 z-40 backdrop-blur border-b ${dividerBorder} ${isDark ? 'bg-[#141C17]/80' : 'bg-white/80'}`}
             >
             <div className="px-6 py-5 flex items-center justify-between gap-4">
               <div>
@@ -1460,7 +1460,7 @@ const AdminEvents = ({ initialSection = 'dashboard' }) => {
                             onClick={() => handleEventClick(event.eventId)}
                             className={`group text-left rounded-2xl overflow-hidden border transition-all duration-300 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-emerald-900/20 ${
                               isDark
-                                ? 'bg-[#0E1712] border-white/10 hover:border-emerald-500/40'
+                                ? 'bg-[#1F2A23] border-white/10 hover:border-emerald-500/40'
                                 : 'bg-white border-black/10 hover:border-emerald-600/40'
                             }`}
                           >
@@ -1550,7 +1550,7 @@ const AdminEvents = ({ initialSection = 'dashboard' }) => {
                           onClick={() => handleEventClick(ev.eventId)}
                           className={`w-full text-left rounded-xl border px-4 py-3 transition-colors ${
                             isDark
-                              ? 'border-white/10 hover:border-emerald-500/30 bg-[#0E1712]'
+                              ? 'border-white/10 hover:border-emerald-500/30 bg-[#1F2A23]'
                               : 'border-black/10 hover:border-emerald-600/30 bg-white'
                           }`}
                         >
@@ -1585,15 +1585,15 @@ const AdminEvents = ({ initialSection = 'dashboard' }) => {
                       <span className="text-xs px-2 py-1 rounded-full bg-red-500 text-white font-semibold">2</span>
                     </div>
                     <div className="mt-4 space-y-3">
-                      <div className={`rounded-xl border px-4 py-3 ${isDark ? 'bg-[#0E1712] border-white/10' : 'bg-white border-black/10'}`}>
+                      <div className={`rounded-xl border px-4 py-3 ${isDark ? 'bg-[#1F2A23] border-white/10' : 'bg-white border-black/10'}`}>
                         <div className={`text-sm ${isDark ? 'text-white/80' : 'text-slate-800'}`}>45 new photos uploaded by guests</div>
                         <div className={`text-xs mt-1 ${isDark ? 'text-white/45' : 'text-slate-500'}`}>5 min ago</div>
                       </div>
-                      <div className={`rounded-xl border px-4 py-3 ${isDark ? 'bg-[#0E1712] border-white/10' : 'bg-white border-black/10'}`}>
+                      <div className={`rounded-xl border px-4 py-3 ${isDark ? 'bg-[#1F2A23] border-white/10' : 'bg-white border-black/10'}`}>
                         <div className={`text-sm ${isDark ? 'text-white/80' : 'text-slate-800'}`}>Storage usage at 78%</div>
                         <div className={`text-xs mt-1 ${isDark ? 'text-white/45' : 'text-slate-500'}`}>1 hour ago</div>
                       </div>
-                      <div className={`rounded-xl border px-4 py-3 ${isDark ? 'bg-[#0E1712] border-white/10' : 'bg-white border-black/10'}`}>
+                      <div className={`rounded-xl border px-4 py-3 ${isDark ? 'bg-[#1F2A23] border-white/10' : 'bg-white border-black/10'}`}>
                         <div className={`text-sm ${isDark ? 'text-white/80' : 'text-slate-800'}`}>Team member added to a project</div>
                         <div className={`text-xs mt-1 ${isDark ? 'text-white/45' : 'text-slate-500'}`}>2 hours ago</div>
                       </div>
@@ -1606,7 +1606,7 @@ const AdminEvents = ({ initialSection = 'dashboard' }) => {
                   {/* Storage */}
                   <div className={`rounded-2xl border p-5 shadow-sm ${dashboardPanel}`}>
                     <div className="text-lg font-semibold">Storage Usage</div>
-                    <div className={`mt-4 rounded-xl border px-4 py-4 ${isDark ? 'bg-[#0E1712] border-white/10' : 'bg-white border-black/10'}`}>
+                    <div className={`mt-4 rounded-xl border px-4 py-4 ${isDark ? 'bg-[#1F2A23] border-white/10' : 'bg-white border-black/10'}`}>
                       {(() => {
                         const o = dashStorageOverview;
                         const totalBytes =

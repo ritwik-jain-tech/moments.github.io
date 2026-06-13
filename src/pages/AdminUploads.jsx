@@ -142,7 +142,7 @@ const AdminUploads = () => {
   };
 
   return (
-    <div className={`min-h-screen ${isDark ? 'bg-[#0E1712] text-white' : 'bg-white text-slate-900'} font-sans`}>
+    <div className={`min-h-screen ${isDark ? 'bg-[#141C17] text-white' : 'bg-white text-slate-900'} font-sans`}>
       <div className="flex min-h-screen">
         <AdminSidebar
           isDark={isDark}
@@ -227,7 +227,7 @@ const AdminUploads = () => {
 
         {showSelectModal && (
           <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4 bg-black/50">
-            <div className={`w-full max-w-2xl rounded-2xl border p-5 md:p-6 ${isDark ? 'border-white/10 bg-[#0E1712] text-white' : 'border-black/10 bg-white text-slate-900'}`}>
+            <div className={`w-full max-w-2xl rounded-2xl border p-5 md:p-6 ${isDark ? 'border-white/10 bg-[#1F2A23] text-white' : 'border-black/10 bg-white text-slate-900'}`}>
               <div className="flex items-start justify-between gap-3 mb-4">
                 <div>
                   <div className="text-lg font-semibold">Select a project</div>

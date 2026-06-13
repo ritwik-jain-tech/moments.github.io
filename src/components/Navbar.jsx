@@ -64,22 +64,38 @@ const Navbar = () => {
     }
   };
 
+  // Branded links render the MOMENTS wordmark + a small sub-label (studio / app).
+  const LinkInner = ({ link, logoH = 'h-3.5' }) =>
+    link.brand ? (
+      <span className="inline-flex items-center gap-1.5">
+        <img src={LOGO_FULL} alt="Moments" className={`${logoH} object-contain dark:brightness-0 dark:invert`} />
+        <span className="text-[10px] font-bold uppercase tracking-[0.12em] text-muted/70">{link.brand}</span>
+      </span>
+    ) : (
+      <>
+        {link.label}
+        {link.isExternal && <ExternalLink size={10} className="opacity-50" />}
+      </>
+    );
+
   return (
     <div className="fixed top-3 md:top-4 left-0 right-0 z-50 flex justify-center px-3">
       <motion.nav
         initial={{ y: -24, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-        className={`w-full max-w-[1080px] rounded-full border transition-all duration-500 ${
-          scrolled
-            ? 'bg-surface/90 backdrop-blur-2xl border-line/60 shadow-[0_14px_44px_rgb(var(--shadow-rgb)/calc(var(--shadow-strength)+0.12))]'
+        className={`w-full max-w-[1080px] border transition-all duration-500 ${
+          mobileOpen ? 'rounded-[1.75rem]' : 'rounded-full'
+        } ${
+          scrolled || mobileOpen
+            ? 'bg-surface/95 backdrop-blur-2xl border-line/60 shadow-[0_14px_44px_rgb(var(--shadow-rgb)/calc(var(--shadow-strength)+0.12))]'
             : 'bg-surface/60 backdrop-blur-xl border-line/35 shadow-[0_8px_28px_rgb(var(--shadow-rgb)/calc(var(--shadow-strength)+0.04))]'
         }`}
       >
         <div className="px-4 md:px-5 py-2.5 flex items-center justify-between gap-4">
           <button onClick={() => navigate('/')} className="flex items-center gap-2 pl-1 shrink-0">
-            <img src={LOGO_SMALL} alt="Moments" className="w-7 h-7 object-contain" />
-            <img src={LOGO_FULL} alt="Moments" className="h-[18px] object-contain hidden sm:block dark:brightness-0 dark:invert transition-[filter] duration-500" />
+            <img src={LOGO_SMALL} alt="Moments" className="w-7 h-7 object-contain dark:brightness-0 dark:invert transition-[filter] duration-500" />
+            <img src={LOGO_FULL} alt="Moments" className="h-[18px] object-contain dark:brightness-0 dark:invert transition-[filter] duration-500" />
           </button>
 
           <div className="hidden lg:flex items-center gap-6">
@@ -89,8 +105,7 @@ const Navbar = () => {
                 onClick={() => handleNavClick(link)}
                 className="text-muted hover:text-ink text-[13px] font-semibold transition-colors duration-300 tracking-wide flex items-center gap-1"
               >
-                {link.label}
-                {link.isExternal && <ExternalLink size={10} className="opacity-50" />}
+                <LinkInner link={link} />
               </button>
             ))}
           </div>
@@ -132,8 +147,7 @@ const Navbar = () => {
                 {links.map((link) => (
                   <button key={link.label} onClick={() => handleNavClick(link)}
                     className="text-muted hover:text-ink text-sm font-semibold py-2 text-left transition-colors flex items-center gap-1.5">
-                    {link.label}
-                    {link.isExternal && <ExternalLink size={10} className="opacity-40" />}
+                    <LinkInner link={link} logoH="h-4" />
                   </button>
                 ))}
                 {!isGuestApp && (
