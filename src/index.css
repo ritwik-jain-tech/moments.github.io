@@ -29,23 +29,23 @@
 }
 
 .dark {
-  /* DARK — warm charcoal with sage undertone, mint accents */
-  --canvas:       22  24  20;  /* #161814 deep warm olive-black  */
-  --panel:        28  31  24;  /* #1C1F18 slightly elevated      */
-  --surface:      34  38  29;  /* #22261D warm card              */
-  --surface-2:    44  49  38;
-  --ink:         243 239 230;  /* warm off-white                 */
-  --muted:       168 176 160;  /* sage grey                      */
-  --subtle:      124 132 115;
-  --line:         56  64  47;  /* warm dark border               */
-  --brand:       143 203 155;  /* #8FCB9B light mint             */
-  --brand-2:     184 224 192;
-  --on-brand:     20  28  18;  /* dark text on mint button       */
-  --accent:      224 184 232;  /* pastel purple                  */
-  --accent-2:    224 184 232;
-  --glow:        143 203 155;
+  /* DARK — deep forest green, matching studio.moments.live tool */
+  --canvas:       20  28  23;  /* #141C17 deep forest            */
+  --panel:        26  36  30;  /* #1A241E elevated section       */
+  --surface:      31  42  35;  /* #1F2A23 card                   */
+  --surface-2:    38  51  43;  /* #26332B raised                 */
+  --ink:         234 240 234;  /* #EAF0EA off-white green-tinted */
+  --muted:       157 176 162;  /* #9DB0A2 sage grey              */
+  --subtle:      110 128 116;  /* #6E8074                        */
+  --line:         46  61  51;  /* #2E3D33 forest border          */
+  --brand:        95 190 131;  /* #5FBE83 vivid tool green       */
+  --brand-2:     143 210 165;  /* #8FD2A5 lighter                */
+  --on-brand:     13  20  15;  /* dark text on green button      */
+  --accent:       72 150 120;  /* teal-green glow                */
+  --accent-2:    120 200 150;  /* mint glow                      */
+  --glow:         95 190 131;
   --shadow-rgb:    0   0   0;
-  --shadow-strength: 0.45;
+  --shadow-strength: 0.55;
   color-scheme: dark;
 }
 

@@ -26,7 +26,7 @@ const Navbar = () => {
   const links = isGuestApp ? guestNavLinks : navLinks;
 
   useEffect(() => {
-    const handleScroll = () => setScrolled(window.scrollY > 50);
+    const handleScroll = () => setScrolled(window.scrollY > 30);
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
@@ -59,87 +59,93 @@ const Navbar = () => {
   };
 
   return (
-    <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ${
-      scrolled
-        ? 'bg-canvas/80 backdrop-blur-2xl border-b border-line/40 shadow-sm'
-        : 'bg-transparent'
-    }`}>
-      <div className="max-w-[1400px] mx-auto px-6 md:px-10 py-4 flex items-center justify-between">
-        <button onClick={() => navigate('/')} className="flex items-center gap-2">
-          <img src={LOGO_SMALL} alt="Moments" className="w-7 h-7 object-contain" />
-          <img src={LOGO_FULL} alt="Moments" className="h-5 object-contain hidden sm:block dark:brightness-0 dark:invert transition-[filter] duration-500" />
-        </button>
-
-        <div className="hidden lg:flex items-center gap-7">
-          {links.map((link) => (
-            <button
-              key={link.label}
-              onClick={() => handleNavClick(link)}
-              className="text-muted hover:text-ink text-[13px] font-semibold transition-colors duration-300 tracking-wide flex items-center gap-1"
-            >
-              {link.label}
-              {link.isExternal && <ExternalLink size={10} className="opacity-50" />}
-            </button>
-          ))}
-          {!isGuestApp && (
-            <a
-              href={STUDIO_LOGIN}
-              className="text-muted hover:text-ink text-[13px] font-semibold transition-colors duration-300 tracking-wide"
-            >
-              Login
-            </a>
-          )}
-          <ThemeToggle />
-          <motion.button
-            whileHover={{ scale: 1.03 }}
-            whileTap={{ scale: 0.97 }}
-            onClick={handleCTA}
-            className="bg-brand text-on-brand px-5 py-2.5 rounded-full text-[13px] font-bold hover:opacity-90 transition-all duration-300 flex items-center gap-2 shadow-md shadow-brand/20 btn-shine"
-          >
-            {isGuestApp ? 'Contact Us' : 'Start Free Trial'}
-            <ArrowRight size={13} />
-          </motion.button>
-        </div>
-
-        <div className="lg:hidden flex items-center gap-2">
-          <ThemeToggle />
-          <button className="text-brand" onClick={() => setMobileOpen(!mobileOpen)}>
-            {mobileOpen ? <X size={22} /> : <Menu size={22} />}
+    <div className="fixed top-3 md:top-4 left-0 right-0 z-50 flex justify-center px-3">
+      <motion.nav
+        initial={{ y: -24, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+        className={`w-full max-w-[1080px] rounded-full border transition-all duration-500 ${
+          scrolled
+            ? 'bg-surface/70 backdrop-blur-2xl border-line/40 shadow-[0_10px_40px_rgb(var(--shadow-rgb)/calc(var(--shadow-strength)+0.05))]'
+            : 'bg-surface/40 backdrop-blur-xl border-line/25 shadow-[0_6px_24px_rgb(var(--shadow-rgb)/var(--shadow-strength))]'
+        }`}
+      >
+        <div className="px-4 md:px-5 py-2.5 flex items-center justify-between gap-4">
+          <button onClick={() => navigate('/')} className="flex items-center gap-2 pl-1 shrink-0">
+            <img src={LOGO_SMALL} alt="Moments" className="w-7 h-7 object-contain" />
+            <img src={LOGO_FULL} alt="Moments" className="h-[18px] object-contain hidden sm:block dark:brightness-0 dark:invert transition-[filter] duration-500" />
           </button>
-        </div>
-      </div>
 
-      <AnimatePresence>
-        {mobileOpen && (
-          <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 'auto' }}
-            exit={{ opacity: 0, height: 0 }}
-            className="lg:hidden bg-canvas/95 backdrop-blur-xl border-t border-line/30 overflow-hidden"
-          >
-            <div className="p-6 flex flex-col gap-3">
-              {links.map((link) => (
-                <button key={link.label} onClick={() => handleNavClick(link)}
-                  className="text-muted hover:text-ink text-sm font-semibold py-2.5 text-left transition-colors flex items-center gap-1.5">
-                  {link.label}
-                  {link.isExternal && <ExternalLink size={10} className="opacity-40" />}
-                </button>
-              ))}
-              {!isGuestApp && (
-                <a href={STUDIO_LOGIN}
-                  className="text-muted hover:text-ink text-sm font-semibold py-2.5 text-left transition-colors">
-                  Login
-                </a>
-              )}
-              <button onClick={handleCTA}
-                className="bg-brand text-on-brand px-5 py-3 rounded-full text-sm font-bold w-full mt-2">
-                {isGuestApp ? 'Contact Us' : 'Start Free Trial'}
+          <div className="hidden lg:flex items-center gap-6">
+            {links.map((link) => (
+              <button
+                key={link.label}
+                onClick={() => handleNavClick(link)}
+                className="text-muted hover:text-ink text-[13px] font-semibold transition-colors duration-300 tracking-wide flex items-center gap-1"
+              >
+                {link.label}
+                {link.isExternal && <ExternalLink size={10} className="opacity-50" />}
               </button>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </nav>
+            ))}
+          </div>
+
+          <div className="flex items-center gap-2">
+            {!isGuestApp && (
+              <a
+                href={STUDIO_LOGIN}
+                className="hidden md:inline text-muted hover:text-ink text-[13px] font-semibold transition-colors duration-300 tracking-wide px-1"
+              >
+                Login
+              </a>
+            )}
+            <ThemeToggle />
+            <motion.button
+              whileHover={{ scale: 1.03 }}
+              whileTap={{ scale: 0.97 }}
+              onClick={handleCTA}
+              className="hidden sm:flex bg-brand text-on-brand px-4 lg:px-5 py-2 rounded-full text-[13px] font-bold hover:opacity-90 transition-all duration-300 items-center gap-1.5 shadow-md shadow-brand/20 btn-shine"
+            >
+              {isGuestApp ? 'Contact' : 'Start Free Trial'}
+              <ArrowRight size={13} />
+            </motion.button>
+            <button className="lg:hidden text-brand ml-1" onClick={() => setMobileOpen(!mobileOpen)}>
+              {mobileOpen ? <X size={20} /> : <Menu size={20} />}
+            </button>
+          </div>
+        </div>
+
+        <AnimatePresence>
+          {mobileOpen && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              className="lg:hidden overflow-hidden border-t border-line/30 mx-1"
+            >
+              <div className="p-5 flex flex-col gap-3">
+                {links.map((link) => (
+                  <button key={link.label} onClick={() => handleNavClick(link)}
+                    className="text-muted hover:text-ink text-sm font-semibold py-2 text-left transition-colors flex items-center gap-1.5">
+                    {link.label}
+                    {link.isExternal && <ExternalLink size={10} className="opacity-40" />}
+                  </button>
+                ))}
+                {!isGuestApp && (
+                  <a href={STUDIO_LOGIN}
+                    className="text-muted hover:text-ink text-sm font-semibold py-2 text-left transition-colors">
+                    Login
+                  </a>
+                )}
+                <button onClick={handleCTA}
+                  className="bg-brand text-on-brand px-5 py-3 rounded-full text-sm font-bold w-full mt-1">
+                  {isGuestApp ? 'Contact Us' : 'Start Free Trial'}
+                </button>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </motion.nav>
+    </div>
   );
 };
 

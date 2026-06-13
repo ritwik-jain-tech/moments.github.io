@@ -57,9 +57,9 @@ const LandingHero = () => {
             Start Free Trial <ArrowRight size={14} />
           </motion.a>
           <motion.button whileHover={{ scale: 1.03 }}
-            onClick={() => document.querySelector('#how-it-works')?.scrollIntoView({ behavior: 'smooth' })}
+            onClick={() => document.querySelector('#platform')?.scrollIntoView({ behavior: 'smooth' })}
             className="border border-line text-muted px-7 py-3.5 rounded-full text-sm font-semibold hover:border-brand/40 hover:text-ink transition-all flex items-center justify-center gap-2">
-            <Play size={12} fill="currentColor" /> See How It Works
+            <Play size={12} fill="currentColor" /> Explore Platform
           </motion.button>
         </motion.div>
       </div>

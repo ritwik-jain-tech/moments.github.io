@@ -4,7 +4,6 @@ import LandingHero from '../components/LandingHero';
 import ProblemSection from '../components/ProblemSection';
 import DualValueSection from '../components/DualValueSection';
 import PlatformFeatures from '../components/PlatformFeatures';
-import HowItWorks from '../components/HowItWorks';
 import BusinessCase from '../components/BusinessCase';
 import B2BTestimonials from '../components/B2BTestimonials';
 import B2BPricing from '../components/B2BPricing';
@@ -21,7 +20,6 @@ const B2BLanding = () => {
       <ProblemSection />
       <DualValueSection />
       <PlatformFeatures />
-      <HowItWorks />
       <BusinessCase />
       <B2BTestimonials />
       <B2BPricing />

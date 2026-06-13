@@ -4,8 +4,8 @@ export const STUDIO_SIGNUP = `${STUDIO_URL}/admin/signup`;
 
 export const navLinks = [
   { label: 'Platform', href: '#platform' },
+  { label: 'Features', href: '#features' },
   { label: 'Guest App', href: '/guestApp', isRoute: true },
-  { label: 'How It Works', href: '#how-it-works' },
   { label: 'Pricing', href: '#pricing' },
 ];
 
@@ -214,9 +214,9 @@ export const footerData = {
   tagline: 'Media Management Built for Professional Photographers',
   email: 'hello@moments.live',
   platformLinks: [
-    { label: 'Platform Features', href: '#platform' },
+    { label: 'Platform', href: '#platform' },
+    { label: 'Features', href: '#features' },
     { label: 'Guest App', href: '/guestApp' },
-    { label: 'How It Works', href: '#how-it-works' },
     { label: 'Pricing', href: '#pricing' },
   ],
   companyLinks: [
