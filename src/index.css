@@ -145,6 +145,16 @@ button:disabled { transition: opacity 0.2s ease, background-color 0.22s ease; }
               rgb(201 139 224) 50%, rgb(var(--brand-2)) 72%, rgb(var(--brand)) 100%);
 }
 
+/* Scroll-progress line fill — shade shifts along its length as it grows */
+.progress-fill {
+  background: linear-gradient(to bottom,
+    rgb(var(--brand)) 0%, rgb(var(--accent-2)) 55%, rgb(var(--brand-2)) 100%);
+}
+.dark .progress-fill {
+  background: linear-gradient(to bottom,
+    rgb(var(--brand)) 0%, rgb(201 139 224) 55%, rgb(var(--brand-2)) 100%);
+}
+
 /* ============================================================
    LIQUID GLASS
    ============================================================ */

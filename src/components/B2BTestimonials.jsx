@@ -13,7 +13,7 @@ const B2BTestimonials = () => {
   useEffect(() => { const timer = setInterval(next, 6000); return () => clearInterval(timer); }, [next]);
 
   return (
-    <section className="bg-canvas py-20 md:py-28 relative overflow-hidden">
+    <section className="bg-canvas py-14 md:py-20 relative overflow-hidden">
       <div className="absolute bottom-[-200px] left-1/2 -translate-x-1/2 w-[600px] h-[400px] bg-accent/15 rounded-full blur-[120px] animate-aurora" />
       <div className="max-w-[1200px] mx-auto px-5 md:px-10 relative z-10">
         <motion.div initial="hidden" whileInView="visible" viewport={viewportOnce} variants={zoomBlur} className="text-center mb-8">

@@ -107,7 +107,7 @@ const ContactSection = () => {
   const progress = status === 'done' ? 100 : ((step + 1) / total) * 100;
 
   return (
-    <section id="free-trial" className="bg-canvas py-20 md:py-28 relative overflow-hidden scroll-mt-32 md:scroll-mt-36">
+    <section id="free-trial" className="bg-canvas py-14 md:py-20 relative overflow-hidden scroll-mt-32 md:scroll-mt-36">
       <div className="absolute inset-0 pointer-events-none overflow-hidden">
         <div className="animate-aurora absolute top-1/4 left-1/5 w-[34vw] h-[34vw] max-w-[440px] max-h-[440px] rounded-full bg-brand/15 blur-[130px]" />
         <div className="animate-aurora absolute bottom-0 right-1/5 w-[30vw] h-[30vw] max-w-[400px] max-h-[400px] rounded-full bg-accent/20 blur-[120px]" style={{ animationDelay: '-9s' }} />

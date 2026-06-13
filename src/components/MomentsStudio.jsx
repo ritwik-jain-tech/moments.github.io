@@ -1,5 +1,5 @@
-import React, { useRef } from 'react';
-import { motion, useScroll } from 'framer-motion';
+import React, { useRef, useState, useEffect } from 'react';
+import { motion, useScroll, useTransform } from 'framer-motion';
 import { Camera, ScanFace, Share2, Users, ArrowRight, Check } from 'lucide-react';
 import BrowserFrame from './BrowserFrame';
 import { clipReveal, viewportOnce, EASE } from '../lib/motion';
@@ -119,19 +119,32 @@ const StageRow = ({ stage, index }) => {
 
 const MomentsStudio = () => {
   const stagesRef = useRef(null);
+  const [trackH, setTrackH] = useState(0);
+
+  useEffect(() => {
+    const el = stagesRef.current;
+    if (!el) return;
+    const update = () => setTrackH(el.offsetHeight);
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
   const { scrollYProgress } = useScroll({
     target: stagesRef,
     offset: ['start 0.6', 'end 0.85'],
   });
+  const fillHeight = useTransform(scrollYProgress, [0, 1], [0, trackH]);
 
   return (
-    <section id="features" className="bg-gradient-to-b from-canvas via-panel to-canvas relative overflow-hidden py-20 md:py-28 scroll-mt-28 md:scroll-mt-32">
+    <section id="features" className="bg-gradient-to-b from-canvas via-panel to-canvas relative overflow-hidden py-14 md:py-20 scroll-mt-28 md:scroll-mt-32">
       <div className="absolute top-1/4 right-[-160px] w-[460px] h-[460px] rounded-full bg-accent/15 blur-[150px] animate-aurora pointer-events-none" />
       <div className="absolute bottom-1/4 left-[-160px] w-[420px] h-[420px] rounded-full bg-brand/10 blur-[150px] animate-aurora pointer-events-none" style={{ animationDelay: '-8s' }} />
 
       <div className="max-w-[1200px] mx-auto px-5 md:px-10 relative z-10">
         {/* header */}
-        <motion.div initial="hidden" whileInView="visible" viewport={viewportOnce} variants={clipReveal} className="text-center mb-16 md:mb-24 max-w-2xl mx-auto">
+        <motion.div initial="hidden" whileInView="visible" viewport={viewportOnce} variants={clipReveal} className="text-center mb-12 md:mb-16 max-w-2xl mx-auto">
           <span className="text-brand text-[11px] font-semibold uppercase tracking-[0.2em] mb-4 block">Moments Studio</span>
           <h2 className="text-[2rem] md:text-[3rem] font-bold text-ink leading-[1.08] tracking-tight font-tight mb-4">
             Your media journey, <span className="gradient-text-green">made effortless.</span>
@@ -145,13 +158,15 @@ const MomentsStudio = () => {
         <div ref={stagesRef} className="relative">
           {/* centre line track */}
           <div className="hidden lg:block absolute left-1/2 -translate-x-1/2 top-0 bottom-0 w-[2px] bg-line/40 rounded-full" />
-          {/* progress fill */}
+          {/* progress fill — reveals a shifting shade top-down as you scroll */}
           <motion.div
-            style={{ scaleY: scrollYProgress }}
-            className="hidden lg:block absolute left-1/2 -translate-x-1/2 top-0 bottom-0 w-[2px] bg-gradient-to-b from-brand to-brand-2 rounded-full origin-top"
-          />
+            style={{ height: fillHeight }}
+            className="hidden lg:block absolute left-1/2 -translate-x-1/2 top-0 w-[2px] rounded-full overflow-hidden"
+          >
+            <div style={{ height: trackH }} className="w-full progress-fill rounded-full" />
+          </motion.div>
 
-          <div className="space-y-20 md:space-y-28">
+          <div className="space-y-14 md:space-y-20">
             {STAGES.map((stage, i) => (
               <StageRow key={stage.tag} stage={stage} index={i} />
             ))}
@@ -160,7 +175,7 @@ const MomentsStudio = () => {
 
         {/* closer */}
         <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={viewportOnce}
-          className="mt-20 md:mt-28 text-center">
+          className="mt-14 md:mt-20 text-center">
           <div className="inline-flex flex-wrap justify-center items-center gap-2.5 liquid-glass rounded-full px-6 py-3">
             <span className="text-ink font-tight font-bold text-sm md:text-base">Storage + Gallery + Editing</span>
             <ArrowRight size={15} className="text-brand" />
