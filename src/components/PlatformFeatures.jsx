@@ -18,7 +18,7 @@ const PlatformFeatures = () => {
   }, [active, features.length]);
 
   return (
-    <section id="features" className="bg-panel py-20 md:py-28 relative overflow-hidden">
+    <section id="features" className="bg-panel py-20 md:py-28 relative overflow-hidden scroll-mt-24">
       <div className="absolute bottom-[-200px] left-1/2 -translate-x-1/2 w-[700px] h-[500px] bg-brand/10 rounded-full blur-[150px] animate-aurora" />
       <div className="max-w-[1200px] mx-auto px-5 md:px-10 relative z-10">
         <motion.div initial="hidden" whileInView="visible" viewport={viewportOnce} variants={slideLeft} className="mb-8">

@@ -53,7 +53,7 @@ const DualValueSection = () => {
               </ul>
               {activeLayer === 1 && (
                 <motion.button whileHover={{ x: 4 }} onClick={() => navigate('/guestApp')} className="text-brand text-[13px] font-bold flex items-center gap-2">
-                  Explore the Guest App <ArrowRight size={13} />
+                  Explore the Moments App <ArrowRight size={13} />
                 </motion.button>
               )}
             </div>

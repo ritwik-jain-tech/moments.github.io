@@ -28,7 +28,7 @@ const ProblemSection = () => {
   const ActiveIcon = iconMap[points[active].icon];
 
   return (
-    <section className="bg-panel relative overflow-hidden py-20 md:py-28">
+    <section id="reality" className="bg-panel relative overflow-hidden py-20 md:py-28 scroll-mt-24">
       <div className="absolute top-[-140px] right-[-120px] w-[460px] h-[460px] rounded-full bg-accent/15 blur-[150px] animate-aurora pointer-events-none" />
       <div className="absolute bottom-[-160px] left-[-120px] w-[420px] h-[420px] rounded-full bg-brand/10 blur-[150px] animate-aurora pointer-events-none" style={{ animationDelay: '-8s' }} />
 
