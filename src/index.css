@@ -70,6 +70,16 @@ body {
 }
 
 /* ============================================================
+   ADMIN BRAND SCOPING
+   The admin panel keeps its own light/dark toggle (adminTheme), so we
+   pin the brand tokens to that toggle here. This lets admin buttons use
+   bg-brand / text-on-brand and match the landing's brand in both modes,
+   independent of the global .dark class.
+   ============================================================ */
+.admin-theme-light { --brand: 41 77 50; --brand-2: 58 107 68; --on-brand: 255 245 233; }
+.admin-theme-dark  { --brand: 95 190 131; --brand-2: 143 210 165; --on-brand: 13 20 15; }
+
+/* ============================================================
    CONSISTENT INTERACTION FEEDBACK — smooth, appealing buttons
    Applies everywhere so hovers/clicks feel uniform across the app.
    ============================================================ */

@@ -541,7 +541,7 @@ const AdminEvents = ({ initialSection = 'dashboard' }) => {
                   step={0.05}
                   value={guestZoom}
                   onChange={(e) => setGuestZoom(Number(e.target.value))}
-                  className="w-40 accent-emerald-600"
+                  className="w-40 accent-[#2a4d32]"
                 />
               </label>
               <div className="flex gap-2">
@@ -556,7 +556,7 @@ const AdminEvents = ({ initialSection = 'dashboard' }) => {
                   type="button"
                   onClick={handleGuestThumbCropConfirm}
                   disabled={!guestCroppedAreaPixels}
-                  className={`px-4 py-2 rounded-xl text-sm text-white bg-emerald-700 hover:bg-emerald-600 border border-emerald-500/20 disabled:opacity-50 disabled:cursor-not-allowed`}
+                  className={`px-4 py-2 rounded-xl text-sm text-on-brand bg-brand hover:bg-brand-2 border border-[#2a4d32]/20 disabled:opacity-50 disabled:cursor-not-allowed`}
                 >
                   Apply square crop
                 </button>
@@ -591,10 +591,10 @@ const AdminEvents = ({ initialSection = 'dashboard' }) => {
                 <div className="flex items-center gap-2">
                   <span className={`w-8 h-8 rounded-full inline-flex items-center justify-center text-sm font-semibold ${
                     createStep === s
-                      ? 'bg-emerald-700 text-white'
+                      ? 'bg-brand text-on-brand'
                       : isDark ? 'bg-white/10 text-white/70' : 'bg-slate-100 text-slate-500'
                   }`}>{s}</span>
-                  <span className={`${createStep === s ? 'text-emerald-700 font-semibold' : isDark ? 'text-white/60' : 'text-slate-500'}`}>
+                  <span className={`${createStep === s ? 'text-[#2a4d32] font-semibold' : isDark ? 'text-white/60' : 'text-slate-500'}`}>
                     {s === 1 ? 'Basic Info' : s === 2 ? 'Details' : 'Guest App'}
                   </span>
                 </div>
@@ -658,7 +658,7 @@ const AdminEvents = ({ initialSection = 'dashboard' }) => {
                   <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-white/80' : 'text-slate-700'}`}>Location (Google Maps)</label>
                   <div className="flex gap-2">
                     <input value={locationQuery} onChange={(e) => setLocationQuery(e.target.value)} className={`flex-1 rounded-xl px-4 py-3 border ${inputCls}`} placeholder="Search / paste address" />
-                    <a href={mapsUrl} target="_blank" rel="noreferrer" className="px-4 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white border border-emerald-400/20">Map</a>
+                    <a href={mapsUrl} target="_blank" rel="noreferrer" className="px-4 py-3 rounded-xl bg-brand hover:bg-brand-2 text-on-brand border border-[#2a4d32]/20">Map</a>
                   </div>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -739,8 +739,8 @@ const AdminEvents = ({ initialSection = 'dashboard' }) => {
                           }}
                           className={`w-full py-2.5 rounded-xl border text-sm font-medium ${
                             isDark
-                              ? 'border-emerald-500/35 text-emerald-300 hover:bg-emerald-900/25'
-                              : 'border-emerald-600/40 text-emerald-800 hover:bg-emerald-50'
+                              ? 'border-[#2a4d32]/35 text-[#8fd2a5] hover:bg-[#2a4d32]/25'
+                              : 'border-[#2a4d32]/40 text-[#1a3020] hover:bg-[#2a4d32]/10'
                           }`}
                         >
                           Crop square from cover photo
@@ -781,11 +781,11 @@ const AdminEvents = ({ initialSection = 'dashboard' }) => {
 
                   {guestAppUseEventThumbnail && selectedImage && (
                     <div className="flex flex-col items-center gap-2 pt-1">
-                      <span className={`text-xs ${isDark ? 'text-emerald-400/90' : 'text-emerald-700'}`}>Preview — using event cover</span>
+                      <span className={`text-xs ${isDark ? 'text-[#8fd2a5]/90' : 'text-[#2a4d32]'}`}>Preview — using event cover</span>
                       <img
                         src={URL.createObjectURL(selectedImage)}
                         alt="Event cover preview"
-                        className="max-h-36 w-36 rounded-xl object-cover border border-emerald-500/40 aspect-square"
+                        className="max-h-36 w-36 rounded-xl object-cover border border-[#2a4d32]/40 aspect-square"
                       />
                     </div>
                   )}
@@ -812,7 +812,7 @@ const AdminEvents = ({ initialSection = 'dashboard' }) => {
             {createStep < 3 ? (
               <button
                 onClick={() => setCreateStep((s) => Math.min(3, s + 1))}
-                className="px-6 py-2.5 rounded-xl bg-emerald-700 hover:bg-emerald-600 text-white border border-emerald-500/20"
+                className="px-6 py-2.5 rounded-xl bg-brand hover:bg-brand-2 text-on-brand border border-[#2a4d32]/20"
               >
                 Next
               </button>
@@ -820,7 +820,7 @@ const AdminEvents = ({ initialSection = 'dashboard' }) => {
               <button
                 onClick={handleCreateEvent}
                 disabled={uploading || !newEventName || !eventStartTime || !eventEndTime}
-                className={`px-6 py-2.5 rounded-xl bg-emerald-700 hover:bg-emerald-600 text-white border border-emerald-500/20 ${
+                className={`px-6 py-2.5 rounded-xl bg-brand hover:bg-brand-2 text-on-brand border border-[#2a4d32]/20 ${
                   (uploading || !newEventName || !eventStartTime || !eventEndTime) ? 'opacity-50 cursor-not-allowed' : ''
                 }`}
               >
@@ -960,12 +960,12 @@ const AdminEvents = ({ initialSection = 'dashboard' }) => {
   const statusPill = (status) => {
     const base = 'inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold';
     if (isDark) {
-      if (status === 'Active') return `${base} bg-emerald-500/15 text-emerald-300 border border-emerald-400/20`;
+      if (status === 'Active') return `${base} bg-[#2a4d32]/15 text-[#8fd2a5] border border-[#2a4d32]/20`;
       if (status === 'Delivered') return `${base} bg-cyan-500/15 text-cyan-300 border border-cyan-400/20`;
       if (status === 'Archived') return `${base} bg-white/5 text-white/50 border border-white/10`;
       return `${base} bg-white/5 text-white/60 border border-white/10`;
     }
-    if (status === 'Active') return `${base} bg-emerald-600/10 text-emerald-700 border border-emerald-600/20`;
+    if (status === 'Active') return `${base} bg-[#2a4d32]/10 text-[#2a4d32] border border-[#2a4d32]/20`;
     if (status === 'Delivered') return `${base} bg-cyan-600/10 text-cyan-700 border border-cyan-600/20`;
     if (status === 'Archived') return `${base} bg-slate-100 text-slate-600 border border-slate-200`;
     return `${base} bg-slate-100 text-slate-600 border border-slate-200`;
@@ -982,7 +982,7 @@ const AdminEvents = ({ initialSection = 'dashboard' }) => {
     const headerBg = isDark ? 'bg-[#1F2A23]/60 border-white/10' : 'bg-white/70 border-black/10';
     const inputBg = isDark ? 'bg-black/20 border-white/10 text-white' : 'bg-white border-black/10 text-slate-900';
     const inputPh = isDark ? 'placeholder:text-white/40' : 'placeholder:text-slate-400';
-    const inputBorder = isDark ? 'focus:border-emerald-500/40' : 'focus:border-emerald-600/40';
+    const inputBorder = isDark ? 'focus:border-[#2a4d32]/40' : 'focus:border-[#2a4d32]/40';
     const cardBorder = isDark ? 'border-white/10' : 'border-black/10';
 
     return (
@@ -1015,7 +1015,7 @@ const AdminEvents = ({ initialSection = 'dashboard' }) => {
                   resetCreateForm();
                   setShowCreateModal(true);
                 }}
-                className="h-11 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 transition-colors font-semibold border border-emerald-400/20 text-white inline-flex items-center gap-2"
+                className="h-11 px-4 rounded-xl bg-brand hover:bg-brand-2 transition-colors font-semibold border border-[#2a4d32]/20 text-on-brand inline-flex items-center gap-2"
               >
                 <span className="inline-flex w-5 h-5 rounded-md bg-black/20 items-center justify-center">
                   <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor">
@@ -1037,8 +1037,8 @@ const AdminEvents = ({ initialSection = 'dashboard' }) => {
                   className={`px-4 py-2 rounded-xl text-sm font-semibold border transition-colors ${
                     projectsTab === t.key
                       ? isDark
-                        ? 'bg-emerald-600/20 text-emerald-200 border-emerald-500/30'
-                        : 'bg-emerald-600/10 text-emerald-700 border-emerald-600/20'
+                        ? 'bg-[#2a4d32]/20 text-[#8fd2a5] border-[#2a4d32]/30'
+                        : 'bg-[#2a4d32]/10 text-[#2a4d32] border-[#2a4d32]/20'
                       : isDark
                         ? 'bg-white/0 text-white/60 border-white/10 hover:text-white'
                         : 'bg-white text-slate-600 border-black/10 hover:text-slate-900'
@@ -1055,8 +1055,8 @@ const AdminEvents = ({ initialSection = 'dashboard' }) => {
                 className={`w-10 h-10 rounded-xl border transition-colors flex items-center justify-center ${
                   projectsLayout === 'grid'
                     ? isDark
-                      ? 'bg-emerald-600/20 border-emerald-500/30'
-                      : 'bg-emerald-600/10 border-emerald-600/20'
+                      ? 'bg-[#2a4d32]/20 border-[#2a4d32]/30'
+                      : 'bg-[#2a4d32]/10 border-[#2a4d32]/20'
                     : isDark
                       ? 'bg-white/0 border-white/10 hover:bg-white/5'
                       : 'bg-white border-black/10 hover:bg-slate-50'
@@ -1072,8 +1072,8 @@ const AdminEvents = ({ initialSection = 'dashboard' }) => {
                 className={`w-10 h-10 rounded-xl border transition-colors flex items-center justify-center ${
                   projectsLayout === 'list'
                     ? isDark
-                      ? 'bg-emerald-600/20 border-emerald-500/30'
-                      : 'bg-emerald-600/10 border-emerald-600/20'
+                      ? 'bg-[#2a4d32]/20 border-[#2a4d32]/30'
+                      : 'bg-[#2a4d32]/10 border-[#2a4d32]/20'
                     : isDark
                       ? 'bg-white/0 border-white/10 hover:bg-white/5'
                       : 'bg-white border-black/10 hover:bg-slate-50'
@@ -1106,7 +1106,7 @@ const AdminEvents = ({ initialSection = 'dashboard' }) => {
               resetCreateForm();
               setShowCreateModal(true);
             }}
-            className="h-11 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 transition-colors font-semibold border border-emerald-400/20 text-white"
+            className="h-11 px-3 rounded-xl bg-brand hover:bg-brand-2 transition-colors font-semibold border border-[#2a4d32]/20 text-on-brand"
           >
             + New
           </button>
@@ -1165,7 +1165,7 @@ const AdminEvents = ({ initialSection = 'dashboard' }) => {
                           {used}GB / {limit}GB
                         </div>
                         <div className={`mt-2 h-2 rounded-full ${isDark ? 'bg-white/10' : 'bg-slate-200'} overflow-hidden`}>
-                          <div className={`h-full rounded-full ${isDark ? 'bg-emerald-500' : 'bg-emerald-600'}`} style={{ width: `${pct}%` }} />
+                          <div className={`h-full rounded-full ${isDark ? 'bg-brand' : 'bg-brand'}`} style={{ width: `${pct}%` }} />
                         </div>
                       </td>
                       <td className="px-2 py-4 whitespace-nowrap">{p.uploads}</td>
@@ -1198,7 +1198,7 @@ const AdminEvents = ({ initialSection = 'dashboard' }) => {
                 <button
                   key={p.id}
                   onClick={() => handleEventClick(p.id)}
-                  className={`group text-left rounded-2xl border overflow-hidden hover:border-emerald-500/40 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-emerald-900/20 transition-all duration-300 ${isDark ? 'border-white/10 bg-[#1F2A23]' : 'border-black/10 bg-white'}`}
+                  className={`group text-left rounded-2xl border overflow-hidden hover:border-[#2a4d32]/40 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-[#1a3020]/20 transition-all duration-300 ${isDark ? 'border-white/10 bg-[#1F2A23]' : 'border-black/10 bg-white'}`}
                 >
                   <div className="aspect-square bg-black/20 overflow-hidden">
                     {p.thumbnail ? (
@@ -1228,7 +1228,7 @@ const AdminEvents = ({ initialSection = 'dashboard' }) => {
                         {used}GB / {limit}GB
                       </div>
                       <div className={`mt-2 h-2 rounded-full ${isDark ? 'bg-white/10' : 'bg-slate-200'} overflow-hidden`}>
-                        <div className={`h-full rounded-full ${isDark ? 'bg-emerald-500' : 'bg-emerald-600'}`} style={{ width: `${pct}%` }} />
+                        <div className={`h-full rounded-full ${isDark ? 'bg-brand' : 'bg-brand'}`} style={{ width: `${pct}%` }} />
                       </div>
                     </div>
 
@@ -1267,7 +1267,7 @@ const AdminEvents = ({ initialSection = 'dashboard' }) => {
   const dashboardPanel = isDark ? `${surface} ${surfaceBorder}` : 'bg-white border-black/10';
 
   return (
-    <div className={`min-h-screen ${appBg} ${appText} font-sans`}>
+    <div className={`min-h-screen ${appBg} ${appText} font-sans ${isDark ? 'admin-theme-dark' : 'admin-theme-light'}`}>
       <div className="flex min-h-screen">
         {/* Sidebar */}
         <AdminSidebar
@@ -1330,7 +1330,7 @@ const AdminEvents = ({ initialSection = 'dashboard' }) => {
                     resetCreateForm();
                     setShowCreateModal(true);
                   }}
-                  className="px-4 h-10 rounded-xl bg-emerald-600 hover:bg-emerald-500 transition-colors font-semibold flex items-center gap-2 border border-emerald-400/20"
+                  className="px-4 h-10 rounded-xl bg-brand hover:bg-brand-2 transition-colors font-semibold flex items-center gap-2 border border-[#2a4d32]/20"
                 >
                   <span className="inline-flex w-6 h-6 rounded-lg bg-black/20 items-center justify-center">
                     <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">
@@ -1353,7 +1353,7 @@ const AdminEvents = ({ initialSection = 'dashboard' }) => {
 
             {loading ? (
               <div className="flex justify-center items-center h-64">
-                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-emerald-400"></div>
+                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#2a4d32]"></div>
               </div>
             ) : activeSection === 'projects' ? (
               renderProjectsView()
@@ -1383,8 +1383,8 @@ const AdminEvents = ({ initialSection = 'dashboard' }) => {
                             </svg>
                           </button>
                         </div>
-                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${isDark ? 'bg-emerald-600/15 border border-emerald-500/20' : 'bg-emerald-600/10 border border-emerald-600/20'}`}>
-                          <svg className={`w-5 h-5 ${isDark ? 'text-emerald-300' : 'text-emerald-700'}`} viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${isDark ? 'bg-[#2a4d32]/15 border border-[#2a4d32]/20' : 'bg-[#2a4d32]/10 border border-[#2a4d32]/20'}`}>
+                          <svg className={`w-5 h-5 ${isDark ? 'text-[#8fd2a5]' : 'text-[#2a4d32]'}`} viewBox="0 0 24 24" fill="none" stroke="currentColor">
                             <path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M3 7h6l2 2h10v10a2 2 0 01-2 2H5a2 2 0 01-2-2V7z" />
                           </svg>
                         </div>
@@ -1421,8 +1421,8 @@ const AdminEvents = ({ initialSection = 'dashboard' }) => {
                             </svg>
                           </button>
                         </div>
-                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${isDark ? 'bg-emerald-600/15 border border-emerald-500/20' : 'bg-emerald-600/10 border border-emerald-600/20'}`}>
-                          <svg className={`w-5 h-5 ${isDark ? 'text-emerald-300' : 'text-emerald-700'}`} viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${isDark ? 'bg-[#2a4d32]/15 border border-[#2a4d32]/20' : 'bg-[#2a4d32]/10 border border-[#2a4d32]/20'}`}>
+                          <svg className={`w-5 h-5 ${isDark ? 'text-[#8fd2a5]' : 'text-[#2a4d32]'}`} viewBox="0 0 24 24" fill="none" stroke="currentColor">
                             <path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
                           </svg>
                         </div>
@@ -1458,10 +1458,10 @@ const AdminEvents = ({ initialSection = 'dashboard' }) => {
                           <button
                             key={event.eventId}
                             onClick={() => handleEventClick(event.eventId)}
-                            className={`group text-left rounded-2xl overflow-hidden border transition-all duration-300 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-emerald-900/20 ${
+                            className={`group text-left rounded-2xl overflow-hidden border transition-all duration-300 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-[#1a3020]/20 ${
                               isDark
-                                ? 'bg-[#1F2A23] border-white/10 hover:border-emerald-500/40'
-                                : 'bg-white border-black/10 hover:border-emerald-600/40'
+                                ? 'bg-[#1F2A23] border-white/10 hover:border-[#2a4d32]/40'
+                                : 'bg-white border-black/10 hover:border-[#2a4d32]/40'
                             }`}
                           >
                             <div className="p-4">
@@ -1523,8 +1523,8 @@ const AdminEvents = ({ initialSection = 'dashboard' }) => {
                             onClick={() => handleEventClick(e.eventId)}
                             className={`shrink-0 w-24 h-16 rounded-xl overflow-hidden border transition-colors ${
                               isDark
-                                ? 'bg-black/20 border-white/10 hover:border-emerald-500/30'
-                                : 'bg-slate-100 border-black/10 hover:border-emerald-600/30'
+                                ? 'bg-black/20 border-white/10 hover:border-[#2a4d32]/30'
+                                : 'bg-slate-100 border-black/10 hover:border-[#2a4d32]/30'
                             }`}
                             title={e.eventName}
                           >
@@ -1550,8 +1550,8 @@ const AdminEvents = ({ initialSection = 'dashboard' }) => {
                           onClick={() => handleEventClick(ev.eventId)}
                           className={`w-full text-left rounded-xl border px-4 py-3 transition-colors ${
                             isDark
-                              ? 'border-white/10 hover:border-emerald-500/30 bg-[#1F2A23]'
-                              : 'border-black/10 hover:border-emerald-600/30 bg-white'
+                              ? 'border-white/10 hover:border-[#2a4d32]/30 bg-[#1F2A23]'
+                              : 'border-black/10 hover:border-[#2a4d32]/30 bg-white'
                           }`}
                         >
                           {(() => {
@@ -1630,14 +1630,14 @@ const AdminEvents = ({ initialSection = 'dashboard' }) => {
                             </div>
                             <div className={`mt-3 h-2 rounded-full overflow-hidden ${isDark ? 'bg-white/10' : 'bg-slate-200'}`}>
                               <div
-                                className="h-full bg-emerald-500 rounded-full transition-all"
+                                className="h-full bg-brand rounded-full transition-all"
                                 style={{ width: `${o ? pct : 0}%` }}
                               />
                             </div>
                             <button
                               type="button"
                               onClick={() => navigate('/admin/storage')}
-                              className="mt-4 w-full h-10 rounded-xl bg-emerald-600 hover:bg-emerald-500 transition-colors font-semibold border border-emerald-400/20"
+                              className="mt-4 w-full h-10 rounded-xl bg-brand hover:bg-brand-2 transition-colors font-semibold border border-[#2a4d32]/20"
                             >
                               Manage Storage
                             </button>

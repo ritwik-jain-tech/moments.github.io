@@ -128,8 +128,8 @@ const AdminUploads = () => {
         className={`w-full text-left rounded-xl border p-4 transition-colors ${
           active
             ? isDark
-              ? 'border-emerald-500/40 bg-emerald-600/15'
-              : 'border-emerald-600/30 bg-emerald-50'
+              ? 'border-[#2a4d32]/40 bg-[#2a4d32]/15'
+              : 'border-[#2a4d32]/30 bg-[#2a4d32]/10'
             : isDark
               ? 'border-white/10 hover:border-white/20 bg-white/5'
               : 'border-black/10 hover:border-black/20 bg-white'
@@ -142,7 +142,7 @@ const AdminUploads = () => {
   };
 
   return (
-    <div className={`min-h-screen ${isDark ? 'bg-[#141C17] text-white' : 'bg-white text-slate-900'} font-sans`}>
+    <div className={`min-h-screen ${isDark ? 'bg-[#141C17] text-white' : 'bg-white text-slate-900'} font-sans ${isDark ? 'admin-theme-dark' : 'admin-theme-light'}`}>
       <div className="flex min-h-screen">
         <AdminSidebar
           isDark={isDark}
@@ -203,7 +203,7 @@ const AdminUploads = () => {
                   eventId={selectedProjectId}
                   uploaderTitle={selectedEvent?.eventName ? `Upload to ${selectedEvent.eventName}` : 'Upload Media'}
                   triggerText="Upload Media"
-                  triggerClassName={`${isDark ? 'bg-[#2a4d32] hover:bg-[#1e3b27]' : 'bg-[#2a4d32] hover:bg-[#1e3b27]'}`}
+                  triggerClassName={`${isDark ? 'bg-brand hover:bg-brand-2' : 'bg-brand hover:bg-brand-2'}`}
                   onUploadComplete={() => {
                     // For now we don't refetch feed here; uploads happen async and are visible in the event feed.
                   }}
@@ -256,8 +256,8 @@ const AdminUploads = () => {
                   placeholder="Search projects by name or ID..."
                   className={`w-full rounded-xl px-4 py-3 outline-none border ${
                     isDark
-                      ? 'bg-white/5 border-white/10 text-white placeholder:text-white/40 focus:border-emerald-500/40'
-                      : 'bg-white border-black/10 text-slate-900 placeholder:text-slate-400 focus:border-emerald-600/40'
+                      ? 'bg-white/5 border-white/10 text-white placeholder:text-white/40 focus:border-[#2a4d32]/40'
+                      : 'bg-white border-black/10 text-slate-900 placeholder:text-slate-400 focus:border-[#2a4d32]/40'
                   }`}
                 />
               </div>

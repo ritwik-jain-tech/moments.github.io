@@ -16,7 +16,7 @@ const AdminSidebar = ({
     collapsed ? 'justify-center px-0 py-3' : 'gap-3 px-4 py-2'
   }`;
   const sidebarItemActive = `${sidebarItemBase} ${
-    isDark ? 'bg-emerald-600/20 text-white border border-emerald-500/20' : 'bg-emerald-600/10 text-slate-900 border border-emerald-600/20'
+    isDark ? 'bg-[#2a4d32]/20 text-white border border-[#2a4d32]/20' : 'bg-[#2a4d32]/10 text-slate-900 border border-[#2a4d32]/20'
   }`;
   const sidebarItemIdle = `${sidebarItemBase} ${
     isDark ? 'text-white/70 hover:text-white hover:bg-white/5' : 'text-slate-600 hover:text-slate-900 hover:bg-white/50 border border-transparent'

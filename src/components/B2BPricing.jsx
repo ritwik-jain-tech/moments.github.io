@@ -16,7 +16,7 @@ const includes = [
 
 const B2BPricing = () => {
   return (
-    <section id="pricing" className="bg-panel py-20 md:py-28 relative overflow-hidden scroll-mt-28 md:scroll-mt-32">
+    <section id="pricing" className="bg-gradient-to-b from-canvas via-panel to-canvas py-20 md:py-28 relative overflow-hidden scroll-mt-28 md:scroll-mt-32">
       <div className="absolute inset-0 pointer-events-none overflow-hidden">
         <div className="animate-aurora absolute top-1/3 left-1/4 w-[36vw] h-[36vw] max-w-[460px] max-h-[460px] rounded-full bg-brand/15 blur-[130px]" />
         <div className="animate-aurora absolute bottom-0 right-1/4 w-[32vw] h-[32vw] max-w-[420px] max-h-[420px] rounded-full bg-accent/20 blur-[120px]" style={{ animationDelay: '-9s' }} />

@@ -50,7 +50,7 @@ const AdminPlaceholder = ({ activeKey, title }) => {
   };
 
   return (
-    <div className={`min-h-screen ${isDark ? 'bg-[#141C17] text-white' : 'bg-white text-slate-900'} font-sans`}>
+    <div className={`min-h-screen ${isDark ? 'bg-[#141C17] text-white' : 'bg-white text-slate-900'} font-sans ${isDark ? 'admin-theme-dark' : 'admin-theme-light'}`}>
       <div className="flex min-h-screen">
         <AdminSidebar
           isDark={isDark}

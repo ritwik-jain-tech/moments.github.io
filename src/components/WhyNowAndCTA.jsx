@@ -38,7 +38,7 @@ const WhyNowAndCTA = () => {
         </div>
       </section>
 
-      <section className="py-20 md:py-28 relative overflow-hidden bg-panel">
+      <section className="py-20 md:py-28 relative overflow-hidden bg-gradient-to-b from-canvas via-panel to-canvas">
         <div className="absolute inset-0 pointer-events-none overflow-hidden">
           <div className="animate-aurora absolute top-1/2 left-1/4 -translate-y-1/2 w-[40vw] h-[40vw] max-w-[500px] max-h-[500px] rounded-full bg-brand/15 blur-[130px]" />
           <div className="animate-aurora absolute top-1/3 right-1/4 w-[34vw] h-[34vw] max-w-[440px] max-h-[440px] rounded-full bg-accent/25 blur-[120px]" style={{ animationDelay: '-9s' }} />

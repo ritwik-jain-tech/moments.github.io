@@ -74,7 +74,7 @@ function StorageRing({ percent, sublabel, isDark }) {
             fill="none"
             strokeWidth="10"
             strokeLinecap="round"
-            className={isDark ? 'stroke-emerald-500' : 'stroke-emerald-700'}
+            className={isDark ? 'stroke-[#2a4d32]' : 'stroke-[#2a4d32]'}
             strokeDasharray={c}
             strokeDashoffset={offset}
             style={{ transition: 'stroke-dashoffset 0.5s ease' }}
@@ -125,7 +125,7 @@ function MonthTrendChart({ isDark }) {
           return (
             <div key={m} className="flex-1 flex flex-col items-center justify-end gap-1 min-w-0">
               <div
-                className={`w-full max-w-[36px] rounded-t-md ${isDark ? 'bg-emerald-600/50' : 'bg-emerald-600/70'}`}
+                className={`w-full max-w-[36px] rounded-t-md ${isDark ? 'bg-[#2a4d32]/50' : 'bg-[#2a4d32]/70'}`}
                 style={{ height: `${barH}px` }}
                 title={`${v} GB`}
               />
@@ -161,7 +161,7 @@ const AdminStorage = () => {
   const submuted = isDark ? 'text-white/45' : 'text-slate-600';
   const tableHead = isDark ? 'bg-white/[0.06] text-white/80' : 'bg-slate-100/80 text-slate-700';
   const tableRow = isDark ? 'border-white/[0.06] hover:bg-white/[0.03]' : 'border-black/[0.06] hover:bg-slate-50/80';
-  const ctaBand = isDark ? 'bg-[#1A241E] border-white/10' : 'bg-[#F0F4F1] border-emerald-900/10';
+  const ctaBand = isDark ? 'bg-[#1A241E] border-white/10' : 'bg-[#F0F4F1] border-[#2a4d32]/10';
 
   useEffect(() => {
     localStorage.setItem('adminTheme', theme);
@@ -413,7 +413,7 @@ const AdminStorage = () => {
   };
 
   return (
-    <div className={`min-h-screen ${appBg} ${appText} font-sans antialiased`}>
+    <div className={`min-h-screen ${appBg} ${appText} font-sans antialiased ${isDark ? 'admin-theme-dark' : 'admin-theme-light'}`}>
       <div className="flex min-h-screen">
         <AdminSidebar
           isDark={isDark}
@@ -454,7 +454,7 @@ const AdminStorage = () => {
                 />
                 <button
                   type="button"
-                  className="mt-4 w-full py-2.5 rounded-xl bg-emerald-800 hover:bg-emerald-700 text-white text-sm font-medium border border-emerald-600/30 transition-colors"
+                  className="mt-4 w-full py-2.5 rounded-xl bg-brand hover:bg-brand-2 text-on-brand text-sm font-medium border border-[#2a4d32]/30 transition-colors"
                 >
                   Upgrade Storage
                 </button>
@@ -484,7 +484,7 @@ const AdminStorage = () => {
                     label="Thumbnails"
                     gb={storageLoading ? '—' : formatGb(bytesToGb(aggregateBytes.thumbnail))}
                     pct={storageLoading ? 0 : pctThumbnail}
-                    colorClass="bg-emerald-600"
+                    colorClass="bg-brand"
                     trackClass={isDark ? 'bg-white/10' : 'bg-slate-200'}
                     isDark={isDark}
                   />
@@ -534,7 +534,7 @@ const AdminStorage = () => {
                           <div className="flex items-center gap-3 min-w-[140px]">
                             <div className={`flex-1 h-1.5 rounded-full overflow-hidden ${isDark ? 'bg-white/10' : 'bg-slate-200'}`}>
                               <div
-                                className="h-full rounded-full bg-emerald-700"
+                                className="h-full rounded-full bg-brand"
                                 style={{
                                   width: `${row.access === 'ok' ? Math.min(100, row.pctOfTotal) : 0}%`,
                                 }}
@@ -566,7 +566,7 @@ const AdminStorage = () => {
                             type="button"
                             onClick={() => navigate(`/admin/events/${row.id}`)}
                             className={`font-medium ${
-                              isDark ? 'text-emerald-400 hover:text-emerald-300' : 'text-emerald-700 hover:text-emerald-600'
+                              isDark ? 'text-[#8fd2a5] hover:text-[#8fd2a5]' : 'text-[#2a4d32] hover:text-[#2a4d32]'
                             }`}
                           >
                             View Details
@@ -624,7 +624,7 @@ const AdminStorage = () => {
                     <div className="flex items-center gap-2 shrink-0 pl-8 sm:pl-0">
                       <button
                         type="button"
-                        className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-emerald-800 hover:bg-emerald-700 text-white text-sm font-medium border border-emerald-600/30"
+                        className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-brand hover:bg-brand-2 text-on-brand text-sm font-medium border border-[#2a4d32]/30"
                       >
                         <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">
                           <path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
@@ -664,7 +664,7 @@ const AdminStorage = () => {
                 </div>
                 <button
                   type="button"
-                  className="shrink-0 px-5 py-2.5 rounded-xl bg-emerald-800 hover:bg-emerald-700 text-white text-sm font-semibold border border-emerald-600/30 w-full sm:w-auto"
+                  className="shrink-0 px-5 py-2.5 rounded-xl bg-brand hover:bg-brand-2 text-on-brand text-sm font-semibold border border-[#2a4d32]/30 w-full sm:w-auto"
                 >
                   View Plans
                 </button>
@@ -683,8 +683,8 @@ const AdminStorage = () => {
                       <span className={`font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}>{plan.title}</span>
                       {plan.tag && (
                         <span
-                          className={`text-[10px] font-semibold uppercase tracking-wide px-2 py-0.5 rounded-md bg-emerald-700/20 border border-emerald-600/30 ${
-                            isDark ? 'text-emerald-400' : 'text-emerald-700'
+                          className={`text-[10px] font-semibold uppercase tracking-wide px-2 py-0.5 rounded-md bg-[#2a4d32]/20 border border-[#2a4d32]/30 ${
+                            isDark ? 'text-[#8fd2a5]' : 'text-[#2a4d32]'
                           }`}
                         >
                           {plan.tag}
