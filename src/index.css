@@ -121,8 +121,8 @@ button:disabled { transition: opacity 0.2s ease, background-color 0.22s ease; }
   -webkit-text-fill-color: transparent;
 }
 .gradient-text-shimmer {
-  background: linear-gradient(110deg, rgb(var(--brand)) 0%, rgb(var(--brand-2)) 30%,
-              rgb(var(--accent-2)) 50%, rgb(var(--brand-2)) 70%, rgb(var(--brand)) 100%);
+  background: linear-gradient(110deg, rgb(var(--brand)) 0%, rgb(var(--brand)) 30%,
+              rgb(var(--brand-2)) 50%, rgb(var(--brand)) 70%, rgb(var(--brand)) 100%);
   background-size: 250% 100%;
   -webkit-background-clip: text; background-clip: text;
   -webkit-text-fill-color: transparent;
