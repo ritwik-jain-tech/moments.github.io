@@ -1,8 +1,11 @@
 import React, { useRef, useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { motion, useScroll, useTransform } from 'framer-motion';
-import { Camera, ScanFace, Share2, Users, ArrowRight, Check } from 'lucide-react';
+import { Camera, ScanFace, Share2, Users, ArrowRight, Check, Sparkles, Upload, QrCode } from 'lucide-react';
 import BrowserFrame from './BrowserFrame';
 import { clipReveal, viewportOnce, EASE } from '../lib/motion';
+
+const APP_IMG = 'https://framerusercontent.com/images/puPnByXfJCIwtnXHsryGdtLFkAA.gif';
 
 const PROTO = 'https://customer-assets.emergentagent.com/job_moment-keeper-7/artifacts/';
 
@@ -172,6 +175,54 @@ const MomentsStudio = () => {
             ))}
           </div>
         </div>
+
+        {/* integrated add-on — Moments App */}
+        <motion.div initial={{ opacity: 0, y: 28 }} whileInView={{ opacity: 1, y: 0 }} viewport={viewportOnce}
+          transition={{ duration: 0.7, ease: EASE }}
+          className="mt-16 md:mt-24 relative overflow-hidden rounded-[2rem] liquid-glass p-6 md:p-10 grid lg:grid-cols-[1.25fr_1fr] gap-8 lg:gap-12 items-center">
+          <div className="absolute -top-16 -right-16 w-64 h-64 rounded-full bg-accent/20 blur-[90px] pointer-events-none" />
+
+          <div className="relative z-10">
+            <span className="inline-flex items-center gap-1.5 text-accent-2 text-[11px] font-bold uppercase tracking-[0.2em] mb-4">
+              <Sparkles size={12} /> Integrated Add-on
+            </span>
+            <h3 className="font-tight font-bold text-ink text-[1.7rem] md:text-[2.3rem] leading-[1.1] tracking-tight mb-4">
+              Moments App — bring your <span className="gradient-text-green">guests into the story.</span>
+            </h3>
+            <p className="text-muted text-[14px] md:text-[15px] leading-relaxed mb-6 max-w-lg">
+              A built-in guest experience that plugs straight into Studio. Guests add their own photos,
+              and everyone finds every shot they appear in — instantly, with FaceID.
+            </p>
+
+            <ul className="space-y-2.5 mb-7">
+              {[
+                { icon: Upload, t: 'Guests contribute their own POV — more moments in every album' },
+                { icon: ScanFace, t: 'FaceID delivers each guest all their photos automatically' },
+                { icon: QrCode, t: 'One scan to join — no app download, fully branded as yours' },
+              ].map(({ icon: I, t }) => (
+                <li key={t} className="flex items-start gap-3">
+                  <span className="w-6 h-6 rounded-lg bg-brand/15 flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <I size={12} className="text-brand" />
+                  </span>
+                  <span className="text-ink/80 text-[13.5px] font-medium">{t}</span>
+                </li>
+              ))}
+            </ul>
+
+            <Link to="/guestApp"
+              className="liquid-btn inline-flex items-center gap-2 bg-brand text-on-brand px-6 py-3 rounded-full text-sm font-bold shadow-md shadow-brand/20">
+              <span className="lb-content">More details <ArrowRight size={14} /></span>
+            </Link>
+          </div>
+
+          <div className="relative z-10 flex justify-center">
+            <div className="w-44 md:w-52 animate-float">
+              <div className="bg-[#0c120e] rounded-[2.2rem] p-2 shadow-2xl border border-line/40">
+                <img src={APP_IMG} alt="Moments App — FaceID photo finder" className="w-full rounded-[1.7rem]" loading="lazy" />
+              </div>
+            </div>
+          </div>
+        </motion.div>
 
         {/* closer */}
         <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={viewportOnce}
