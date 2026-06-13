@@ -28,10 +28,10 @@ const LandingHero = () => {
       <div className="max-w-[1200px] mx-auto px-5 md:px-10 relative z-10 w-full flex flex-col items-center text-center">
         <motion.div
           initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }}
-          className="liquid-glass inline-flex items-center gap-2 rounded-full px-4 py-1.5 mb-7"
+          className="liquid-glass inline-flex items-center gap-1.5 md:gap-2 rounded-full px-2.5 py-1 md:px-4 md:py-1.5 mb-6 md:mb-7 max-w-[92vw]"
         >
-          <Star size={11} className="text-brand fill-brand" />
-          <span className="text-ink/70 text-[11px] font-semibold tracking-wide uppercase">Media Management for Professional Photographers</span>
+          <Star size={10} className="text-brand fill-brand flex-shrink-0 md:w-[11px] md:h-[11px]" />
+          <span className="text-ink/70 text-[8.5px] md:text-[11px] font-semibold tracking-wide uppercase whitespace-nowrap">Media Management for Professional Photographers</span>
         </motion.div>
 
         <motion.h1
