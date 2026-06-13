@@ -11,4 +11,4 @@
 //
 // Until set, the form still works for visitors but submissions are only logged
 // to the browser console.
-export const LEADS_ENDPOINT = '';
+export const LEADS_ENDPOINT = 'https://script.google.com/macros/s/AKfycbxHsatRfr-96Mq7w2nSnr-L-XiNzvntgAs0ASd8yPolJsvI9PemIKyJBDA4R6pPxIrkHQ/exec';
