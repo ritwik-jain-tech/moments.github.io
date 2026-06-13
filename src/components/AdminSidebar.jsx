@@ -1,5 +1,8 @@
 import React from 'react';
 
+// Same camera mark the landing uses, so the studio matches the marketing site.
+const LOGO_CAMERA = 'https://customer-assets.emergentagent.com/job_moment-keeper-7/artifacts/c8l9vrm3_small%20moments%20logo.png';
+
 const AdminSidebar = ({
   isDark,
   collapsed,
@@ -39,11 +42,15 @@ const AdminSidebar = ({
       } h-screen sticky top-0 overflow-hidden transition-[width] duration-200 ${className}`}
     >
       <div className={`flex items-center ${collapsed ? 'px-3 py-4 justify-center' : 'px-6 py-6'} gap-3`}>
-        <img src="/logo.png" alt="Moments" className="h-9 w-9" />
+        <img
+          src={LOGO_CAMERA}
+          alt="Moments"
+          className={`h-8 w-8 object-contain ${isDark ? 'brightness-0 invert' : ''}`}
+        />
         {!collapsed && (
-          <div className="leading-tight">
+          <div className="inline-block leading-none">
             <div className={`text-lg font-semibold tracking-wide ${isDark ? 'text-white' : 'text-slate-900'}`}>MOMENTS</div>
-            <div className={`text-xs ${isDark ? 'text-white/50' : 'text-slate-500'}`}>Studio dashboard</div>
+            <div className={`text-right text-[10px] font-medium uppercase tracking-[0.18em] mt-0.5 ${isDark ? 'text-white/50' : 'text-slate-500'}`}>Studio</div>
           </div>
         )}
         <button

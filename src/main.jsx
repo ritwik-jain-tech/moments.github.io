@@ -15,6 +15,7 @@ import HomeRouter from "./components/HomeRouter";
 import Landing from "./pages/Landing";
 import AdminStorage from "./pages/AdminStorage";
 import AdminUploads from "./pages/AdminUploads";
+import AdminTeam from "./pages/AdminTeam";
 import { ThemeProvider } from "./context/ThemeContext";
 import "./index.css";
 
@@ -83,7 +84,7 @@ ReactDOM.createRoot(document.getElementById("root")).render(
           path="/admin/team"
           element={
             <ProtectedRoute>
-              <AdminPlaceholder activeKey="team" title="Team Management" />
+              <AdminTeam />
             </ProtectedRoute>
           }
         />

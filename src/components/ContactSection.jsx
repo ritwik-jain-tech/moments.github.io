@@ -39,8 +39,10 @@ const ContactSection = () => {
   const total = STEPS.length;
   const isLast = step === total - 1;
 
+  // Focus the field on step change, but never let it scroll the page (this was
+  // pulling fresh page loads down to the form).
   useEffect(() => {
-    const id = setTimeout(() => inputRef.current?.focus(), 250);
+    const id = setTimeout(() => inputRef.current?.focus({ preventScroll: true }), 250);
     return () => clearTimeout(id);
   }, [step]);
 

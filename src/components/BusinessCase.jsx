@@ -22,7 +22,7 @@ const CountUp = ({ to, duration = 1.8 }) => {
 
 const BusinessCase = () => {
   return (
-    <section className="bg-gradient-to-b from-panel via-panel to-canvas py-20 md:py-28 relative overflow-hidden">
+    <section className="bg-gradient-to-b from-canvas via-panel to-canvas py-20 md:py-28 relative overflow-hidden">
       <div className="absolute top-1/2 right-[-200px] w-[500px] h-[500px] bg-accent/15 rounded-full blur-[140px] -translate-y-1/2 animate-aurora" />
       <div className="max-w-[1100px] mx-auto px-5 md:px-10 relative z-10">
         <motion.div initial="hidden" whileInView="visible" viewport={viewportOnce} variants={clipReveal} className="text-center mb-14">

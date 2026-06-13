@@ -3,17 +3,18 @@ import Navbar from '../components/Navbar';
 import CursorGlow from '../components/CursorGlow';
 import LandingHero from '../components/LandingHero';
 import ProblemSection from '../components/ProblemSection';
-import DualValueSection from '../components/DualValueSection';
-import PlatformFeatures from '../components/PlatformFeatures';
+import MomentsStudio from '../components/MomentsStudio';
 import BusinessCase from '../components/BusinessCase';
-import B2BTestimonials from '../components/B2BTestimonials';
 import B2BPricing from '../components/B2BPricing';
-import WhyNowAndCTA from '../components/WhyNowAndCTA';
+import B2BTestimonials from '../components/B2BTestimonials';
 import ContactSection from '../components/ContactSection';
 import Footer from '../components/Footer';
 
 const B2BLanding = () => {
-  useEffect(() => { window.scrollTo(0, 0); }, []);
+  useEffect(() => {
+    if ('scrollRestoration' in window.history) window.history.scrollRestoration = 'manual';
+    window.scrollTo(0, 0);
+  }, []);
 
   return (
     <div className="min-h-screen bg-canvas relative">
@@ -21,12 +22,10 @@ const B2BLanding = () => {
       <Navbar />
       <LandingHero />
       <ProblemSection />
-      <DualValueSection />
-      <PlatformFeatures />
+      <MomentsStudio />
       <BusinessCase />
-      <B2BTestimonials />
       <B2BPricing />
-      <WhyNowAndCTA />
+      <B2BTestimonials />
       <ContactSection />
       <Footer />
     </div>
