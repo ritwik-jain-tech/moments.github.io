@@ -103,7 +103,7 @@ const Navbar = () => {
               whileHover={{ scale: 1.03 }}
               whileTap={{ scale: 0.97 }}
               onClick={handleCTA}
-              className="hidden sm:flex bg-brand text-on-brand px-4 lg:px-5 py-2 rounded-full text-[13px] font-bold hover:opacity-90 transition-all duration-300 items-center gap-1.5 shadow-md shadow-brand/20 btn-shine"
+              className="liquid-btn hidden sm:flex bg-brand text-on-brand px-4 lg:px-5 py-2 rounded-full text-[13px] font-bold hover:opacity-90 transition-all duration-300 items-center gap-1.5 shadow-md shadow-brand/20"
             >
               {isGuestApp ? 'Contact' : 'Start Free Trial'}
               <ArrowRight size={13} />

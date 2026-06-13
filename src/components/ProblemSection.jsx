@@ -1,14 +1,15 @@
 import React from 'react';
 import { problemData } from '../data/mockData';
 import { motion } from 'framer-motion';
-import { FolderOpen, MessageCircle, RefreshCw, TrendingDown, ArrowDownRight, Sparkles } from 'lucide-react';
+import { FolderOpen, MessageCircle, RefreshCw, TrendingDown, Sparkles } from 'lucide-react';
 import { blurRise, clipReveal, container, viewportOnce, EASE } from '../lib/motion';
+import { setSheen } from './LiquidButton';
 
 const iconMap = { FolderOpen, MessageCircle, RefreshCw, TrendingDown };
 
 const ProblemSection = () => {
   return (
-    <section className="bg-panel py-24 md:py-32 relative overflow-hidden">
+    <section className="bg-panel py-20 md:py-28 relative overflow-hidden">
       {/* ambient glows */}
       <div className="absolute top-[-120px] right-[-120px] w-[460px] h-[460px] rounded-full bg-accent/15 blur-[150px] animate-aurora pointer-events-none" />
 
@@ -34,8 +35,8 @@ const ProblemSection = () => {
           {problemData.painPoints.map((point, i) => {
             const Icon = iconMap[point.icon];
             return (
-              <motion.div key={i} variants={blurRise} whileHover={{ y: -5 }}
-                className="rounded-2xl p-6 group bg-surface/50 backdrop-blur-sm border border-line/20 hover:border-accent/40 transition-all duration-300">
+              <motion.div key={i} variants={blurRise} whileHover={{ y: -5 }} onMouseMove={setSheen}
+                className="liquid-card relative overflow-hidden rounded-2xl p-6 group bg-surface/50 backdrop-blur-sm border border-line/20 hover:border-accent/40 transition-all duration-300">
                 <div className="w-11 h-11 rounded-xl bg-accent/20 flex items-center justify-center mb-5 group-hover:scale-110 transition-transform">
                   <Icon size={18} className="text-accent-2" />
                 </div>
@@ -45,19 +46,10 @@ const ProblemSection = () => {
           })}
         </motion.div>
 
-        {/* connector */}
-        <motion.div initial={{ opacity: 0, scaleY: 0 }} whileInView={{ opacity: 1, scaleY: 1 }} viewport={viewportOnce}
-          transition={{ duration: 0.5 }} className="flex flex-col items-center my-14 origin-top">
-          <span className="w-px h-12 bg-gradient-to-b from-line to-brand/50" />
-          <span className="w-9 h-9 rounded-full bg-brand/15 border border-brand/30 flex items-center justify-center -mt-1">
-            <ArrowDownRight size={15} className="text-brand" />
-          </span>
-        </motion.div>
-
         {/* ───────────── THE OPPORTUNITY ───────────── */}
         <motion.div
           initial="hidden" whileInView="visible" viewport={viewportOnce} variants={clipReveal}
-          className="relative rounded-[2rem] overflow-hidden"
+          className="relative rounded-[2rem] overflow-hidden mt-12 md:mt-16"
         >
           {/* dramatic brand panel */}
           <div className="relative bg-gradient-to-br from-brand to-brand-2 p-8 md:p-14">

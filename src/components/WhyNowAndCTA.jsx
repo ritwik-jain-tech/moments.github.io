@@ -3,13 +3,15 @@ import { whyNowData, ctaData, STUDIO_SIGNUP } from '../data/mockData';
 import { motion } from 'framer-motion';
 import { ArrowRight, Clock, Cpu, Users, MessageCircle } from 'lucide-react';
 import { popIn, clipReveal, container, viewportOnce } from '../lib/motion';
+import LiquidButton from './LiquidButton';
+import { setSheen } from './LiquidButton';
 
 const whyNowIcons = [Clock, Cpu, Users];
 
 const WhyNowAndCTA = () => {
   return (
     <>
-      <section className="bg-canvas py-20 md:py-28 relative overflow-hidden">
+      <section className="bg-canvas pt-12 md:pt-16 pb-20 md:pb-28 relative overflow-hidden">
         <div className="max-w-[1200px] mx-auto px-5 md:px-10 relative z-10">
           <motion.div initial="hidden" whileInView="visible" viewport={viewportOnce} variants={clipReveal} className="text-center mb-12">
             <span className="text-muted/50 text-[11px] font-semibold uppercase tracking-[0.2em] mb-4 block">Why Now</span>
@@ -22,8 +24,8 @@ const WhyNowAndCTA = () => {
             {whyNowData.reasons.map((reason, i) => {
               const Icon = whyNowIcons[i];
               return (
-                <motion.div key={i} variants={popIn} whileHover={{ y: -5 }}
-                  className="rounded-2xl p-6 bg-surface/50 backdrop-blur-sm border border-line/20 hover:border-brand/20 transition-colors duration-300">
+                <motion.div key={i} variants={popIn} whileHover={{ y: -5 }} onMouseMove={setSheen}
+                  className="liquid-card relative overflow-hidden rounded-2xl p-6 bg-surface/50 backdrop-blur-sm border border-line/20 hover:border-brand/20 transition-colors duration-300">
                   <div className="w-10 h-10 rounded-xl bg-panel flex items-center justify-center mb-4">
                     <Icon size={16} className="text-brand/60" />
                   </div>
@@ -48,14 +50,12 @@ const WhyNowAndCTA = () => {
             </h2>
             <p className="text-muted text-base leading-relaxed mb-10 max-w-xl mx-auto">{ctaData.description}</p>
             <div className="flex flex-col sm:flex-row gap-3 justify-center">
-              <motion.a href={STUDIO_SIGNUP} whileHover={{ scale: 1.03, y: -1 }} whileTap={{ scale: 0.98 }}
-                className="bg-brand text-on-brand px-7 py-3.5 rounded-full text-sm font-bold hover:opacity-90 transition-all duration-300 flex items-center justify-center gap-2 btn-shine shadow-lg shadow-brand/20">
+              <LiquidButton as="a" href={STUDIO_SIGNUP} variant="primary" className="px-7 py-3.5 text-sm">
                 {ctaData.primaryCTA}<ArrowRight size={14} />
-              </motion.a>
-              <motion.a whileHover={{ scale: 1.03 }} href={ctaData.contactLink} target="_blank" rel="noopener noreferrer"
-                className="border border-line text-muted px-7 py-3.5 rounded-full text-sm font-semibold hover:border-brand/30 hover:text-ink transition-all duration-300 flex items-center justify-center gap-2">
+              </LiquidButton>
+              <LiquidButton as="a" href={ctaData.contactLink} target="_blank" rel="noopener noreferrer" variant="ghost" className="px-7 py-3.5 text-sm font-semibold">
                 <MessageCircle size={14} />Let&apos;s Talk
-              </motion.a>
+              </LiquidButton>
             </div>
             <p className="mt-6 text-muted/40 text-[11px] font-medium tracking-wide">No credit card required &middot; Full platform access &middot; Cancel anytime</p>
           </motion.div>

@@ -3,12 +3,14 @@ import { pricingData, STUDIO_SIGNUP } from '../data/mockData';
 import { motion } from 'framer-motion';
 import { Check, Sparkles } from 'lucide-react';
 import { popIn, clipReveal, container, viewportOnce } from '../lib/motion';
+import LiquidButton, { setSheen } from './LiquidButton';
 
 const PricingCard = ({ plan }) => (
   <motion.div
     variants={popIn}
     whileHover={{ y: -8 }}
-    className={`relative rounded-2xl p-6 md:p-7 flex flex-col border transition-colors duration-300 ${
+    onMouseMove={setSheen}
+    className={`liquid-card relative overflow-hidden rounded-2xl p-6 md:p-7 flex flex-col border transition-colors duration-300 ${
       plan.popular
         ? 'border-brand/25 bg-brand/[0.05] shadow-lg shadow-brand/10'
         : 'border-line/20 bg-surface/50 backdrop-blur-sm'
@@ -29,14 +31,10 @@ const PricingCard = ({ plan }) => (
       <span className="text-ink font-bold text-3xl md:text-4xl tracking-tight font-tight">₹{plan.price}</span>
       <span className="text-muted/50 text-xs font-medium">{plan.period}</span>
     </div>
-    <motion.a href={STUDIO_SIGNUP} whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
-      className={`w-full py-3 rounded-full text-[13px] font-bold transition-colors mb-6 text-center block ${
-        plan.popular
-          ? 'bg-brand text-on-brand hover:opacity-90 shadow-sm'
-          : 'border border-line text-muted hover:border-brand/30 hover:text-ink'
-      }`}>
+    <LiquidButton as="a" href={STUDIO_SIGNUP} variant={plan.popular ? 'primary' : 'ghost'}
+      className="w-full py-3 text-[13px] mb-6">
       Start Free Trial
-    </motion.a>
+    </LiquidButton>
     <ul className="space-y-2.5 flex-1">
       {plan.features.map((f) => (
         <li key={f} className="flex items-start gap-2">

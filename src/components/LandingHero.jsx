@@ -3,6 +3,7 @@ import { heroData, platformFeaturesData, STUDIO_SIGNUP } from '../data/mockData'
 import { motion, useScroll, useTransform } from 'framer-motion';
 import { ArrowRight, Play, Star } from 'lucide-react';
 import BrowserFrame from './BrowserFrame';
+import LiquidButton from './LiquidButton';
 import { EASE } from '../lib/motion';
 
 const SECONDARY = platformFeaturesData.features[1]?.image || heroData.dashboardImage;
@@ -27,7 +28,7 @@ const LandingHero = () => {
       <div className="max-w-[1200px] mx-auto px-5 md:px-10 relative z-10 w-full flex flex-col items-center text-center">
         <motion.div
           initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }}
-          className="inline-flex items-center gap-2 bg-surface/60 backdrop-blur-sm border border-line/50 rounded-full px-4 py-1.5 mb-7"
+          className="liquid-glass inline-flex items-center gap-2 rounded-full px-4 py-1.5 mb-7"
         >
           <Star size={11} className="text-brand fill-brand" />
           <span className="text-ink/70 text-[11px] font-semibold tracking-wide uppercase">Media Management for Professional Photographers</span>
@@ -52,15 +53,14 @@ const LandingHero = () => {
           initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, delay: 0.28 }}
           className="flex flex-col sm:flex-row gap-3 mb-14"
         >
-          <motion.a href={STUDIO_SIGNUP} whileHover={{ scale: 1.03, y: -1 }} whileTap={{ scale: 0.98 }}
-            className="bg-brand text-on-brand px-7 py-3.5 rounded-full text-sm font-bold hover:opacity-90 transition-all flex items-center justify-center gap-2 btn-shine shadow-lg shadow-brand/20">
+          <LiquidButton as="a" href={STUDIO_SIGNUP} variant="primary" className="px-7 py-3.5 text-sm">
             Start Free Trial <ArrowRight size={14} />
-          </motion.a>
-          <motion.button whileHover={{ scale: 1.03 }}
+          </LiquidButton>
+          <LiquidButton variant="ghost"
             onClick={() => document.querySelector('#platform')?.scrollIntoView({ behavior: 'smooth' })}
-            className="border border-line text-muted px-7 py-3.5 rounded-full text-sm font-semibold hover:border-brand/40 hover:text-ink transition-all flex items-center justify-center gap-2">
+            className="px-7 py-3.5 text-sm font-semibold">
             <Play size={12} fill="currentColor" /> Explore Platform
-          </motion.button>
+          </LiquidButton>
         </motion.div>
       </div>
 
