@@ -1,13 +1,21 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { platformFeaturesData } from '../data/mockData';
 import { motion, AnimatePresence } from 'framer-motion';
 import BrowserFrame from './BrowserFrame';
 import { slideLeft, slideRight, viewportOnce } from '../lib/motion';
 
-const URLS = ['studio.moments.live', 'studio.moments.live/uploads', 'studio.moments.live/storage', 'studio.moments.live/team', 'studio.moments.live/activity'];
+const URLS = ['studio.moments.live/review', 'studio.moments.live/uploads', 'studio.moments.live/storage', 'studio.moments.live/team', 'studio.moments.live/activity'];
+const CYCLE_MS = 4000;
 
 const PlatformFeatures = () => {
+  const features = platformFeaturesData.features;
   const [active, setActive] = useState(0);
+
+  // Auto-advance; re-armed whenever `active` changes (so a manual click resets it).
+  useEffect(() => {
+    const id = setTimeout(() => setActive((p) => (p + 1) % features.length), CYCLE_MS);
+    return () => clearTimeout(id);
+  }, [active, features.length]);
 
   return (
     <section id="features" className="bg-panel py-20 md:py-28 relative overflow-hidden">
@@ -24,26 +32,34 @@ const PlatformFeatures = () => {
         </motion.div>
 
         <div className="mt-12 flex flex-col lg:flex-row gap-6">
-          <motion.div initial="hidden" whileInView="visible" viewport={viewportOnce} variants={slideLeft} className="lg:w-[300px] flex-shrink-0">
+          <motion.div initial="hidden" whileInView="visible" viewport={viewportOnce} variants={slideLeft} className="lg:w-[320px] flex-shrink-0">
             <div className="flex flex-row lg:flex-col gap-2 overflow-x-auto pb-2 lg:pb-0 scrollbar-hide">
-              {platformFeaturesData.features.map((f, i) => (
-                <motion.button
-                  key={i}
-                  onClick={() => setActive(i)}
-                  whileHover={{ x: active === i ? 0 : 4 }}
-                  className={`text-left px-4 py-4 rounded-xl transition-all duration-300 flex-shrink-0 lg:flex-shrink w-[200px] lg:w-auto border ${
-                    active === i
-                      ? 'bg-surface/70 backdrop-blur-sm border-line/40 shadow-sm'
-                      : 'border-transparent hover:bg-surface/30'
-                  }`}
-                >
-                  <div className="flex items-center gap-3 mb-1.5">
-                    <div className={`w-1.5 h-1.5 rounded-full transition-colors duration-300 ${active === i ? 'bg-brand' : 'bg-line'}`} />
-                    <h4 className={`text-sm font-bold transition-colors duration-300 ${active === i ? 'text-ink' : 'text-muted/60'}`}>{f.title}</h4>
-                  </div>
-                  <p className={`text-xs leading-relaxed pl-4 transition-colors duration-300 ${active === i ? 'text-muted' : 'text-muted/40'}`}>{f.description}</p>
-                </motion.button>
-              ))}
+              {features.map((f, i) => {
+                const isActive = active === i;
+                return (
+                  <motion.button
+                    key={i}
+                    onClick={() => setActive(i)}
+                    whileHover={{ x: isActive ? 0 : 4 }}
+                    className={`relative text-left px-4 py-4 rounded-xl transition-all duration-300 flex-shrink-0 lg:flex-shrink w-[220px] lg:w-auto border overflow-hidden ${
+                      isActive
+                        ? 'bg-surface/70 backdrop-blur-sm border-line/40 shadow-sm'
+                        : 'border-transparent hover:bg-surface/30'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3 mb-1.5">
+                      <div className={`w-1.5 h-1.5 rounded-full transition-colors duration-300 ${isActive ? 'bg-brand' : 'bg-line'}`} />
+                      <h4 className={`text-sm font-bold transition-colors duration-300 ${isActive ? 'text-ink' : 'text-muted/60'}`}>{f.title}</h4>
+                    </div>
+                    <p className={`text-xs leading-relaxed pl-4 transition-colors duration-300 ${isActive ? 'text-muted' : 'text-muted/40'}`}>{f.description}</p>
+                    {/* auto-advance progress bar */}
+                    {isActive && (
+                      <motion.span key={active} className="absolute left-0 bottom-0 h-[2px] bg-brand"
+                        initial={{ width: 0 }} animate={{ width: '100%' }} transition={{ duration: CYCLE_MS / 1000, ease: 'linear' }} />
+                    )}
+                  </motion.button>
+                );
+              })}
             </div>
           </motion.div>
 
@@ -57,7 +73,7 @@ const PlatformFeatures = () => {
                 transition={{ duration: 0.35 }}
               >
                 <BrowserFrame
-                  src={platformFeaturesData.features[active].image}
+                  src={features[active].image}
                   url={URLS[active] || 'studio.moments.live'}
                   height={420}
                   scroll

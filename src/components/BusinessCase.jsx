@@ -1,15 +1,31 @@
-import React from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { businessCaseData } from '../data/mockData';
-import { motion } from 'framer-motion';
-import { TrendingDown, TrendingUp, Check, Minus } from 'lucide-react';
+import { motion, animate, useInView } from 'framer-motion';
+import { TrendingDown, TrendingUp, Check, Minus, ArrowRight } from 'lucide-react';
 import { clipReveal, viewportOnce, EASE } from '../lib/motion';
+import { setSheen } from './LiquidButton';
+
+const CountUp = ({ to, duration = 1.8 }) => {
+  const ref = useRef(null);
+  const inView = useInView(ref, { once: true, amount: 0.6 });
+  const [val, setVal] = useState(0);
+  useEffect(() => {
+    if (!inView) return;
+    const controls = animate(0, to, {
+      duration, ease: [0.22, 1, 0.36, 1],
+      onUpdate: (v) => setVal(Math.round(v)),
+    });
+    return () => controls.stop();
+  }, [inView, to, duration]);
+  return <span ref={ref}>{val.toLocaleString('en-IN')}</span>;
+};
 
 const BusinessCase = () => {
   return (
-    <section className="bg-panel py-20 md:py-28 relative overflow-hidden" style={{ perspective: 1200 }}>
+    <section className="bg-panel py-20 md:py-28 relative overflow-hidden">
       <div className="absolute top-1/2 right-[-200px] w-[500px] h-[500px] bg-accent/15 rounded-full blur-[140px] -translate-y-1/2 animate-aurora" />
-      <div className="max-w-[1200px] mx-auto px-5 md:px-10 relative z-10">
-        <motion.div initial="hidden" whileInView="visible" viewport={viewportOnce} variants={clipReveal} className="text-center mb-12">
+      <div className="max-w-[1100px] mx-auto px-5 md:px-10 relative z-10">
+        <motion.div initial="hidden" whileInView="visible" viewport={viewportOnce} variants={clipReveal} className="text-center mb-14">
           <span className="inline-flex items-center gap-3 text-muted/50 text-[11px] font-semibold uppercase tracking-[0.2em] mb-4 justify-center">
             <div className="w-8 h-px bg-line" />{businessCaseData.sectionTag}<div className="w-8 h-px bg-line" />
           </span>
@@ -18,44 +34,83 @@ const BusinessCase = () => {
           </h2>
         </motion.div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          <motion.div initial={{ opacity: 0, x: -28, rotateY: 10 }} whileInView={{ opacity: 1, x: 0, rotateY: 0 }} viewport={viewportOnce} transition={{ duration: 0.7, ease: EASE }}
-            className="rounded-2xl p-6 md:p-8 bg-surface/50 backdrop-blur-sm border border-line/20">
-            <div className="flex items-center gap-3 mb-6">
-              <div className="w-10 h-10 rounded-xl bg-panel flex items-center justify-center"><TrendingDown size={16} className="text-brand/70" /></div>
-              <h3 className="text-ink font-bold text-base tracking-tight">What It Saves You</h3>
+        <div className="relative grid md:grid-cols-2 gap-4 lg:gap-6 items-stretch">
+          {/* SAVES */}
+          <motion.div
+            initial={{ opacity: 0, x: -32, rotateY: 10 }} whileInView={{ opacity: 1, x: 0, rotateY: 0 }}
+            viewport={viewportOnce} transition={{ duration: 0.7, ease: EASE }}
+            onMouseMove={setSheen}
+            className="liquid-card relative overflow-hidden rounded-[1.6rem] p-7 md:p-9 bg-surface/50 backdrop-blur-sm border border-line/25"
+          >
+            <div className="flex items-center gap-3 mb-7">
+              <div className="w-11 h-11 rounded-xl bg-panel flex items-center justify-center"><TrendingDown size={18} className="text-muted" /></div>
+              <div>
+                <p className="text-muted/50 text-[10px] font-bold uppercase tracking-[0.18em]">Cut the drag</p>
+                <h3 className="text-ink font-bold text-lg tracking-tight">What it saves you</h3>
+              </div>
             </div>
-            <ul className="space-y-3">
-              {businessCaseData.saves.map((item) => (
-                <li key={item} className="flex items-start gap-3">
-                  <Minus size={12} className="text-line mt-1 flex-shrink-0" />
-                  <span className="text-muted text-[13px] font-medium">{item}</span>
-                </li>
+            <ul className="space-y-3.5">
+              {businessCaseData.saves.map((item, i) => (
+                <motion.li key={item} initial={{ opacity: 0, x: -12 }} whileInView={{ opacity: 1, x: 0 }} viewport={viewportOnce}
+                  transition={{ delay: 0.1 + i * 0.07 }} className="flex items-center gap-3 group">
+                  <span className="w-6 h-6 rounded-lg bg-line/30 flex items-center justify-center flex-shrink-0 group-hover:bg-line/50 transition-colors">
+                    <Minus size={12} className="text-muted" />
+                  </span>
+                  <span className="text-muted text-[13.5px] font-medium">{item}</span>
+                </motion.li>
               ))}
             </ul>
           </motion.div>
 
-          <motion.div initial={{ opacity: 0, x: 28, rotateY: -10 }} whileInView={{ opacity: 1, x: 0, rotateY: 0 }} viewport={viewportOnce} transition={{ duration: 0.7, ease: EASE }}
-            className="rounded-2xl p-6 md:p-8 bg-brand/[0.06] border border-brand/15">
-            <div className="flex items-center gap-3 mb-6">
-              <div className="w-10 h-10 rounded-xl bg-brand/12 flex items-center justify-center"><TrendingUp size={16} className="text-brand" /></div>
-              <h3 className="text-ink font-bold text-base tracking-tight">What It Helps You Earn</h3>
+          {/* EARNS — brand gradient, the hero of the section */}
+          <motion.div
+            initial={{ opacity: 0, x: 32, rotateY: -10 }} whileInView={{ opacity: 1, x: 0, rotateY: 0 }}
+            viewport={viewportOnce} transition={{ duration: 0.7, ease: EASE }}
+            className="relative overflow-hidden rounded-[1.6rem] p-7 md:p-9 bg-gradient-to-br from-brand to-brand-2 shadow-xl shadow-brand/20"
+          >
+            <div className="absolute -top-12 -right-10 w-56 h-56 rounded-full bg-white/10 blur-3xl pointer-events-none" />
+            <div className="relative z-10">
+              <div className="flex items-center gap-3 mb-7">
+                <div className="w-11 h-11 rounded-xl bg-on-brand/10 flex items-center justify-center"><TrendingUp size={18} className="text-on-brand" /></div>
+                <div>
+                  <p className="text-on-brand/60 text-[10px] font-bold uppercase tracking-[0.18em]">Add the upside</p>
+                  <h3 className="text-on-brand font-bold text-lg tracking-tight">What it helps you earn</h3>
+                </div>
+              </div>
+              <ul className="space-y-3.5 mb-8">
+                {businessCaseData.earns.map((item, i) => (
+                  <motion.li key={item} initial={{ opacity: 0, x: 12 }} whileInView={{ opacity: 1, x: 0 }} viewport={viewportOnce}
+                    transition={{ delay: 0.1 + i * 0.07 }} className="flex items-center gap-3">
+                    <span className="w-6 h-6 rounded-lg bg-on-brand/15 flex items-center justify-center flex-shrink-0">
+                      <Check size={12} className="text-on-brand" />
+                    </span>
+                    <span className="text-on-brand/90 text-[13.5px] font-medium">{item}</span>
+                  </motion.li>
+                ))}
+              </ul>
+
+              {/* animated revenue stat */}
+              <div className="rounded-2xl bg-on-brand/10 border border-on-brand/15 px-5 py-4 flex items-baseline gap-2">
+                <span className="font-tight font-extrabold text-on-brand text-[2.4rem] md:text-[3rem] leading-none tracking-tight">
+                  +₹<CountUp to={100000} />
+                </span>
+                <span className="text-on-brand/70 text-sm font-semibold">/ year in new revenue*</span>
+              </div>
             </div>
-            <ul className="space-y-3">
-              {businessCaseData.earns.map((item) => (
-                <li key={item} className="flex items-start gap-3">
-                  <Check size={12} className="text-brand/70 mt-1 flex-shrink-0" />
-                  <span className="text-muted text-[13px] font-medium">{item}</span>
-                </li>
-              ))}
-            </ul>
           </motion.div>
+
+          {/* center medallion */}
+          <div className="hidden md:flex absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-20">
+            <div className="w-12 h-12 rounded-full bg-canvas border border-line shadow-lg flex items-center justify-center">
+              <ArrowRight size={16} className="text-brand" />
+            </div>
+          </div>
         </div>
 
-        <motion.div initial={{ opacity: 0, y: 15 }} whileInView={{ opacity: 1, y: 0 }} viewport={viewportOnce}
-          className="mt-4 p-5 rounded-xl bg-brand/[0.07] border border-brand/15 text-center">
-          <p className="text-brand text-[13px] md:text-sm font-semibold tracking-tight">{businessCaseData.callout}</p>
-        </motion.div>
+        <motion.p initial={{ opacity: 0, y: 12 }} whileInView={{ opacity: 1, y: 0 }} viewport={viewportOnce}
+          className="text-center text-muted/60 text-xs mt-5 max-w-2xl mx-auto">
+          *Based on 20 events/year with a single ₹5,000 guest-experience upsell each. The platform pays for itself many times over.
+        </motion.p>
       </div>
     </section>
   );

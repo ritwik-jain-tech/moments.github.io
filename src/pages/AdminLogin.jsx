@@ -64,13 +64,13 @@ const AdminLogin = () => {
         leftHeading: 'text-white',
         leftMuted: 'text-white/75',
         card: 'bg-white/10 border-white/10 text-white',
-        right: 'bg-[#0d1117]',
+        right: 'bg-[#0E1511]',
         rightHeading: 'text-white',
         rightMuted: 'text-gray-400',
         fieldLabel: 'text-gray-400',
-        input: 'bg-[#161b22] border-gray-600 text-white placeholder:text-gray-500',
+        input: 'bg-[#18211B] border-gray-600 text-white placeholder:text-gray-500',
         divider: 'border-gray-600',
-        dividerText: 'bg-[#0d1117] text-gray-500',
+        dividerText: 'bg-[#0E1511] text-gray-500',
         oauthBorder: 'border-gray-600 hover:bg-white/5 text-white',
         accent: 'text-[#4a7c59] hover:text-[#5c926c]',
         primaryBtn: 'bg-[#344e41] hover:bg-[#3d5c4d] text-white',
@@ -423,7 +423,7 @@ const AdminLogin = () => {
               {showPhonePanel && (
                 <div
                   className={`rounded-xl border p-4 space-y-4 ${
-                    isDark ? 'border-gray-700 bg-[#161b22]' : 'border-gray-200 bg-[#f8faf9]'
+                    isDark ? 'border-gray-700 bg-[#18211B]' : 'border-gray-200 bg-[#f8faf9]'
                   }`}
                 >
                   {!showOtpInput ? (

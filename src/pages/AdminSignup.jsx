@@ -45,11 +45,11 @@ const AdminSignup = () => {
         leftHeading: 'text-white',
         leftMuted: 'text-white/75',
         card: 'bg-white/10 border-white/10 text-white',
-        right: 'bg-[#0d1117]',
+        right: 'bg-[#0E1511]',
         rightHeading: 'text-white',
         rightMuted: 'text-gray-400',
         fieldLabel: 'text-gray-400',
-        input: 'bg-[#161b22] border-gray-600 text-white placeholder:text-gray-500',
+        input: 'bg-[#18211B] border-gray-600 text-white placeholder:text-gray-500',
         divider: 'border-gray-600',
         oauthBorder: 'border-gray-600 hover:bg-white/5 text-white',
         accent: 'text-[#4a7c59] hover:text-[#5c926c]',
@@ -228,7 +228,7 @@ const AdminSignup = () => {
                   <div className={`w-full border-t ${t.divider}`} />
                 </div>
                 <div className="relative flex justify-center text-xs">
-                  <span className={`px-3 ${isDark ? 'bg-[#0d1117] text-gray-500' : 'bg-white text-gray-500'}`}>
+                  <span className={`px-3 ${isDark ? 'bg-[#0E1511] text-gray-500' : 'bg-white text-gray-500'}`}>
                     Or sign up with email
                   </span>
                 </div>

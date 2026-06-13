@@ -66,8 +66,8 @@ const Navbar = () => {
         transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
         className={`w-full max-w-[1080px] rounded-full border transition-all duration-500 ${
           scrolled
-            ? 'bg-surface/70 backdrop-blur-2xl border-line/40 shadow-[0_10px_40px_rgb(var(--shadow-rgb)/calc(var(--shadow-strength)+0.05))]'
-            : 'bg-surface/40 backdrop-blur-xl border-line/25 shadow-[0_6px_24px_rgb(var(--shadow-rgb)/var(--shadow-strength))]'
+            ? 'bg-surface/90 backdrop-blur-2xl border-line/60 shadow-[0_14px_44px_rgb(var(--shadow-rgb)/calc(var(--shadow-strength)+0.12))]'
+            : 'bg-surface/60 backdrop-blur-xl border-line/35 shadow-[0_8px_28px_rgb(var(--shadow-rgb)/calc(var(--shadow-strength)+0.04))]'
         }`}
       >
         <div className="px-4 md:px-5 py-2.5 flex items-center justify-between gap-4">

@@ -11,7 +11,7 @@ const AdminSidebar = ({
   className = '',
 }) => {
   const dividerBorder = isDark ? 'border-white/10' : 'border-[#d4d4d8]';
-  const sidebarBg = isDark ? 'bg-[#08101D]' : 'bg-white';
+  const sidebarBg = isDark ? 'bg-[#0A130E]' : 'bg-white';
   const sidebarItemBase = `w-full flex items-center rounded-xl text-sm font-medium transition-colors ${
     collapsed ? 'justify-center px-0 py-3' : 'gap-3 px-4 py-2'
   }`;

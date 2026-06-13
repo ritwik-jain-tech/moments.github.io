@@ -66,12 +66,12 @@ export const dualValueData = {
 
 export const platformFeaturesData = {
   sectionTag: 'The Platform',
-  headline: 'Everything you need to run a tighter, more professional media operation.',
-  tagline: 'Less time on admin. More time shooting. Lower cost per event.',
+  headline: 'Everything you need to run a tighter, faster media operation.',
+  tagline: 'Less time on admin. Faster client review. Lower cost per event.',
   features: [
     {
-      title: 'Project Management',
-      description: 'One dashboard for every event — upload, organise, and manage all media across sub-events from a single interface.',
+      title: 'Fast Client Review',
+      description: 'Clients review, shortlist, and approve galleries in hours — not weeks. Live feedback, favourites, and sign-off in one shareable link. No more endless WhatsApp back-and-forth.',
       image: 'https://customer-assets.emergentagent.com/job_moment-keeper-7/artifacts/p2naxnxo_studio.moments.live%20Prototype-1.png',
     },
     {
@@ -114,13 +114,15 @@ export const businessCaseData = {
   headline: "This isn't a cost — it's a profit lever.",
   saves: [
     'Hours of post-event media admin',
+    'Days of client review & approval turnaround',
     'Storage and file transfer costs',
     'Back-and-forth client communication',
     'Risk of losing or misdelivering media',
   ],
   earns: [
-    'Premium pricing for professional delivery',
+    'Premium pricing for fast, professional delivery',
     '"Digital Guest Experience" add-on at ₹5K–₹15K per event',
+    'Faster client sign-off = faster final payment',
     'Stronger referrals from impressed guests',
     'Repeat clients who associate your brand with excellence',
   ],

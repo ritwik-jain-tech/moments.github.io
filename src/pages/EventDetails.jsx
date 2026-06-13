@@ -1992,14 +1992,14 @@ const EventDetails = () => {
   );
 
   const renderDeliveryAndGallery = () => {
-    const card = isDark ? 'rounded-2xl border border-white/10 bg-[#0F172A] p-6' : 'rounded-2xl border border-black/10 bg-white p-6';
+    const card = isDark ? 'rounded-2xl border border-white/10 bg-[#13201A] p-6' : 'rounded-2xl border border-black/10 bg-white p-6';
     const inner = isDark ? 'rounded-xl border border-white/10 bg-white/5 p-4' : 'rounded-xl border border-black/10 bg-slate-50 p-4';
     const heading = isDark ? 'text-lg font-semibold text-white' : 'text-lg font-semibold text-slate-900';
     const textPrimary = isDark ? 'text-sm font-semibold text-white/80' : 'text-sm font-semibold text-slate-800';
     const textSecondary = isDark ? 'text-xs text-white/50 mt-1' : 'text-xs text-slate-500 mt-1';
     const input =
       isDark
-        ? 'w-full bg-[#0F172A] border border-white/10 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:ring-0'
+        ? 'w-full bg-[#13201A] border border-white/10 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:ring-0'
         : 'w-full bg-white border border-black/10 rounded-xl px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-0';
 
     return (
@@ -2023,7 +2023,7 @@ const EventDetails = () => {
             className={`px-5 py-2 rounded-xl font-semibold border transition-colors ${
               galleryEnabled
                 ? 'bg-red-600/20 border-red-500/30 text-red-200 hover:bg-red-600/30'
-                : 'bg-emerald-600/20 border-emerald-500/30 text-emerald-200 hover:bg-emerald-600/30'
+                : `bg-emerald-600/20 border-emerald-500/30 hover:bg-emerald-600/30 ${isDark ? 'text-emerald-200' : 'text-emerald-800'}`
             }`}
           >
             {galleryEnabled ? 'Disable Gallery' : 'Enable Gallery'}
@@ -2051,7 +2051,7 @@ const EventDetails = () => {
                   className={`px-4 py-2 rounded-xl border font-semibold transition-colors ${
                     galleryTheme === t
                       ? isDark
-                        ? 'bg-emerald-600/20 border-emerald-500/30 text-emerald-200'
+                        ? `bg-emerald-600/20 border-emerald-500/30 ${isDark ? 'text-emerald-200' : 'text-emerald-800'}`
                         : 'bg-emerald-600/10 border-emerald-600/20 text-emerald-700'
                       : isDark
                         ? 'bg-white/0 border-white/10 text-white/60 hover:bg-white/5'
@@ -2078,7 +2078,7 @@ const EventDetails = () => {
                   className={`px-4 py-2 rounded-xl border font-semibold transition-colors ${
                     galleryLayout === l.key
                       ? isDark
-                        ? 'bg-emerald-600/20 border-emerald-500/30 text-emerald-200'
+                        ? `bg-emerald-600/20 border-emerald-500/30 ${isDark ? 'text-emerald-200' : 'text-emerald-800'}`
                         : 'bg-emerald-600/10 border-emerald-600/20 text-emerald-700'
                       : isDark
                         ? 'bg-white/0 border-white/10 text-white/60 hover:bg-white/5'
@@ -2379,7 +2379,7 @@ const EventDetails = () => {
                   className={`px-4 py-2 rounded-xl border font-semibold transition-colors ${
                     approvalMethod === m
                       ? isDark
-                        ? 'bg-emerald-600/20 border-emerald-500/30 text-emerald-200'
+                        ? `bg-emerald-600/20 border-emerald-500/30 ${isDark ? 'text-emerald-200' : 'text-emerald-800'}`
                         : 'bg-emerald-600/10 border-emerald-600/20 text-emerald-700'
                       : isDark
                         ? 'bg-white/0 border-white/10 text-white/60 hover:bg-white/5'
@@ -2398,7 +2398,7 @@ const EventDetails = () => {
   };
 
   const renderGuestAppConfig = () => {
-    const card = isDark ? 'rounded-2xl border border-white/10 bg-[#0F172A] p-6' : 'rounded-2xl border border-black/10 bg-white p-6';
+    const card = isDark ? 'rounded-2xl border border-white/10 bg-[#13201A] p-6' : 'rounded-2xl border border-black/10 bg-white p-6';
     const heading = isDark ? 'text-lg font-semibold text-white' : 'text-lg font-semibold text-slate-900';
     const textMuted = isDark ? 'text-white/60' : 'text-slate-600';
     const fieldBox = isDark ? 'border-white/10 bg-white/5' : 'border-black/10 bg-slate-50';
@@ -2426,7 +2426,7 @@ const EventDetails = () => {
             className={`px-5 py-2 rounded-xl font-semibold border transition-colors ${
               guestAppEnabled
                 ? 'bg-red-600/20 border-red-500/30 text-red-200 hover:bg-red-600/30'
-                : 'bg-emerald-600/20 border-emerald-500/30 text-emerald-200 hover:bg-emerald-600/30'
+                : `bg-emerald-600/20 border-emerald-500/30 hover:bg-emerald-600/30 ${isDark ? 'text-emerald-200' : 'text-emerald-800'}`
             }`}
           >
             {guestAppEnabled ? 'Disable' : 'Enable'}
@@ -2586,7 +2586,7 @@ const EventDetails = () => {
   };
 
   const renderSidebar = () => {
-    const sidebarBg = isDark ? 'bg-[#0A1220]' : 'bg-white';
+    const sidebarBg = isDark ? 'bg-[#0B140E]' : 'bg-white';
     const sidebarBorder = isDark ? 'border-white/10' : 'border-[#d4d4d8]';
     const textMuted = isDark ? 'text-white/55' : 'text-slate-500';
     const imageMoments = moments.filter((m) => !isVideoMoment(m));
@@ -3174,7 +3174,7 @@ const EventDetails = () => {
                 </div>
               </div>
               <div className={`mt-3 rounded-xl border p-3 flex items-center justify-between gap-3 text-sm ${
-                isDark ? 'bg-[#0B1220] border-white/15 text-white/90' : 'bg-white border-black/10 text-slate-800'
+                isDark ? 'bg-[#0E1712] border-white/15 text-white/90' : 'bg-white border-black/10 text-slate-800'
               }`}>
                 <div className="min-w-0 pr-4 space-y-1 text-xs md:text-sm">
                   <div className="truncate">
@@ -3228,7 +3228,7 @@ const EventDetails = () => {
     );
   };
 
-  const rootBg = isDark ? 'bg-[#0B1220]' : 'bg-white';
+  const rootBg = isDark ? 'bg-[#0E1712]' : 'bg-white';
   const rootText = isDark ? 'text-white' : 'text-slate-900';
 
   return (
@@ -3236,8 +3236,8 @@ const EventDetails = () => {
       <div className="flex min-h-screen">
         {renderSidebar()}
         <main className="flex-1 overflow-x-hidden transition-all duration-300">
-          <div className="px-6 py-5 border-b border-white/10">
-            <div className="flex flex-col gap-4">
+          <div className={`sticky top-0 z-30 px-6 py-3.5 border-b backdrop-blur-xl ${isDark ? 'border-white/10 bg-[#0E1712]/80' : 'border-black/10 bg-white/80'}`}>
+            <div className="flex flex-col gap-3">
               <div className="flex items-center justify-between gap-4">
                 <div className="min-w-0">
                   <div className={`text-sm ${isDark ? 'text-white/60' : 'text-slate-500'} flex items-center gap-2`}>
@@ -3269,13 +3269,13 @@ const EventDetails = () => {
                   onClick={() => setActiveView('media')}
                   className={`px-4 py-2 rounded-xl border text-sm font-semibold inline-flex items-center gap-2 transition-colors ${
                     activeView === 'media'
-                      ? 'bg-emerald-600/20 border-emerald-500/30 text-emerald-200'
+                      ? `bg-emerald-600/20 border-emerald-500/30 ${isDark ? 'text-emerald-200' : 'text-emerald-800'}`
                       : isDark
                         ? 'bg-white/0 border-white/10 text-white/60 hover:bg-white/5'
                         : 'bg-white border-black/10 text-slate-700 hover:bg-slate-50'
                   }`}
                 >
-                  <svg className={`w-4 h-4 ${activeView === 'media' ? 'text-emerald-200' : isDark ? 'text-white/70' : 'text-slate-600'}`} viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                  <svg className={`w-4 h-4 ${activeView === 'media' ? (isDark ? 'text-emerald-200' : 'text-emerald-700') : isDark ? 'text-white/70' : 'text-slate-600'}`} viewBox="0 0 24 24" fill="none" stroke="currentColor">
                     <path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M4 16l4-4 4 4 4-8 4 8v4H4v-4z" />
                   </svg>
                   Media
@@ -3285,13 +3285,13 @@ const EventDetails = () => {
                   onClick={() => setActiveView('delivery')}
                   className={`px-4 py-2 rounded-xl border text-sm font-semibold inline-flex items-center gap-2 transition-colors ${
                     activeView === 'delivery'
-                      ? 'bg-emerald-600/20 border-emerald-500/30 text-emerald-200'
+                      ? `bg-emerald-600/20 border-emerald-500/30 ${isDark ? 'text-emerald-200' : 'text-emerald-800'}`
                       : isDark
                         ? 'bg-white/0 border-white/10 text-white/60 hover:bg-white/5'
                         : 'bg-white border-black/10 text-slate-700 hover:bg-slate-50'
                   }`}
                 >
-                  <svg className={`w-4 h-4 ${activeView === 'delivery' ? 'text-emerald-200' : isDark ? 'text-white/70' : 'text-slate-600'}`} viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                  <svg className={`w-4 h-4 ${activeView === 'delivery' ? (isDark ? 'text-emerald-200' : 'text-emerald-700') : isDark ? 'text-white/70' : 'text-slate-600'}`} viewBox="0 0 24 24" fill="none" stroke="currentColor">
                     <path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M21 16V8a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v8" />
                     <path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M7 16l5 5 5-5" />
                   </svg>
@@ -3302,13 +3302,13 @@ const EventDetails = () => {
                   onClick={() => setActiveView('guestApp')}
                   className={`px-4 py-2 rounded-xl border text-sm font-semibold inline-flex items-center gap-2 transition-colors ${
                     activeView === 'guestApp'
-                      ? 'bg-emerald-600/20 border-emerald-500/30 text-emerald-200'
+                      ? `bg-emerald-600/20 border-emerald-500/30 ${isDark ? 'text-emerald-200' : 'text-emerald-800'}`
                       : isDark
                         ? 'bg-white/0 border-white/10 text-white/60 hover:bg-white/5'
                         : 'bg-white border-black/10 text-slate-700 hover:bg-slate-50'
                   }`}
                 >
-                  <svg className={`w-4 h-4 ${activeView === 'guestApp' ? 'text-emerald-200' : isDark ? 'text-white/70' : 'text-slate-600'}`} viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                  <svg className={`w-4 h-4 ${activeView === 'guestApp' ? (isDark ? 'text-emerald-200' : 'text-emerald-700') : isDark ? 'text-white/70' : 'text-slate-600'}`} viewBox="0 0 24 24" fill="none" stroke="currentColor">
                     <path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M16 2H8a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2z" />
                     <path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M11 16h2" />
                   </svg>

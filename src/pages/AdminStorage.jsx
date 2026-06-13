@@ -153,15 +153,15 @@ const AdminStorage = () => {
   const [storageError, setStorageError] = useState('');
   const isDark = theme === 'dark';
 
-  const appBg = isDark ? 'bg-[#0B1220]' : 'bg-[#F4F4F5]';
+  const appBg = isDark ? 'bg-[#0E1712]' : 'bg-[#F4F4F5]';
   const appText = isDark ? 'text-white' : 'text-slate-900';
-  const cardBg = isDark ? 'bg-[#101827] border-white/10' : 'bg-white border-black/[0.08]';
+  const cardBg = isDark ? 'bg-[#15201A] border-white/10' : 'bg-white border-black/[0.08]';
   const cardShadow = isDark ? '' : 'shadow-sm shadow-black/5';
   const muted = isDark ? 'text-white/55' : 'text-slate-500';
   const submuted = isDark ? 'text-white/45' : 'text-slate-600';
   const tableHead = isDark ? 'bg-white/[0.06] text-white/80' : 'bg-slate-100/80 text-slate-700';
   const tableRow = isDark ? 'border-white/[0.06] hover:bg-white/[0.03]' : 'border-black/[0.06] hover:bg-slate-50/80';
-  const ctaBand = isDark ? 'bg-[#141c2c] border-white/10' : 'bg-[#F0F4F1] border-emerald-900/10';
+  const ctaBand = isDark ? 'bg-[#16201A] border-white/10' : 'bg-[#F0F4F1] border-emerald-900/10';
 
   useEffect(() => {
     localStorage.setItem('adminTheme', theme);
@@ -677,7 +677,7 @@ const AdminStorage = () => {
                 ].map((plan) => (
                   <div
                     key={plan.title}
-                    className={`rounded-xl border p-5 ${isDark ? 'bg-[#0B1220]/80 border-white/10' : 'bg-white border-black/[0.08] shadow-sm'}`}
+                    className={`rounded-xl border p-5 ${isDark ? 'bg-[#0E1712]/80 border-white/10' : 'bg-white border-black/[0.08] shadow-sm'}`}
                   >
                     <div className="flex items-start justify-between gap-2">
                       <span className={`font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}>{plan.title}</span>

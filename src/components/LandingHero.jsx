@@ -46,7 +46,7 @@ const LandingHero = () => {
           initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, delay: 0.18 }}
           className="text-muted text-base md:text-lg leading-relaxed max-w-xl mb-9 font-medium"
         >
-          One platform to manage, deliver, and monetize your event media — less admin, more creative work.
+          One platform to manage, deliver, and monetize your event media — with <span className="text-ink font-semibold">lightning-fast client review</span> that gets sign-off in hours, not weeks.
         </motion.p>
 
         <motion.div
