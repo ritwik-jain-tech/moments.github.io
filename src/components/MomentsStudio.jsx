@@ -148,12 +148,12 @@ const MomentsStudio = () => {
       <div className="max-w-[1200px] mx-auto px-5 md:px-10 relative z-10">
         {/* header */}
         <motion.div initial="hidden" whileInView="visible" viewport={viewportOnce} variants={clipReveal} className="text-center mb-12 md:mb-16 max-w-2xl mx-auto">
-          <span className="text-brand text-[11px] font-semibold uppercase tracking-[0.2em] mb-4 block">Moments Studio</span>
+          <span className="text-brand text-[11px] font-semibold uppercase tracking-[0.2em] mb-4 block">Moments Studio · Main Offering</span>
           <h2 className="text-[2rem] md:text-[3rem] font-bold text-ink leading-[1.08] tracking-tight font-tight mb-4">
             Your media journey, <span className="gradient-text-green">made effortless.</span>
           </h2>
           <p className="text-muted text-base md:text-lg">
-            From the first frame to the final album, Moments Studio maps to how you actually work — quietly removing the friction at every step.
+            Our core platform — from capture to delivery — with the Moments guest app built right in. Every step maps to how you actually work, quietly removing the friction.
           </p>
         </motion.div>
 

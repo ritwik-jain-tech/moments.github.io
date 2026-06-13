@@ -110,7 +110,7 @@ export const howItWorksData = {
 };
 
 export const businessCaseData = {
-  sectionTag: 'The Business Case',
+  sectionTag: 'How It Matters To You',
   headline: "This isn't a cost — it's a profit lever.",
   saves: [
     'Hours of post-event media admin',
