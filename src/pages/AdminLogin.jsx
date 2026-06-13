@@ -13,6 +13,15 @@ import { persistAdminSession } from '../utils/adminSession';
 
 const formatPhoneNumber = (phone) => phone.replace(/\D/g, '');
 
+// Phone numbers permitted to sign in to the admin dashboard via OTP.
+// (The OTP backend is shared with the guest app, so this gate lives here.)
+const ADMIN_PHONE_WHITELIST = ['8962364626', '9207556555'];
+
+const isWhitelistedPhone = (cleanedPhone) => {
+  const last10 = cleanedPhone.slice(-10);
+  return ADMIN_PHONE_WHITELIST.includes(last10);
+};
+
 const GoogleIcon = () => (
   <svg className="h-5 w-5 shrink-0" viewBox="0 0 24 24" aria-hidden>
     <path
@@ -193,6 +202,12 @@ const AdminLogin = () => {
         return;
       }
 
+      if (!isWhitelistedPhone(cleanedPhone)) {
+        setError('This phone number is not authorized to access the admin dashboard.');
+        setLoading(false);
+        return;
+      }
+
       await axios.post(
         `${API_BASE_URL}/api/otp/send`,
         { phoneNumber: cleanedPhone },
@@ -221,6 +236,12 @@ const AdminLogin = () => {
 
       if (isNaN(otpNumber) || otp.length !== 4) {
         setError('Please enter a valid 4-digit OTP');
+        setLoading(false);
+        return;
+      }
+
+      if (!isWhitelistedPhone(cleanedPhone)) {
+        setError('This phone number is not authorized to access the admin dashboard.');
         setLoading(false);
         return;
       }
