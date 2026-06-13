@@ -4,67 +4,172 @@
 @tailwind components;
 @tailwind utilities;
 
-html {
-  scroll-behavior: smooth;
+/* ============================================================
+   THEME TOKENS — values are R G B channels (for Tailwind /alpha)
+   ============================================================ */
+:root {
+  /* LIGHT — warm pastel premium */
+  --canvas:      255 245 233;  /* #FFF5E9 warm cream            */
+  --panel:       243 247 239;  /* #F3F7EF soft sage section      */
+  --surface:     255 255 255;  /* cards                          */
+  --surface-2:   255 255 255;
+  --ink:          26  26  26;  /* headings                       */
+  --muted:       104 121 139;  /* body text                      */
+  --subtle:      154 167 180;  /* faint                          */
+  --line:        209 215 201;  /* #D1D7C9 borders                */
+  --brand:        41  77  50;  /* #294D32 deep green             */
+  --brand-2:      58 107  68;  /* gradient end                   */
+  --on-brand:    255 245 233;  /* text on brand button (cream)   */
+  --accent:      244 208 216;  /* #F4D0D8 pastel pink            */
+  --accent-2:    172  91 192;  /* #AC5BC0 purple                 */
+  --glow:         41  77  50;
+  --shadow-rgb:    0   0   0;
+  --shadow-strength: 0.10;
+  color-scheme: light;
 }
 
-/* ========== B2B THEME — Space Grotesk headings ========== */
-.font-display { font-family: 'Space Grotesk', 'Inter', sans-serif; }
-.font-playfair { font-family: 'Playfair Display', serif; }
-
-/* ========== CONSUMER LANDING — Inter Tight headings ========== */
-.font-tight { font-family: 'Inter Tight', 'Inter', sans-serif; }
-
-@keyframes marquee { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
-.animate-marquee { animation: marquee 20s linear infinite; }
-.mask-gradient { -webkit-mask-image: linear-gradient(to right, transparent 0%, black 10%, black 90%, transparent 100%); mask-image: linear-gradient(to right, transparent 0%, black 10%, black 90%, transparent 100%); }
-
-.glass-warm { background: rgba(255,255,255,0.30); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border: 1px solid rgba(255,255,255,0.40); }
-.glass-card { background: rgba(255,255,255,0.50); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border: 1px solid rgba(209,215,201,0.30); }
-.dashboard-screenshot { border-radius: 16px; border: 1px solid rgba(0,0,0,0.08); box-shadow: 0 25px 60px rgba(0,0,0,0.12), 0 8px 20px rgba(0,0,0,0.06); }
-.gradient-text-green { background: linear-gradient(135deg, #294D32 0%, #3a6b44 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
-.gradient-text-purple { background: linear-gradient(135deg, #AC5BC0 0%, #8B3FA0 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
-
-@keyframes shine { 0% { left: -100%; } 100% { left: 200%; } }
-.btn-shine { position: relative; overflow: hidden; }
-.btn-shine::after { content: ''; position: absolute; top: 0; left: -100%; width: 50%; height: 100%; background: linear-gradient(90deg, transparent, rgba(255,255,255,0.18), transparent); animation: shine 3s infinite; }
-
-.scrollbar-hide::-webkit-scrollbar { display: none; }
-.scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
-.noise-overlay { position: relative; }
-
-/* Add these CSS resets at the top of your index.css */
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
+.dark {
+  /* DARK — warm charcoal with sage undertone, mint accents */
+  --canvas:       22  24  20;  /* #161814 deep warm olive-black  */
+  --panel:        28  31  24;  /* #1C1F18 slightly elevated      */
+  --surface:      34  38  29;  /* #22261D warm card              */
+  --surface-2:    44  49  38;
+  --ink:         243 239 230;  /* warm off-white                 */
+  --muted:       168 176 160;  /* sage grey                      */
+  --subtle:      124 132 115;
+  --line:         56  64  47;  /* warm dark border               */
+  --brand:       143 203 155;  /* #8FCB9B light mint             */
+  --brand-2:     184 224 192;
+  --on-brand:     20  28  18;  /* dark text on mint button       */
+  --accent:      224 184 232;  /* pastel purple                  */
+  --accent-2:    224 184 232;
+  --glow:        143 203 155;
+  --shadow-rgb:    0   0   0;
+  --shadow-strength: 0.45;
+  color-scheme: dark;
 }
+
+html { scroll-behavior: smooth; }
 
 body {
   margin: 0;
   padding: 0;
   min-height: 100vh;
-  background: #f3efe6;
+  background: rgb(var(--canvas));
+  color: rgb(var(--ink));
+  transition: background-color 0.5s ease, color 0.5s ease;
+}
+* { box-sizing: border-box; }
+#root { min-height: 100vh; }
+
+/* Smooth theme cross-fade on color-bearing elements */
+.theme-tx,
+.theme-tx * {
+  transition: background-color 0.5s ease, border-color 0.5s ease,
+              color 0.4s ease, box-shadow 0.5s ease;
 }
 
-#root {
-  min-height: 100vh;
+/* ============================================================
+   FONT UTILITIES
+   ============================================================ */
+.font-display { font-family: 'Space Grotesk', 'Inter', sans-serif; }
+.font-playfair { font-family: 'Playfair Display', serif; }
+.font-tight { font-family: 'Inter Tight', 'Inter', sans-serif; }
+
+/* ============================================================
+   PREMIUM SURFACES & EFFECTS (theme-aware)
+   ============================================================ */
+.glass-card {
+  background: rgb(var(--surface) / 0.55);
+  backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgb(var(--line) / 0.30);
+}
+.glass-warm {
+  background: rgb(var(--surface) / 0.30);
+  backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgb(var(--line) / 0.40);
+}
+.dashboard-screenshot {
+  border-radius: 16px;
+  border: 1px solid rgb(var(--line) / 0.6);
+  box-shadow: 0 25px 60px rgb(var(--shadow-rgb) / calc(var(--shadow-strength) + 0.04)),
+              0 8px 20px rgb(var(--shadow-rgb) / var(--shadow-strength));
+}
+.gradient-text-green {
+  background: linear-gradient(135deg, rgb(var(--brand)) 0%, rgb(var(--brand-2)) 100%);
+  -webkit-background-clip: text; background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+.gradient-text-shimmer {
+  background: linear-gradient(110deg, rgb(var(--brand)) 0%, rgb(var(--brand-2)) 30%,
+              rgb(var(--accent-2)) 50%, rgb(var(--brand-2)) 70%, rgb(var(--brand)) 100%);
+  background-size: 250% 100%;
+  -webkit-background-clip: text; background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: textShimmer 6s ease-in-out infinite;
 }
 
-/* Add these to your existing CSS */
-.header-shadow {
-  box-shadow: 0 2px 20px rgba(0, 0, 0, 0.5);
+/* ============================================================
+   KEYFRAMES
+   ============================================================ */
+@keyframes marquee { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
+.animate-marquee { animation: marquee 28s linear infinite; }
+.mask-gradient {
+  -webkit-mask-image: linear-gradient(to right, transparent, black 8%, black 92%, transparent);
+  mask-image: linear-gradient(to right, transparent, black 8%, black 92%, transparent);
 }
 
-@keyframes slideDown {
-  from {
-    transform: translateY(-100%);
+@keyframes shine { 0% { left: -120%; } 60%,100% { left: 130%; } }
+.btn-shine { position: relative; overflow: hidden; }
+.btn-shine::after {
+  content: ''; position: absolute; top: 0; left: -120%; width: 45%; height: 100%;
+  background: linear-gradient(90deg, transparent, rgb(255 255 255 / 0.22), transparent);
+  animation: shine 4.5s infinite; pointer-events: none;
+}
+
+@keyframes float { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-14px); } }
+.animate-float { animation: float 7s ease-in-out infinite; }
+@keyframes floatSlow { 0%,100% { transform: translateY(0) rotate(0deg); } 50% { transform: translateY(-22px) rotate(1.5deg); } }
+.animate-float-slow { animation: floatSlow 11s ease-in-out infinite; }
+
+@keyframes textShimmer { 0%,100% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } }
+
+/* Auto-scroll the inner screenshot of a browser frame — the "moving screen" */
+@keyframes screenScroll {
+  0%, 8%   { transform: translateY(0); }
+  92%,100% { transform: translateY(calc(-100% + var(--frame-h, 420px))); }
+}
+.animate-screen { animation: screenScroll 16s ease-in-out infinite alternate; }
+
+@keyframes auroraShift {
+  0%   { transform: translate(0,0) scale(1); }
+  33%  { transform: translate(4%, -3%) scale(1.08); }
+  66%  { transform: translate(-3%, 4%) scale(0.96); }
+  100% { transform: translate(0,0) scale(1); }
+}
+.animate-aurora { animation: auroraShift 22s ease-in-out infinite; }
+
+@keyframes pulseRing { 0% { transform: scale(0.9); opacity: 0.6; } 70% { transform: scale(1.4); opacity: 0; } 100% { opacity: 0; } }
+.animate-pulse-ring { animation: pulseRing 2.6s ease-out infinite; }
+
+/* ============================================================
+   UTILITIES
+   ============================================================ */
+.scrollbar-hide::-webkit-scrollbar { display: none; }
+.scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+.header-shadow { box-shadow: 0 2px 30px rgb(var(--shadow-rgb) / 0.18); }
+
+@keyframes slideDown { from { transform: translateY(-100%); } to { transform: translateY(0); } }
+.animate-slideDown { animation: slideDown 0.3s ease-in-out; }
+
+/* ============================================================
+   ACCESSIBILITY — respect reduced motion
+   ============================================================ */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
   }
-  to {
-    transform: translateY(0);
-  }
-}
-
-.animate-slideDown {
-  animation: slideDown 0.3s ease-in-out;
 }

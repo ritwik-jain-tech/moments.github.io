@@ -16,6 +16,17 @@
     <meta property="og:image:height" content="630" />
   </head>
   <body>
+    <script>
+      // Anti-FOUC: apply saved/system theme before first paint
+      (function () {
+        try {
+          var s = localStorage.getItem('moments-theme');
+          var dark = s ? s === 'dark'
+            : window.matchMedia('(prefers-color-scheme: dark)').matches;
+          if (dark) document.documentElement.classList.add('dark');
+        } catch (e) {}
+      })();
+    </script>
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
   </body>

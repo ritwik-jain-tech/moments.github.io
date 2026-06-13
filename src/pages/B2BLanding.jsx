@@ -15,7 +15,7 @@ const B2BLanding = () => {
   useEffect(() => { window.scrollTo(0, 0); }, []);
 
   return (
-    <div className="min-h-screen bg-[#FFF5E9]">
+    <div className="min-h-screen bg-canvas">
       <Navbar />
       <LandingHero />
       <ProblemSection />

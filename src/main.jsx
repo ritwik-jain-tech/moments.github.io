@@ -15,10 +15,12 @@ import HomeRouter from "./components/HomeRouter";
 import Landing from "./pages/Landing";
 import AdminStorage from "./pages/AdminStorage";
 import AdminUploads from "./pages/AdminUploads";
+import { ThemeProvider } from "./context/ThemeContext";
 import "./index.css";
 
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
+    <ThemeProvider>
     <BrowserRouter>
       <Routes>
         {/* Public routes - no authentication required */}
@@ -100,5 +102,6 @@ ReactDOM.createRoot(document.getElementById("root")).render(
         <Route path="/" element={<HomeRouter />} />
       </Routes>
     </BrowserRouter>
+    </ThemeProvider>
   </React.StrictMode>
 );

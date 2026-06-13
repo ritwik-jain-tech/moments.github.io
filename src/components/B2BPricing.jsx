@@ -2,48 +2,46 @@ import React from 'react';
 import { pricingData, STUDIO_SIGNUP } from '../data/mockData';
 import { motion } from 'framer-motion';
 import { Check, Sparkles } from 'lucide-react';
+import { popIn, clipReveal, container, viewportOnce } from '../lib/motion';
 
-const PricingCard = ({ plan, index }) => (
+const PricingCard = ({ plan }) => (
   <motion.div
-    initial={{ opacity: 0, y: 25 }}
-    whileInView={{ opacity: 1, y: 0 }}
-    viewport={{ once: true }}
-    transition={{ delay: index * 0.08, duration: 0.4 }}
-    whileHover={{ y: -6 }}
-    className={`relative rounded-2xl p-6 md:p-7 flex flex-col border transition-all duration-300 ${
+    variants={popIn}
+    whileHover={{ y: -8 }}
+    className={`relative rounded-2xl p-6 md:p-7 flex flex-col border transition-colors duration-300 ${
       plan.popular
-        ? 'border-[#294D32]/20 bg-[#294D32]/[0.03] shadow-md shadow-[#294D32]/5'
-        : 'border-[#D1D7C9]/20 bg-white/50 backdrop-blur-sm'
+        ? 'border-brand/25 bg-brand/[0.05] shadow-lg shadow-brand/10'
+        : 'border-line/20 bg-surface/50 backdrop-blur-sm'
     }`}
   >
     {plan.popular && (
       <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-        <span className="bg-[#294D32] text-white text-[9px] font-bold px-3 py-1.5 rounded-full flex items-center gap-1 shadow-md uppercase tracking-wider">
+        <span className="bg-brand text-on-brand text-[9px] font-bold px-3 py-1.5 rounded-full flex items-center gap-1 shadow-md uppercase tracking-wider">
           <Sparkles size={9} />Most Popular
         </span>
       </div>
     )}
     <div className="mb-4">
-      <h4 className="text-[#000000] font-bold text-sm tracking-tight">{plan.name}</h4>
-      <p className="text-[#68798B]/40 text-[11px] font-medium">{plan.subtitle}</p>
+      <h4 className="text-ink font-bold text-sm tracking-tight">{plan.name}</h4>
+      <p className="text-muted/50 text-[11px] font-medium">{plan.subtitle}</p>
     </div>
     <div className="mb-6">
-      <span className="text-[#000000] font-bold text-3xl md:text-4xl tracking-tight">₹{plan.price}</span>
-      <span className="text-[#68798B]/40 text-xs font-medium">{plan.period}</span>
+      <span className="text-ink font-bold text-3xl md:text-4xl tracking-tight font-tight">₹{plan.price}</span>
+      <span className="text-muted/50 text-xs font-medium">{plan.period}</span>
     </div>
     <motion.a href={STUDIO_SIGNUP} whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
       className={`w-full py-3 rounded-full text-[13px] font-bold transition-colors mb-6 text-center block ${
         plan.popular
-          ? 'bg-[#294D32] text-white hover:bg-[#1e3a25] shadow-sm'
-          : 'border border-[#D1D7C9] text-[#68798B] hover:border-[#294D32]/30 hover:text-[#000]'
+          ? 'bg-brand text-on-brand hover:opacity-90 shadow-sm'
+          : 'border border-line text-muted hover:border-brand/30 hover:text-ink'
       }`}>
       Start Free Trial
     </motion.a>
     <ul className="space-y-2.5 flex-1">
       {plan.features.map((f) => (
         <li key={f} className="flex items-start gap-2">
-          <Check size={12} className="text-[#294D32]/50 mt-0.5 flex-shrink-0" />
-          <span className="text-[#68798B] text-[12px] font-medium">{f}</span>
+          <Check size={12} className="text-brand/60 mt-0.5 flex-shrink-0" />
+          <span className="text-muted text-[12px] font-medium">{f}</span>
         </li>
       ))}
     </ul>
@@ -52,21 +50,22 @@ const PricingCard = ({ plan, index }) => (
 
 const B2BPricing = () => {
   return (
-    <section id="pricing" className="bg-[#F3F7EF] py-20 md:py-28 relative overflow-hidden">
+    <section id="pricing" className="bg-panel py-20 md:py-28 relative overflow-hidden">
       <div className="max-w-[1000px] mx-auto px-5 md:px-10 relative z-10">
-        <motion.div initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="text-center mb-12">
-          <span className="text-[#294D32] text-[11px] font-semibold uppercase tracking-[0.2em] mb-4 block">Pricing</span>
-          <h2 className="text-[2rem] md:text-[2.8rem] font-bold text-[#000000] leading-[1.1] mb-3 tracking-tight">
+        <motion.div initial="hidden" whileInView="visible" viewport={viewportOnce} variants={clipReveal} className="text-center mb-12">
+          <span className="text-brand text-[11px] font-semibold uppercase tracking-[0.2em] mb-4 block">Pricing</span>
+          <h2 className="text-[2rem] md:text-[2.8rem] font-bold text-ink leading-[1.1] mb-3 tracking-tight font-tight">
             Plans that pay for themselves.
           </h2>
-          <p className="text-[#68798B] text-sm max-w-md mx-auto">Pay for storage and capabilities, not per event. Unlimited events on every tier.</p>
+          <p className="text-muted text-sm max-w-md mx-auto">Pay for storage and capabilities, not per event. Unlimited events on every tier.</p>
         </motion.div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-          {pricingData.plans.map((plan, i) => (<PricingCard key={plan.name} plan={plan} index={i} />))}
-        </div>
-        <motion.div initial={{ opacity: 0, y: 15 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}
-          className="mt-6 p-5 rounded-xl bg-white/40 border border-[#D1D7C9]/15 text-center">
-          <p className="text-[#68798B] text-[12px] font-medium">Free trial includes all features. No credit card required.</p>
+        <motion.div initial="hidden" whileInView="visible" viewport={viewportOnce} variants={container(0.1)}
+          className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+          {pricingData.plans.map((plan) => (<PricingCard key={plan.name} plan={plan} />))}
+        </motion.div>
+        <motion.div initial={{ opacity: 0, y: 15 }} whileInView={{ opacity: 1, y: 0 }} viewport={viewportOnce}
+          className="mt-6 p-5 rounded-xl bg-surface/40 border border-line/15 text-center">
+          <p className="text-muted text-[12px] font-medium">Free trial includes all features. No credit card required.</p>
         </motion.div>
       </div>
     </section>
