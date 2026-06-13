@@ -1,5 +1,5 @@
-import React from 'react';
-import { motion } from 'framer-motion';
+import React, { useRef } from 'react';
+import { motion, useScroll } from 'framer-motion';
 import { Camera, ScanFace, Share2, Users, ArrowRight, Check } from 'lucide-react';
 import BrowserFrame from './BrowserFrame';
 import { clipReveal, viewportOnce, EASE } from '../lib/motion';
@@ -44,59 +44,86 @@ const STAGES = [
 
 const StageRow = ({ stage, index }) => {
   const Icon = stage.icon;
-  const reversed = index % 2 === 1;
+  const even = index % 2 === 0; // even → text left / screenshot right
+  const num = String(index + 1).padStart(2, '0');
+
+  const text = (
+    <motion.div
+      initial={{ opacity: 0, x: even ? -40 : 40 }}
+      whileInView={{ opacity: 1, x: 0 }}
+      viewport={viewportOnce}
+      transition={{ duration: 0.7, ease: EASE }}
+      className={`${even ? 'lg:order-1' : 'lg:order-3'}`}
+    >
+      {/* pointer header — aligned toward the centre line */}
+      <div className={`flex items-center gap-3 mb-4 ${even ? 'lg:flex-row-reverse lg:text-right' : 'lg:flex-row'}`}>
+        <span className="lg:hidden w-10 h-10 rounded-full bg-brand text-on-brand flex items-center justify-center flex-shrink-0">
+          <Icon size={18} />
+        </span>
+        <span className="text-brand text-xs font-bold uppercase tracking-[0.22em]">{num} · {stage.tag}</span>
+      </div>
+      <h3 className={`font-tight font-bold text-ink text-[1.6rem] md:text-[2.1rem] leading-[1.12] tracking-tight mb-5 ${even ? 'lg:text-right' : 'lg:text-left'}`}>
+        {stage.title}
+      </h3>
+
+      <div className="space-y-3">
+        <div className="flex items-start gap-3 rounded-xl px-4 py-3 bg-surface/30 border border-line/20">
+          <span className="text-[10px] font-bold uppercase tracking-wider text-muted/50 mt-0.5 flex-shrink-0 w-10">Today</span>
+          <p className="text-muted text-[13px] leading-relaxed line-through decoration-muted/25 text-left">{stage.today}</p>
+        </div>
+        <div className="flex items-start gap-3 rounded-xl px-4 py-3 bg-brand/[0.06] border border-brand/15">
+          <span className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-brand mt-0.5 flex-shrink-0 w-10">
+            <Check size={11} /> Us
+          </span>
+          <p className="text-ink/80 text-[13px] leading-relaxed font-medium text-left">{stage.moments}</p>
+        </div>
+      </div>
+    </motion.div>
+  );
+
+  const node = (
+    <div className="hidden lg:flex lg:order-2 justify-center">
+      <motion.div
+        initial={{ scale: 0, opacity: 0 }}
+        whileInView={{ scale: 1, opacity: 1 }}
+        viewport={{ once: true, amount: 0.8 }}
+        transition={{ type: 'spring', stiffness: 240, damping: 16 }}
+        className="relative w-14 h-14 rounded-full bg-brand text-on-brand flex items-center justify-center shadow-lg shadow-brand/30 ring-4 ring-canvas z-10"
+      >
+        <Icon size={22} />
+        <span className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-canvas border border-line text-ink text-[9px] font-bold flex items-center justify-center">{num}</span>
+      </motion.div>
+    </div>
+  );
+
+  const visual = (
+    <motion.div
+      initial={{ opacity: 0, scale: 0.95, y: 20 }}
+      whileInView={{ opacity: 1, scale: 1, y: 0 }}
+      viewport={viewportOnce}
+      transition={{ duration: 0.8, ease: EASE }}
+      className={`${even ? 'lg:order-3' : 'lg:order-1'}`}
+    >
+      <BrowserFrame src={stage.image} float />
+    </motion.div>
+  );
+
   return (
-    <div className="grid lg:grid-cols-2 gap-8 lg:gap-16 items-center">
-      {/* copy */}
-      <motion.div
-        initial={{ opacity: 0, x: reversed ? 40 : -40 }}
-        whileInView={{ opacity: 1, x: 0 }}
-        viewport={viewportOnce}
-        transition={{ duration: 0.7, ease: EASE }}
-        className={reversed ? 'lg:order-2' : ''}
-      >
-        <div className="flex items-center gap-3 mb-5">
-          <span className="w-11 h-11 rounded-xl bg-brand/12 flex items-center justify-center">
-            <Icon size={20} className="text-brand" />
-          </span>
-          <span className="text-brand/70 text-xs font-bold uppercase tracking-[0.22em]">
-            {String(index + 1).padStart(2, '0')} · {stage.tag}
-          </span>
-        </div>
-
-        <h3 className="font-tight font-bold text-ink text-[1.7rem] md:text-[2.3rem] leading-[1.1] tracking-tight mb-5">
-          {stage.title}
-        </h3>
-
-        <div className="space-y-3">
-          <div className="flex items-start gap-3 rounded-xl px-4 py-3 bg-surface/30 border border-line/20">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-muted/50 mt-0.5 flex-shrink-0 w-12">Today</span>
-            <p className="text-muted text-[13.5px] leading-relaxed line-through decoration-muted/25">{stage.today}</p>
-          </div>
-          <div className="flex items-start gap-3 rounded-xl px-4 py-3 bg-brand/[0.06] border border-brand/15">
-            <span className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-brand mt-0.5 flex-shrink-0 w-12">
-              <Check size={11} /> Us
-            </span>
-            <p className="text-ink/80 text-[13.5px] leading-relaxed font-medium">{stage.moments}</p>
-          </div>
-        </div>
-      </motion.div>
-
-      {/* visual */}
-      <motion.div
-        initial={{ opacity: 0, scale: 0.95, y: 20 }}
-        whileInView={{ opacity: 1, scale: 1, y: 0 }}
-        viewport={viewportOnce}
-        transition={{ duration: 0.8, ease: EASE }}
-        className={reversed ? 'lg:order-1' : ''}
-      >
-        <BrowserFrame src={stage.image} float />
-      </motion.div>
+    <div className="grid grid-cols-1 lg:grid-cols-[1fr_56px_1fr] gap-6 lg:gap-10 items-center">
+      {text}
+      {node}
+      {visual}
     </div>
   );
 };
 
 const MomentsStudio = () => {
+  const stagesRef = useRef(null);
+  const { scrollYProgress } = useScroll({
+    target: stagesRef,
+    offset: ['start 0.6', 'end 0.85'],
+  });
+
   return (
     <section id="features" className="bg-gradient-to-b from-canvas via-panel to-canvas relative overflow-hidden py-20 md:py-28 scroll-mt-28 md:scroll-mt-32">
       <div className="absolute top-1/4 right-[-160px] w-[460px] h-[460px] rounded-full bg-accent/15 blur-[150px] animate-aurora pointer-events-none" />
@@ -114,17 +141,27 @@ const MomentsStudio = () => {
           </p>
         </motion.div>
 
-        {/* stages */}
-        <div className="space-y-20 md:space-y-28">
-          {STAGES.map((stage, i) => (
-            <StageRow key={stage.tag} stage={stage} index={i} />
-          ))}
+        {/* timeline */}
+        <div ref={stagesRef} className="relative">
+          {/* centre line track */}
+          <div className="hidden lg:block absolute left-1/2 -translate-x-1/2 top-0 bottom-0 w-[2px] bg-line/40 rounded-full" />
+          {/* progress fill */}
+          <motion.div
+            style={{ scaleY: scrollYProgress }}
+            className="hidden lg:block absolute left-1/2 -translate-x-1/2 top-0 bottom-0 w-[2px] bg-gradient-to-b from-brand to-brand-2 rounded-full origin-top"
+          />
+
+          <div className="space-y-20 md:space-y-28">
+            {STAGES.map((stage, i) => (
+              <StageRow key={stage.tag} stage={stage} index={i} />
+            ))}
+          </div>
         </div>
 
         {/* closer */}
         <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={viewportOnce}
           className="mt-20 md:mt-28 text-center">
-          <div className="inline-flex items-center gap-2.5 liquid-glass rounded-full px-6 py-3">
+          <div className="inline-flex flex-wrap justify-center items-center gap-2.5 liquid-glass rounded-full px-6 py-3">
             <span className="text-ink font-tight font-bold text-sm md:text-base">Storage + Gallery + Editing</span>
             <ArrowRight size={15} className="text-brand" />
             <span className="text-muted text-sm md:text-base">one platform, mapped to your workflow.</span>
