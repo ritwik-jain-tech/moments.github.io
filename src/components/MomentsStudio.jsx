@@ -60,9 +60,6 @@ const StageRow = ({ stage, index }) => {
     >
       {/* pointer header — aligned toward the centre line */}
       <div className={`flex items-center gap-3 mb-4 ${even ? 'lg:flex-row-reverse lg:text-right' : 'lg:flex-row'}`}>
-        <span className="lg:hidden w-10 h-10 rounded-full bg-brand text-on-brand flex items-center justify-center flex-shrink-0">
-          <Icon size={18} />
-        </span>
         <span className="text-brand text-xs font-bold uppercase tracking-[0.22em]">{num} · {stage.tag}</span>
       </div>
       <h3 className={`font-tight font-bold text-ink text-[1.6rem] md:text-[2.1rem] leading-[1.12] tracking-tight mb-5 ${even ? 'lg:text-right' : 'lg:text-left'}`}>
@@ -84,6 +81,7 @@ const StageRow = ({ stage, index }) => {
     </motion.div>
   );
 
+  // Desktop node — centre column
   const node = (
     <div className="hidden lg:flex lg:order-2 justify-center">
       <motion.div
@@ -99,6 +97,20 @@ const StageRow = ({ stage, index }) => {
     </div>
   );
 
+  // Mobile node — sits on the left rail
+  const mobileNode = (
+    <motion.div
+      initial={{ scale: 0, opacity: 0 }}
+      whileInView={{ scale: 1, opacity: 1 }}
+      viewport={{ once: true, amount: 0.8 }}
+      transition={{ type: 'spring', stiffness: 240, damping: 16 }}
+      className="lg:hidden absolute left-4 -translate-x-1/2 top-0 z-10 w-9 h-9 rounded-full bg-brand text-on-brand flex items-center justify-center shadow-lg shadow-brand/30 ring-4 ring-canvas"
+    >
+      <Icon size={16} />
+      <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-canvas border border-line text-ink text-[8px] font-bold flex items-center justify-center">{num}</span>
+    </motion.div>
+  );
+
   const visual = (
     <motion.div
       initial={{ opacity: 0, scale: 0.95, y: 20 }}
@@ -112,7 +124,8 @@ const StageRow = ({ stage, index }) => {
   );
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-[1fr_56px_1fr] gap-6 lg:gap-10 items-center">
+    <div className="relative grid grid-cols-1 lg:grid-cols-[1fr_56px_1fr] gap-6 lg:gap-10 items-center pl-12 lg:pl-0">
+      {mobileNode}
       {text}
       {node}
       {visual}
@@ -159,12 +172,12 @@ const MomentsStudio = () => {
 
         {/* timeline */}
         <div ref={stagesRef} className="relative">
-          {/* centre line track */}
-          <div className="hidden lg:block absolute left-1/2 -translate-x-1/2 top-0 bottom-0 w-[2px] bg-line/40 rounded-full" />
+          {/* timeline track — left rail on mobile, centre on desktop */}
+          <div className="absolute top-0 bottom-0 w-[2px] bg-line/40 rounded-full left-4 -translate-x-1/2 lg:left-1/2" />
           {/* progress fill — reveals a shifting shade top-down as you scroll */}
           <motion.div
             style={{ height: fillHeight }}
-            className="hidden lg:block absolute left-1/2 -translate-x-1/2 top-0 w-[2px] rounded-full overflow-hidden"
+            className="absolute top-0 w-[2px] rounded-full overflow-hidden left-4 -translate-x-1/2 lg:left-1/2"
           >
             <div style={{ height: trackH }} className="w-full progress-fill rounded-full" />
           </motion.div>
