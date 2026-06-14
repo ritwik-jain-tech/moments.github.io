@@ -12,13 +12,17 @@ import { useTheme } from '../context/ThemeContext';
  * Props:
  *  - src        screenshot URL (dark / default)
  *  - srcLight   optional light-mode screenshot URL
+ *  - fallback   shown if the resolved image fails to load
  *  - float      gentle floating animation (default false)
  *  - className  extra classes on the outer wrapper
  *  (height / scroll / url accepted for back-compat, no longer used)
  */
-const BrowserFrame = ({ src, srcLight, float = false, className = '', alt = 'Moments Studio product' }) => {
+const BrowserFrame = ({ src, srcLight, fallback, float = false, className = '', alt = 'Moments Studio product' }) => {
   const { theme } = useTheme();
   const resolved = theme === 'light' && srcLight ? srcLight : src;
+  const onErr = (e) => {
+    if (fallback && e.currentTarget.src !== fallback) e.currentTarget.src = fallback;
+  };
 
   return (
     <div className={`${float ? 'animate-float-slow' : ''} ${className}`}>
@@ -31,7 +35,7 @@ const BrowserFrame = ({ src, srcLight, float = false, className = '', alt = 'Mom
 
         {/* Screen — full screenshot at natural aspect ratio */}
         <div className="relative overflow-hidden rounded-[1rem] md:rounded-[1.4rem] bg-canvas">
-          <img src={resolved} alt={alt} loading="lazy" className="w-full h-auto block" />
+          <img src={resolved} alt={alt} loading="lazy" onError={onErr} className="w-full h-auto block" />
           <div className="pointer-events-none absolute inset-0 rounded-[1rem] md:rounded-[1.4rem] ring-1 ring-inset ring-white/5" />
         </div>
       </div>

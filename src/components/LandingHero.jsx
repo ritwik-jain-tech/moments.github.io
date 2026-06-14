@@ -8,6 +8,11 @@ import { EASE } from '../lib/motion';
 
 const SECONDARY = platformFeaturesData.features[1]?.image || heroData.dashboardImage;
 
+// Theme-aware hero dashboard captures (saved in /public). Falls back to the
+// existing dashboard image if these files aren't present yet.
+const HERO_DASH_DARK = '/dashboard-dark.png';
+const HERO_DASH_LIGHT = '/dashboard-light.png';
+
 const LandingHero = () => {
   const ref = useRef(null);
   const { scrollYProgress } = useScroll({ target: ref, offset: ['start start', 'end start'] });
@@ -74,7 +79,7 @@ const LandingHero = () => {
         className="relative z-10 w-full max-w-[920px] px-5 md:px-10 pb-10"
       >
         <div className="relative">
-          <BrowserFrame src={heroData.dashboardImage} url="studio.moments.live" height={480} scroll />
+          <BrowserFrame src={HERO_DASH_DARK} srcLight={HERO_DASH_LIGHT} fallback={heroData.dashboardImage} url="studio.moments.live" height={480} scroll />
           {/* floating secondary card for depth */}
           <motion.div
             initial={{ opacity: 0, x: 30, y: 20 }} animate={{ opacity: 1, x: 0, y: 0 }}
