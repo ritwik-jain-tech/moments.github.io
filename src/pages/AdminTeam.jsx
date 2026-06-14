@@ -82,6 +82,7 @@ const AdminTeam = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [roleFilter, setRoleFilter] = useState('All');
+  const [projectFilter, setProjectFilter] = useState('all'); // 'all' | 'none' | eventId
   const [dragTaskId, setDragTaskId] = useState(null);
   const [dragOverCol, setDragOverCol] = useState(null);
 
@@ -327,6 +328,28 @@ const AdminTeam = () => {
 
   const filteredMembers = roleFilter === 'All' ? members : members.filter((m) => m.role === roleFilter);
 
+  // Projects available for the board filter: every event referenced by a task, plus the
+  // user's events. Keyed by eventId, labelled by name (falls back to id / task eventName).
+  const projectOptions = React.useMemo(() => {
+    const byId = new Map();
+    (events || []).forEach((e) => {
+      if (e?.eventId) byId.set(String(e.eventId), e.eventName || String(e.eventId));
+    });
+    tasks.forEach((t) => {
+      if (t.eventId && !byId.has(String(t.eventId))) {
+        byId.set(String(t.eventId), t.eventName || String(t.eventId));
+      }
+    });
+    return [...byId.entries()].map(([id, name]) => ({ id, name }));
+  }, [events, tasks]);
+
+  const boardTasks =
+    projectFilter === 'all'
+      ? tasks
+      : projectFilter === 'none'
+        ? tasks.filter((t) => !t.eventId)
+        : tasks.filter((t) => String(t.eventId) === String(projectFilter));
+
   // ---------------------------------------------------------------- Styling
   const cardBorder = isDark ? 'border-white/10' : 'border-black/10';
   const cardBg = isDark ? 'bg-[#1A241E]' : 'bg-white';
@@ -495,10 +518,26 @@ const AdminTeam = () => {
 
               {/* Kanban board */}
               <div>
-                <h2 className="text-lg font-semibold mb-3">Task Board</h2>
+                <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
+                  <h2 className="text-lg font-semibold">Task Board</h2>
+                  <div className="flex items-center gap-2">
+                    <span className={`text-xs ${subtle}`}>Project</span>
+                    <select
+                      value={projectFilter}
+                      onChange={(e) => setProjectFilter(e.target.value)}
+                      className={`rounded-xl px-3 py-2 border text-sm ${inputCls}`}
+                    >
+                      <option value="all">All projects</option>
+                      {projectOptions.map((p) => (
+                        <option key={p.id} value={p.id}>{p.name}</option>
+                      ))}
+                      <option value="none">No project</option>
+                    </select>
+                  </div>
+                </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3">
                   {COLUMNS.map((col) => {
-                    const colTasks = tasks.filter((t) => (t.status || 'TODO') === col.key);
+                    const colTasks = boardTasks.filter((t) => (t.status || 'TODO') === col.key);
                     const isOver = dragOverCol === col.key;
                     return (
                       <div

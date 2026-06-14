@@ -16,6 +16,7 @@ import Landing from "./pages/Landing";
 import AdminStorage from "./pages/AdminStorage";
 import AdminUploads from "./pages/AdminUploads";
 import AdminTeam from "./pages/AdminTeam";
+import AdminSettings from "./pages/AdminSettings";
 import { ThemeProvider } from "./context/ThemeContext";
 import "./index.css";
 
@@ -92,7 +93,7 @@ ReactDOM.createRoot(document.getElementById("root")).render(
           path="/admin/settings"
           element={
             <ProtectedRoute>
-              <AdminPlaceholder activeKey="settings" title="Account Settings" />
+              <AdminSettings />
             </ProtectedRoute>
           }
         />
