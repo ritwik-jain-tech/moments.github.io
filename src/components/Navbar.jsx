@@ -66,11 +66,11 @@ const Navbar = () => {
 
   // Branded links: MOMENTS wordmark on line 1, sub-label (studio / app) on
   // line 2 aligned under it. Plain links render uppercase for consistency.
-  const LinkInner = ({ link, align = 'end', logoH = 'h-[11px]' }) =>
+  const LinkInner = ({ link, align = 'start', logoH = 'h-[11px]' }) =>
     link.brand ? (
-      <span className={`inline-flex flex-col leading-none ${align === 'end' ? 'items-end' : 'items-start'}`}>
-        <img src={LOGO_FULL} alt="Moments" className={`${logoH} object-contain dark:brightness-0 dark:invert`} />
-        <span className="text-[8px] font-bold uppercase tracking-[0.22em] text-muted/70 mt-1">{link.brand}</span>
+      <span className="inline-flex flex-col items-start gap-[3px] leading-none">
+        <img src={LOGO_FULL} alt="Moments" className={`${logoH} w-auto object-contain dark:brightness-0 dark:invert [image-rendering:auto]`} />
+        <span className="text-[9px] font-bold uppercase tracking-[0.14em] text-muted/70">{link.brand}</span>
       </span>
     ) : (
       <span className="uppercase tracking-[0.14em] inline-flex items-center gap-1">

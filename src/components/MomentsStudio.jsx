@@ -5,7 +5,7 @@ import { Camera, ScanFace, Share2, Users, ArrowRight, Check, Sparkles, Upload, Q
 import BrowserFrame from './BrowserFrame';
 import { clipReveal, viewportOnce, EASE } from '../lib/motion';
 
-const APP_IMG = 'https://framerusercontent.com/images/puPnByXfJCIwtnXHsryGdtLFkAA.gif';
+const APP_IMG = '/appFinder.webp'; // local, background removed (transparent)
 
 const PROTO = 'https://customer-assets.emergentagent.com/job_moment-keeper-7/artifacts/';
 
@@ -161,7 +161,7 @@ const MomentsStudio = () => {
       <div className="max-w-[1200px] mx-auto px-5 md:px-10 relative z-10">
         {/* header */}
         <motion.div initial="hidden" whileInView="visible" viewport={viewportOnce} variants={clipReveal} className="text-center mb-12 md:mb-16 max-w-2xl mx-auto">
-          <span className="text-brand text-[11px] font-semibold uppercase tracking-[0.2em] mb-4 block">Moments Studio · Main Offering</span>
+          <span className="text-brand text-[11px] font-semibold uppercase tracking-[0.2em] mb-4 block">Moments Studio · Integrated Experience</span>
           <h2 className="text-[2rem] md:text-[3rem] font-bold text-ink leading-[1.08] tracking-tight font-tight mb-4">
             Your media journey, <span className="gradient-text-green">made effortless.</span>
           </h2>

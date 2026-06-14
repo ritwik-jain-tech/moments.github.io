@@ -6,7 +6,7 @@ export const navLinks = [
   { label: 'Reality', href: '#reality' },
   { label: 'Moments Studio', href: '#features', brand: 'studio' },
   { label: 'Moments App', href: '/guestApp', isRoute: true, brand: 'app' },
-  { label: 'Pricing', href: '#pricing' },
+  { label: 'Pricing', href: '#free-trial' },
 ];
 
 export const heroData = {
@@ -219,7 +219,7 @@ export const footerData = {
     { label: 'Reality', href: '#reality' },
     { label: 'Moments Studio', href: '#features' },
     { label: 'Moments App', href: '/guestApp' },
-    { label: 'Pricing', href: '#pricing' },
+    { label: 'Pricing', href: '#free-trial' },
   ],
   companyLinks: [
     { label: 'About', href: '#' },

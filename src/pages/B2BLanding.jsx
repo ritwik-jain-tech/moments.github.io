@@ -5,7 +5,6 @@ import LandingHero from '../components/LandingHero';
 import ProblemSection from '../components/ProblemSection';
 import MomentsStudio from '../components/MomentsStudio';
 import BusinessCase from '../components/BusinessCase';
-import B2BPricing from '../components/B2BPricing';
 import B2BTestimonials from '../components/B2BTestimonials';
 import ContactSection from '../components/ContactSection';
 import Footer from '../components/Footer';
@@ -24,7 +23,6 @@ const B2BLanding = () => {
       <ProblemSection />
       <MomentsStudio />
       <BusinessCase />
-      <B2BPricing />
       <B2BTestimonials />
       <ContactSection />
       <Footer />

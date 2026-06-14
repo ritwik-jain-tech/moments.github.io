@@ -1,5 +1,5 @@
 import React, { useRef } from 'react';
-import { heroData, platformFeaturesData, STUDIO_SIGNUP } from '../data/mockData';
+import { heroData, platformFeaturesData } from '../data/mockData';
 import { motion, useScroll, useTransform } from 'framer-motion';
 import { ArrowRight, Play, Star } from 'lucide-react';
 import BrowserFrame from './BrowserFrame';
@@ -53,11 +53,13 @@ const LandingHero = () => {
           initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, delay: 0.28 }}
           className="flex flex-col sm:flex-row gap-3 mb-14"
         >
-          <LiquidButton as="a" href={STUDIO_SIGNUP} variant="primary" className="px-7 py-3.5 text-sm">
+          <LiquidButton variant="primary"
+            onClick={() => document.querySelector('#free-trial')?.scrollIntoView({ behavior: 'smooth' })}
+            className="px-7 py-3.5 text-sm">
             Start Free Trial <ArrowRight size={14} />
           </LiquidButton>
           <LiquidButton variant="ghost"
-            onClick={() => document.querySelector('#platform')?.scrollIntoView({ behavior: 'smooth' })}
+            onClick={() => document.querySelector('#features')?.scrollIntoView({ behavior: 'smooth' })}
             className="px-7 py-3.5 text-sm font-semibold">
             <Play size={12} fill="currentColor" /> Explore Platform
           </LiquidButton>
