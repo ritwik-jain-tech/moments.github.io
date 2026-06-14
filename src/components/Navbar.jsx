@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { navLinks, STUDIO_URL, STUDIO_LOGIN } from '../data/mockData';
+import { navLinks, STUDIO_LOGIN } from '../data/mockData';
 import { Menu, X, ArrowRight, ExternalLink } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -8,12 +8,11 @@ import ThemeToggle from './ThemeToggle';
 const LOGO_SMALL = 'https://customer-assets.emergentagent.com/job_moment-keeper-7/artifacts/c8l9vrm3_small%20moments%20logo.png';
 const LOGO_FULL = 'https://customer-assets.emergentagent.com/job_moment-keeper-7/artifacts/i9w6b5xn_Full%20moments%20logo.png';
 const WHATSAPP = 'https://wa.me/918962364626';
-const STUDIO = STUDIO_URL;
 
 const guestNavLinks = [
   { label: 'Features', href: '#features' },
   { label: 'How It Works', href: '#how-it-works' },
-  { label: 'For Photographers', href: STUDIO, isExternal: true },
+  { label: 'For Photographers', href: '/', isRoute: true },
 ];
 
 const Navbar = () => {
