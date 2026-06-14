@@ -230,9 +230,8 @@ const MomentsStudio = () => {
 
           <div className="relative z-10 flex justify-center">
             <div className="w-44 md:w-52 animate-float">
-              <div className="bg-[#0c120e] rounded-[2.2rem] p-2 shadow-2xl border border-line/40">
-                <img src={APP_IMG} alt="Moments App — FaceID photo finder" className="w-full rounded-[1.7rem]" loading="lazy" />
-              </div>
+              {/* APP_IMG is already an iPhone mockup — show it directly, no extra bezel */}
+              <img src={APP_IMG} alt="Moments App — FaceID photo finder" className="w-full h-auto object-contain drop-shadow-2xl" loading="lazy" />
             </div>
           </div>
         </motion.div>

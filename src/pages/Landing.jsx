@@ -33,14 +33,11 @@ const stagger = {
   visible: { transition: { staggerChildren: 0.08 } },
 };
 
+// The source images are already iPhone mockups, so we render them directly
+// (no extra bezel) to avoid a double phone boundary.
 const PhoneMockup = ({ src, alt = "", className = "" }) => (
   <div className={`relative ${className}`}>
-    <div className="relative bg-black rounded-[2.5rem] shadow-2xl overflow-hidden border-[3px] border-black/80"
-      style={{ width: "100%", aspectRatio: "9/19.5" }}>
-      <img src={src} alt={alt} className="w-full h-full object-cover" loading="lazy" />
-      <div className="absolute inset-0 rounded-[2.5rem] pointer-events-none"
-        style={{ boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.08)" }} />
-    </div>
+    <img src={src} alt={alt} loading="lazy" className="w-full h-auto object-contain drop-shadow-2xl" />
   </div>
 );
 
