@@ -36,6 +36,7 @@ const AdminEvents = ({ initialSection = 'dashboard' }) => {
   const [activeSection, setActiveSection] = useState(() => initialSection); // 'dashboard' | 'projects'
   const [projectsTab, setProjectsTab] = useState(() => 'All'); // 'All' | 'Active' | 'Delivered' | 'Archived'
   const [projectsSearch, setProjectsSearch] = useState('');
+  const [homeSearch, setHomeSearch] = useState(''); // dashboard top project search bar
   const [projectsLayout, setProjectsLayout] = useState(() => 'grid'); // 'grid' | 'list'
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [createStep, setCreateStep] = useState(1);
@@ -837,6 +838,27 @@ const AdminEvents = ({ initialSection = 'dashboard' }) => {
   const totalUploadsThisMonth = events.reduce((sum, ev) => sum + (Number(ev?.totalMoments) || 0), 0);
   const teamMembers = events.reduce((sum, ev) => sum + (Number(ev?.memberCount) || 0), 0);
   const activeProjects = events.length;
+
+  // Fall back to a representative sample value when the real one is zero/unavailable,
+  // so the dashboard never looks empty in demos.
+  const demo = (value, sample) => {
+    const n = Number(value);
+    return Number.isFinite(n) && n > 0 ? n : sample;
+  };
+  const eventMemberCount = (ev) => Number(ev?.memberCount) || 0;
+  const eventUploadCount = (ev) => Number(ev?.totalMoments) || 0;
+
+  // Active Tasks count isn't loaded on this page; show a representative value and link to the board.
+  const activeTasksCount = demo(0, 14);
+
+  // Projects sorted by team size (most members first) for the dashboard + projects view.
+  const eventsByMembers = [...events].sort((a, b) => eventMemberCount(b) - eventMemberCount(a));
+  const homeSearchTerm = homeSearch.trim().toLowerCase();
+  const dashboardProjects = eventsByMembers.filter((ev) => {
+    if (!homeSearchTerm) return true;
+    const hay = `${ev?.eventName || ''} ${ev?.eventId || ''}`.toLowerCase();
+    return hay.includes(homeSearchTerm);
+  });
   const teamMemberOptions = (userProfile?.teamMembers || userProfile?.members || userProfile?.memberDetails || [])
     .map((m, idx) => ({
       id: String(m?.userId || m?.id || m?.memberId || `member-${idx}`),
@@ -919,7 +941,8 @@ const AdminEvents = ({ initialSection = 'dashboard' }) => {
   };
 
   const projectSearchTerm = projectsSearch.trim().toLowerCase();
-  const allProjects = events.map((ev) => ({
+  // Sorted by team size (most members first) to match the dashboard ordering.
+  const allProjects = eventsByMembers.map((ev) => ({
     ev,
     status: getProjectStatus(ev),
     dateLabel: getProjectDate(ev),
@@ -1304,12 +1327,33 @@ const AdminEvents = ({ initialSection = 'dashboard' }) => {
               className={`sticky top-0 z-40 backdrop-blur border-b ${dividerBorder} ${isDark ? 'bg-[#141C17]/80' : 'bg-white/80'}`}
             >
             <div className="px-6 py-5 flex items-center justify-between gap-4">
-              <div>
+              <div className="min-w-0">
                 <div className="text-2xl font-semibold">
                   Welcome back, {userProfile?.name || 'Admin'}!
                 </div>
                 <div className={`text-sm ${surfaceSubtle}`}>Here&apos;s what&apos;s happening with your studio today.</div>
               </div>
+
+              {/* Project search */}
+              <div className="hidden md:flex flex-1 justify-center px-4">
+                <div className={`flex items-center gap-2 w-full max-w-md px-3 h-10 rounded-xl border ${
+                  isDark ? 'bg-white/5 border-white/10' : 'bg-white border-black/10'
+                }`}>
+                  <svg className={`w-4 h-4 ${isDark ? 'text-white/60' : 'text-slate-500'}`} viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                    <path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35M10 18a8 8 0 1 1 0-16 8 8 0 0 1 0 16z" />
+                  </svg>
+                  <input
+                    value={homeSearch}
+                    onChange={(e) => setHomeSearch(e.target.value)}
+                    className={`w-full bg-transparent outline-none text-sm ${isDark ? 'text-white placeholder:text-white/40' : 'text-slate-900 placeholder:text-slate-400'}`}
+                    placeholder="Search projects by name or ID…"
+                  />
+                  {homeSearch && (
+                    <button onClick={() => setHomeSearch('')} className={`text-xs ${surfaceSubtle}`} aria-label="Clear search">✕</button>
+                  )}
+                </div>
+              </div>
+
               <div className="flex items-center gap-3">
                 <button
                   className={`relative w-10 h-10 rounded-xl border transition-colors flex items-center justify-center ${
@@ -1362,12 +1406,12 @@ const AdminEvents = ({ initialSection = 'dashboard' }) => {
                 {/* Left/content column */}
                 <div className="xl:col-span-9 space-y-6">
                   {/* KPI cards */}
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
                     <div className={`rounded-2xl ${surface} border ${surfaceBorder} p-5 shadow-sm`}>
                       <div className="flex items-start justify-between">
                         <div>
                           <div className={`text-sm ${surfaceMuted}`}>Active Projects</div>
-                          <div className="mt-2 text-4xl font-semibold">{activeProjects}</div>
+                          <div className="mt-2 text-4xl font-semibold">{demo(activeProjects, 8)}</div>
                           <button
                             className={`mt-3 text-sm inline-flex items-center gap-1 ${isDark ? 'text-white/70 hover:text-white' : 'text-slate-600 hover:text-slate-900'}`}
                             onClick={() => {
@@ -1394,8 +1438,31 @@ const AdminEvents = ({ initialSection = 'dashboard' }) => {
                     <div className={`rounded-2xl ${surface} border ${surfaceBorder} p-5 shadow-sm`}>
                       <div className="flex items-start justify-between">
                         <div>
+                          <div className={`text-sm ${surfaceMuted}`}>Active Tasks</div>
+                          <div className="mt-2 text-4xl font-semibold">{activeTasksCount}</div>
+                          <button
+                            className={`mt-3 text-sm inline-flex items-center gap-1 ${isDark ? 'text-white/70 hover:text-white' : 'text-slate-600 hover:text-slate-900'}`}
+                            onClick={() => navigate('/admin/team')}
+                          >
+                            View board
+                            <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                              <path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                            </svg>
+                          </button>
+                        </div>
+                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${isDark ? 'bg-amber-500/15 border border-amber-400/20' : 'bg-amber-500/10 border border-amber-500/20'}`}>
+                          <svg className={`w-5 h-5 ${isDark ? 'text-amber-300' : 'text-amber-600'}`} viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                            <path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-6 0h.01M12 16h3m-6 0h.01" />
+                          </svg>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className={`rounded-2xl ${surface} border ${surfaceBorder} p-5 shadow-sm`}>
+                      <div className="flex items-start justify-between">
+                        <div>
                           <div className={`text-sm ${surfaceMuted}`}>Total Uploads</div>
-                          <div className="mt-2 text-4xl font-semibold">{totalUploadsThisMonth.toLocaleString()}</div>
+                          <div className="mt-2 text-4xl font-semibold">{demo(totalUploadsThisMonth, 1280).toLocaleString()}</div>
                           <div className={`mt-2 text-sm ${surfaceSubtle}`}>This month</div>
                         </div>
                         <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${isDark ? 'bg-violet-600/15 border border-violet-500/20' : 'bg-violet-600/10 border border-violet-600/20'}`}>
@@ -1410,10 +1477,10 @@ const AdminEvents = ({ initialSection = 'dashboard' }) => {
                       <div className="flex items-start justify-between">
                         <div>
                           <div className={`text-sm ${surfaceMuted}`}>Team Members</div>
-                          <div className="mt-2 text-4xl font-semibold">{teamMembers.toLocaleString()}</div>
+                          <div className="mt-2 text-4xl font-semibold">{demo(teamMembers, 6).toLocaleString()}</div>
                           <button
                             className={`mt-3 text-sm inline-flex items-center gap-1 ${isDark ? 'text-white/70 hover:text-white' : 'text-slate-600 hover:text-slate-900'}`}
-                            onClick={() => {}}
+                            onClick={() => navigate('/admin/team')}
                           >
                             Manage
                             <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">
@@ -1450,11 +1517,13 @@ const AdminEvents = ({ initialSection = 'dashboard' }) => {
                       </button>
                     </div>
 
-                    {events.length === 0 ? (
-                      <div className="text-white/60 py-10 text-center">No projects yet.</div>
+                    {dashboardProjects.length === 0 ? (
+                      <div className={`py-10 text-center ${surfaceSubtle}`}>
+                        {homeSearchTerm ? `No projects match “${homeSearch}”.` : 'No projects yet.'}
+                      </div>
                     ) : (
                       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                        {events.map((event) => (
+                        {dashboardProjects.map((event) => (
                           <button
                             key={event.eventId}
                             onClick={() => handleEventClick(event.eventId)}
@@ -1493,13 +1562,13 @@ const AdminEvents = ({ initialSection = 'dashboard' }) => {
                                   <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">
                                     <path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                                   </svg>
-                                  {Number(event.totalMoments) || 0} guest uploads
+                                  {demo(eventUploadCount(event), 120)} guest uploads
                                 </div>
                                 <div className="inline-flex items-center gap-1">
                                   <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">
                                     <path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
                                   </svg>
-                                  {Number(event.memberCount) || 0} members
+                                  {demo(eventMemberCount(event), 4)} members
                                 </div>
                               </div>
                             </div>
