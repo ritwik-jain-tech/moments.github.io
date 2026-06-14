@@ -5,7 +5,7 @@ import React, { useEffect, useRef } from 'react';
  * staggered rates and merge through an SVG goo filter, so the cursor leaves a
  * stretchy, liquid-metal trail. Desktop only; disabled for reduced-motion.
  */
-const DOTS = 6;
+const DOTS = 4;
 
 const CursorGlow = () => {
   const dotRefs = useRef([]);
@@ -44,9 +44,9 @@ const CursorGlow = () => {
       <svg width="0" height="0" className="absolute" aria-hidden>
         <defs>
           <filter id="cursor-goo">
-            <feGaussianBlur in="SourceGraphic" stdDeviation="10" result="blur" />
+            <feGaussianBlur in="SourceGraphic" stdDeviation="5" result="blur" />
             <feColorMatrix in="blur" mode="matrix"
-              values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 20 -9" result="goo" />
+              values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 18 -8" result="goo" />
             <feBlend in="SourceGraphic" in2="goo" />
           </filter>
         </defs>
@@ -54,7 +54,7 @@ const CursorGlow = () => {
 
       <div
         aria-hidden
-        className="pointer-events-none fixed inset-0 z-[2] hidden md:block opacity-70 dark:opacity-90"
+        className="pointer-events-none fixed inset-0 z-[2] hidden md:block opacity-40 dark:opacity-55"
         style={{ filter: 'url(#cursor-goo)', mixBlendMode: 'plus-lighter' }}
       >
         {Array.from({ length: DOTS }).map((_, i) => (
@@ -63,9 +63,9 @@ const CursorGlow = () => {
             ref={(el) => (dotRefs.current[i] = el)}
             className="absolute top-0 left-0 rounded-full will-change-transform"
             style={{
-              width: `${46 - i * 5}px`,
-              height: `${46 - i * 5}px`,
-              background: 'rgb(var(--glow) / 0.45)',
+              width: `${16 - i * 3}px`,
+              height: `${16 - i * 3}px`,
+              background: 'rgb(var(--glow) / 0.5)',
             }}
           />
         ))}

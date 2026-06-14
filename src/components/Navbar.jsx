@@ -64,18 +64,19 @@ const Navbar = () => {
     }
   };
 
-  // Branded links render the MOMENTS wordmark + a small sub-label (studio / app).
-  const LinkInner = ({ link, logoH = 'h-3.5' }) =>
+  // Branded links: MOMENTS wordmark on line 1, sub-label (studio / app) on
+  // line 2 aligned under it. Plain links render uppercase for consistency.
+  const LinkInner = ({ link, align = 'end', logoH = 'h-[11px]' }) =>
     link.brand ? (
-      <span className="inline-flex items-center gap-1.5">
+      <span className={`inline-flex flex-col leading-none ${align === 'end' ? 'items-end' : 'items-start'}`}>
         <img src={LOGO_FULL} alt="Moments" className={`${logoH} object-contain dark:brightness-0 dark:invert`} />
-        <span className="text-[10px] font-bold uppercase tracking-[0.12em] text-muted/70">{link.brand}</span>
+        <span className="text-[8px] font-bold uppercase tracking-[0.22em] text-muted/70 mt-1">{link.brand}</span>
       </span>
     ) : (
-      <>
+      <span className="uppercase tracking-[0.14em] inline-flex items-center gap-1">
         {link.label}
         {link.isExternal && <ExternalLink size={10} className="opacity-50" />}
-      </>
+      </span>
     );
 
   return (
@@ -98,12 +99,12 @@ const Navbar = () => {
             <img src={LOGO_FULL} alt="Moments" className="h-[18px] object-contain dark:brightness-0 dark:invert transition-[filter] duration-500" />
           </button>
 
-          <div className="hidden lg:flex items-center gap-6">
+          <div className="hidden lg:flex items-center gap-7">
             {links.map((link) => (
               <button
                 key={link.label}
                 onClick={() => handleNavClick(link)}
-                className="text-muted hover:text-ink text-[13px] font-semibold transition-colors duration-300 tracking-wide flex items-center gap-1"
+                className="text-muted hover:text-ink text-[12px] font-semibold transition-colors duration-300 flex items-center"
               >
                 <LinkInner link={link} />
               </button>
@@ -111,15 +112,15 @@ const Navbar = () => {
           </div>
 
           <div className="flex items-center gap-2">
+            <ThemeToggle />
             {!isGuestApp && (
               <a
                 href={STUDIO_LOGIN}
-                className="hidden md:inline text-muted hover:text-ink text-[13px] font-semibold transition-colors duration-300 tracking-wide px-1"
+                className="hidden md:inline-flex items-center border border-line text-muted hover:text-ink hover:border-brand/40 px-4 py-2 rounded-full text-[13px] font-semibold transition-all duration-300"
               >
                 Login
               </a>
             )}
-            <ThemeToggle />
             <motion.button
               whileHover={{ scale: 1.03 }}
               whileTap={{ scale: 0.97 }}
@@ -146,18 +147,18 @@ const Navbar = () => {
               <div className="p-5 flex flex-col gap-3">
                 {links.map((link) => (
                   <button key={link.label} onClick={() => handleNavClick(link)}
-                    className="text-muted hover:text-ink text-sm font-semibold py-2 text-left transition-colors flex items-center gap-1.5">
-                    <LinkInner link={link} logoH="h-4" />
+                    className="text-muted hover:text-ink text-sm font-semibold py-2 text-left transition-colors flex items-center">
+                    <LinkInner link={link} align="start" logoH="h-3.5" />
                   </button>
                 ))}
                 {!isGuestApp && (
                   <a href={STUDIO_LOGIN}
-                    className="text-muted hover:text-ink text-sm font-semibold py-2 text-left transition-colors">
+                    className="border border-line text-muted hover:text-ink hover:border-brand/40 px-5 py-3 rounded-full text-sm font-semibold w-full text-center transition-all mt-1">
                     Login
                   </a>
                 )}
                 <button onClick={handleCTA}
-                  className="bg-brand text-on-brand px-5 py-3 rounded-full text-sm font-bold w-full mt-1">
+                  className="bg-brand text-on-brand px-5 py-3 rounded-full text-sm font-bold w-full">
                   {isGuestApp ? 'Contact Us' : 'Free Trial'}
                 </button>
               </div>
