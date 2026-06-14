@@ -85,11 +85,19 @@ const HeicImage = ({ src, alt, className, style, onError }) => {
   );
 };
 
+// Project delivery journey. Defaults to "select".
+const JOURNEY_STAGES = [
+  { key: 'collect', label: 'Collect', desc: 'Gathering photos' },
+  { key: 'select', label: 'Select', desc: 'Culling & choosing' },
+  { key: 'deliver', label: 'Deliver', desc: 'Delivering to client' },
+];
+
 const EventDetails = () => {
   const { eventId } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
   const [activeView, setActiveView] = useState('media'); // 'media', 'delivery', 'guestApp'
+  const [journeyStage, setJourneyStage] = useState('select'); // 'collect' | 'select' | 'deliver'
   const [guests, setGuests] = useState([]);
   const [moments, setMoments] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -180,6 +188,20 @@ const EventDetails = () => {
 
   // Get event data from navigation state or fetch it
   const [eventData, setEventData] = useState(location.state?.eventData);
+
+  // Resolve the project's journey stage: saved choice (per event) → event field → default "select".
+  useEffect(() => {
+    if (!eventId) return;
+    const saved = localStorage.getItem(`eventJourney:${eventId}`);
+    const fromEvent = eventData?.stage || eventData?.journeyStage;
+    const next = (saved || fromEvent || 'select').toLowerCase();
+    setJourneyStage(JOURNEY_STAGES.some((s) => s.key === next) ? next : 'select');
+  }, [eventId, eventData]);
+
+  const changeJourneyStage = (key) => {
+    setJourneyStage(key);
+    if (eventId) localStorage.setItem(`eventJourney:${eventId}`, key);
+  };
 
   useEffect(() => {
     if (!eventData) return;
@@ -3315,6 +3337,64 @@ const EventDetails = () => {
                   Guest App
                 </button>
               </div>
+            </div>
+          </div>
+
+          {/* Project journey: Collect → Select → Deliver */}
+          <div className={`px-6 py-4 border-b ${isDark ? 'border-white/10 bg-white/[0.02]' : 'border-black/10 bg-slate-50'}`}>
+            <div className="flex items-center justify-between gap-3 mb-3">
+              <div className={`text-xs font-semibold uppercase tracking-[0.18em] ${isDark ? 'text-white/45' : 'text-slate-500'}`}>
+                Project journey
+              </div>
+              <div className={`text-xs ${isDark ? 'text-white/55' : 'text-slate-500'}`}>
+                Current stage: <span className={isDark ? 'text-[#8fd2a5] font-semibold' : 'text-[#2a4d32] font-semibold'}>
+                  {JOURNEY_STAGES.find((s) => s.key === journeyStage)?.label || 'Select'}
+                </span>
+              </div>
+            </div>
+            <div className="flex items-center">
+              {JOURNEY_STAGES.map((stage, idx) => {
+                const activeIdx = JOURNEY_STAGES.findIndex((s) => s.key === journeyStage);
+                const isActive = stage.key === journeyStage;
+                const isDone = idx < activeIdx;
+                const reached = idx <= activeIdx;
+                return (
+                  <React.Fragment key={stage.key}>
+                    <button
+                      onClick={() => changeJourneyStage(stage.key)}
+                      className="flex items-center gap-3 group"
+                      title={`Set stage to ${stage.label}`}
+                    >
+                      <span
+                        className={`w-9 h-9 rounded-full flex items-center justify-center text-sm font-semibold border transition-colors ${
+                          reached
+                            ? 'bg-brand text-on-brand border-[#2a4d32]/30'
+                            : isDark
+                              ? 'bg-white/5 text-white/50 border-white/10 group-hover:bg-white/10'
+                              : 'bg-white text-slate-400 border-black/10 group-hover:bg-slate-50'
+                        }`}
+                      >
+                        {isDone ? (
+                          <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                            <path strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                          </svg>
+                        ) : (
+                          idx + 1
+                        )}
+                      </span>
+                      <div className="text-left hidden sm:block">
+                        <div className={`text-sm font-semibold ${isActive ? (isDark ? 'text-white' : 'text-slate-900') : isDark ? 'text-white/60' : 'text-slate-500'}`}>
+                          {stage.label}
+                        </div>
+                        <div className={`text-[11px] ${isDark ? 'text-white/40' : 'text-slate-400'}`}>{stage.desc}</div>
+                      </div>
+                    </button>
+                    {idx < JOURNEY_STAGES.length - 1 && (
+                      <div className={`flex-1 h-0.5 mx-3 rounded-full ${idx < activeIdx ? 'bg-brand' : isDark ? 'bg-white/10' : 'bg-slate-200'}`} />
+                    )}
+                  </React.Fragment>
+                );
+              })}
             </div>
           </div>
 
