@@ -1,11 +1,11 @@
 import React from 'react';
 import { useTheme } from '../context/ThemeContext';
+import { Lock } from 'lucide-react';
 
 /**
- * BrowserFrame — a sleek, bezel-less device frame (MacBook/iPhone-style notch)
- * wrapping a product screenshot. The screenshot is shown at its natural aspect
- * ratio so it always reads as a clean desktop view and never crops/breaks
- * across screen sizes.
+ * BrowserFrame — a clean desktop browser-window chrome (window dots + URL bar)
+ * wrapping a landscape product screenshot. The screenshot is shown at its
+ * natural aspect ratio so it always reads as a desktop view and never crops.
  *
  * Theme-aware: pass `srcLight` to show a light-mode capture in light theme.
  *
@@ -13,11 +13,12 @@ import { useTheme } from '../context/ThemeContext';
  *  - src        screenshot URL (dark / default)
  *  - srcLight   optional light-mode screenshot URL
  *  - fallback   shown if the resolved image fails to load
+ *  - url        address shown in the browser bar (default 'studio.moments.live')
  *  - float      gentle floating animation (default false)
  *  - className  extra classes on the outer wrapper
- *  (height / scroll / url accepted for back-compat, no longer used)
+ *  (height / scroll accepted for back-compat, no longer used)
  */
-const BrowserFrame = ({ src, srcLight, fallback, float = false, className = '', alt = 'Moments Studio product' }) => {
+const BrowserFrame = ({ src, srcLight, fallback, url = 'studio.moments.live', float = false, className = '', alt = 'Moments Studio product' }) => {
   const { theme } = useTheme();
   const resolved = theme === 'light' && srcLight ? srcLight : src;
   const onErr = (e) => {
@@ -26,17 +27,24 @@ const BrowserFrame = ({ src, srcLight, fallback, float = false, className = '', 
 
   return (
     <div className={`${float ? 'animate-float-slow' : ''} ${className}`}>
-      <div className="relative rounded-[1.4rem] md:rounded-[1.9rem] bg-[#0c120e] p-2 md:p-2.5 shadow-[0_40px_90px_rgb(var(--shadow-rgb)/calc(var(--shadow-strength)+0.08)),0_12px_34px_rgb(var(--shadow-rgb)/var(--shadow-strength))] ring-1 ring-white/5">
-        {/* Notch */}
-        <div className="absolute top-2 md:top-2.5 left-1/2 -translate-x-1/2 z-20 h-[14px] md:h-[18px] w-[88px] md:w-[120px] bg-[#0c120e] rounded-b-[12px] md:rounded-b-[14px] flex items-center justify-center gap-2">
-          <span className="w-1.5 h-1.5 rounded-full bg-white/15" />
-          <span className="w-5 md:w-6 h-1 rounded-full bg-white/10" />
+      <div className="relative rounded-[0.9rem] md:rounded-[1.2rem] bg-[#0c120e] shadow-[0_40px_90px_rgb(var(--shadow-rgb)/calc(var(--shadow-strength)+0.08)),0_12px_34px_rgb(var(--shadow-rgb)/var(--shadow-strength))] ring-1 ring-white/5 overflow-hidden">
+        {/* Browser toolbar */}
+        <div className="flex items-center gap-3 px-3 md:px-4 h-7 md:h-9 bg-[#0c120e] border-b border-white/[0.06]">
+          <span className="flex items-center gap-1.5 flex-shrink-0">
+            <span className="w-2 h-2 md:w-2.5 md:h-2.5 rounded-full bg-[#ff5f57]/70" />
+            <span className="w-2 h-2 md:w-2.5 md:h-2.5 rounded-full bg-[#febc2e]/70" />
+            <span className="w-2 h-2 md:w-2.5 md:h-2.5 rounded-full bg-[#28c840]/70" />
+          </span>
+          <span className="mx-auto flex items-center gap-1.5 px-3 py-0.5 rounded-md bg-white/[0.06] text-white/40 text-[9px] md:text-[11px] font-medium max-w-[70%] truncate">
+            <Lock size={9} className="opacity-50 flex-shrink-0" />
+            <span className="truncate">{url}</span>
+          </span>
         </div>
 
         {/* Screen — full screenshot at natural aspect ratio */}
-        <div className="relative overflow-hidden rounded-[1rem] md:rounded-[1.4rem] bg-canvas">
+        <div className="relative overflow-hidden bg-canvas">
           <img src={resolved} alt={alt} loading="lazy" onError={onErr} className="w-full h-auto block" />
-          <div className="pointer-events-none absolute inset-0 rounded-[1rem] md:rounded-[1.4rem] ring-1 ring-inset ring-white/5" />
+          <div className="pointer-events-none absolute inset-0 ring-1 ring-inset ring-white/5" />
         </div>
       </div>
     </div>

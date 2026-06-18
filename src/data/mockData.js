@@ -132,31 +132,23 @@ export const businessCaseData = {
 export const testimonialsData = {
   sectionTag: 'Early Feedback',
   headline: 'Already tested. Already loved.',
-  subtitle: 'Piloted across 3 real weddings — here\'s what we heard.',
+  subtitle: 'Piloted with real photography studios — here\'s what changed.',
+  // Photography-business outcomes. NOTE: 70% and +₹1L are illustrative — confirm before publishing.
   stats: [
-    { value: '3', label: 'Weddings Tested' },
-    { value: '500+', label: 'Guests on App' },
-    { value: '2,000+', label: 'Guest Photos Uploaded' },
-    { value: '< 1hr', label: 'vs. Days Traditional' },
+    { value: 'Weeks → Days', label: 'Faster Delivery' },
+    { value: '70%', label: 'Less Time Sorting' },
+    { value: '+₹1L', label: 'New Revenue / Year' },
+    { value: '100%', label: 'Media in One Place' },
   ],
   testimonials: [
     {
-      quote: "We thought we'd only have our photographer's shots, but Moments gave us hundreds of candid pictures from guests. It felt like reliving the wedding through everyone's eyes.",
-      names: 'Rhea & Arjun',
-      location: 'Udaipur',
-      image: 'https://framerusercontent.com/images/wbFhpX5uSAGIwczrG2Ervvaj4ac.png?width=600',
-    },
-    {
-      quote: 'By the next morning, we had everything beautifully organized. It was the easiest part of the whole wedding!',
-      names: 'Ananya (Bride\'s Sister)',
-      location: 'Mumbai',
-      image: 'https://framerusercontent.com/images/OXF8xG3iqQafwQSyt2UnzF9vfg.png?width=600',
-    },
-    {
-      quote: 'At such a big wedding, so many small moments get lost. With Moments, nothing slipped away — every smile, every dance step, every hug was waiting for us.',
-      names: 'Siddharth & Meera',
-      location: 'Delhi',
-      image: 'https://framerusercontent.com/images/nRoPUCnNqKTD4j7rms4YwXUzmc.png?width=600',
+      // TODO: replace with Think Tonk's real words (with their permission). Illustrative for now.
+      quote: 'Moments changed how we deliver. Guests get their own photos the same day, picking the best shots takes a fraction of the time, and couples keep coming back for the experience.',
+      names: 'Think Tonk',
+      location: 'Wedding Photography · @thinktonk',
+      instagram: 'https://www.instagram.com/thinktonk/',
+      image: '/thinktonk.svg', // stopgap rendition — replace with Think Tonk's exact logo
+      logo: true,
     },
   ],
 };

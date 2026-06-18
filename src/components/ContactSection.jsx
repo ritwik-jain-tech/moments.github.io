@@ -188,7 +188,7 @@ const ContactSection = () => {
 
                   <LiquidButton type="button" onClick={next} variant="primary" disabled={status === 'submitting'}
                     className="px-7 py-3 text-sm disabled:opacity-60">
-                    {status === 'submitting' ? 'Sending…' : isLast ? <>Claim Free Trial <Check size={15} /></> : <>Continue <ArrowRight size={15} /></>}
+                    {status === 'submitting' ? 'Sending…' : isLast ? <>Start Free Trial <Check size={15} /></> : <>Continue <ArrowRight size={15} /></>}
                   </LiquidButton>
                 </div>
 

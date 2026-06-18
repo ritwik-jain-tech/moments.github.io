@@ -7,7 +7,6 @@ import ThemeToggle from './ThemeToggle';
 
 const LOGO_SMALL = 'https://customer-assets.emergentagent.com/job_moment-keeper-7/artifacts/c8l9vrm3_small%20moments%20logo.png';
 const LOGO_FULL = 'https://customer-assets.emergentagent.com/job_moment-keeper-7/artifacts/i9w6b5xn_Full%20moments%20logo.png';
-const WHATSAPP = 'https://wa.me/918962364626';
 
 const guestNavLinks = [
   { label: 'Features', href: '#features' },
@@ -50,16 +49,13 @@ const Navbar = () => {
 
   const handleCTA = () => {
     setMobileOpen(false);
-    if (isGuestApp) {
-      window.open(WHATSAPP, '_blank', 'noopener noreferrer');
-      return;
-    }
-    // B2B: scroll to the Free Trial form (navigate home first if needed)
-    if (location.pathname !== '/') {
+    // Scroll to the Free Trial form. It exists on both the B2B landing and the
+    // guest-app page; if it isn't on the current route, go home first.
+    if (document.querySelector('#free-trial')) {
+      document.querySelector('#free-trial').scrollIntoView({ behavior: 'smooth' });
+    } else {
       navigate('/');
       setTimeout(() => document.querySelector('#free-trial')?.scrollIntoView({ behavior: 'smooth' }), 300);
-    } else {
-      document.querySelector('#free-trial')?.scrollIntoView({ behavior: 'smooth' });
     }
   };
 
@@ -126,7 +122,7 @@ const Navbar = () => {
               onClick={handleCTA}
               className="liquid-btn hidden sm:flex bg-brand text-on-brand px-4 lg:px-5 py-2 rounded-full text-[13px] font-bold hover:opacity-90 transition-all duration-300 items-center gap-1.5 shadow-md shadow-brand/20"
             >
-              {isGuestApp ? 'Contact' : 'Free Trial'}
+              Start Free Trial
               <ArrowRight size={13} />
             </motion.button>
             <button className="lg:hidden text-brand ml-1" onClick={() => setMobileOpen(!mobileOpen)}>
@@ -156,9 +152,11 @@ const Navbar = () => {
                     Login
                   </a>
                 )}
+                {/* Only shown on small phones where the top-bar pill is hidden
+                    (sm:hidden) — avoids a duplicate CTA on tablet/large phones. */}
                 <button onClick={handleCTA}
-                  className="bg-brand text-on-brand px-5 py-3 rounded-full text-sm font-bold w-full">
-                  {isGuestApp ? 'Contact Us' : 'Free Trial'}
+                  className="sm:hidden bg-brand text-on-brand px-5 py-3 rounded-full text-sm font-bold w-full">
+                  Start Free Trial
                 </button>
               </div>
             </motion.div>

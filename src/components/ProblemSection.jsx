@@ -45,7 +45,7 @@ const ProblemSection = () => {
               More time on admin <span className="text-muted/40">than behind the lens.</span>
             </motion.h2>
             <motion.p variants={blurRise} className="text-muted text-base md:text-lg leading-relaxed mb-8 max-w-xl">
-              20–40 events a year means <span className="text-ink font-semibold">hundreds of hours</span> lost to media chaos — and slow client delivery that makes you look anything but premium.
+              <span className="text-ink font-semibold">Hundreds of hours</span> a year vanish into media chaos — and slow delivery makes you look anything but premium.
             </motion.p>
 
             <motion.ul variants={container(0.06)} className="space-y-2.5">
@@ -140,7 +140,7 @@ const ProblemSection = () => {
                   They&apos;d gladly pay more for a faster, premium experience.
                 </h3>
                 <p className="text-on-brand/80 text-base md:text-lg leading-relaxed mb-6 max-w-xl">
-                  Photographers who deliver instant galleries and same-day client review command premium pricing. The only question:
+                  Photographers who deliver instantly command premium pricing. The only question:
                 </p>
                 <p className="text-on-brand font-semibold text-base md:text-lg leading-snug border-l-2 border-on-brand/40 pl-5">
                   Can you currently offer — and charge for — a premium delivery experience?
