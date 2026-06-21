@@ -16,15 +16,15 @@ const STAGES = [
     tag: 'Collect',
     title: 'From card to cloud — automatically.',
     today: 'Photos crawl from camera → memory card → hard disk → your PC. Hours of copying before the real work even begins.',
-    moments: 'Camera-to-cloud SFTP auto-upload. Every frame lands in the cloud as you shoot — synced chronologically into smart buckets and auto-sorted by event and the people in them with AI tagging.',
+    moments: 'Photos upload straight from your camera to the cloud as you shoot — automatically organised by event and by the people in them with AI.',
     image: `${PROTO}wp4omh8t_studio.moments.live%20Prototype-2.png`,
   },
   {
     icon: ScanFace,
     tag: 'Select',
     title: 'Find the keepers in minutes, not weeks.',
-    today: 'Culling thousands of frames is a solo grind that stretches across weeks — one person, one event, endless takes.',
-    moments: 'AI face tagging and event tagging — haldi, dance, candid, emotion, traditional — surface the right shots instantly. Selection finally feels light.',
+    today: 'Sorting through thousands of photos is a solo grind that drags on for weeks — one person, one event, endless shots.',
+    moments: 'AI sorts every photo by face and by moment — haldi, dance, candid — so the best shots are right there. Choosing finally feels easy.',
     image: `${PROTO}p2naxnxo_studio.moments.live%20Prototype-1.png`,
   },
   {
@@ -40,7 +40,7 @@ const STAGES = [
     tag: 'Manage',
     title: 'Your whole studio, in one place.',
     today: 'Freelancers, editors, and media scattered across drives, WhatsApp threads, and someone’s desktop.',
-    moments: 'Team management built for agencies — bring in editors and second shooters, assign access, and keep every event’s media in one organised home.',
+    moments: 'Team management built for professionals — bring in editors and second shooters, assign access, and keep every event’s media in one organised home.',
     image: `${PROTO}2bjonplv_studio.moments.live%20Prototype-4.png`,
   },
 ];
@@ -97,18 +97,22 @@ const StageRow = ({ stage, index }) => {
     </div>
   );
 
-  // Mobile node — sits on the left rail
+  // Mobile node — sits centred on the left rail. The positioning lives on a
+  // plain wrapper so Framer's animated inline `transform` (scale) doesn't
+  // clobber the `-translate-x-1/2` that centres it on the line.
   const mobileNode = (
-    <motion.div
-      initial={{ scale: 0, opacity: 0 }}
-      whileInView={{ scale: 1, opacity: 1 }}
-      viewport={{ once: true, amount: 0.8 }}
-      transition={{ type: 'spring', stiffness: 240, damping: 16 }}
-      className="lg:hidden absolute left-4 -translate-x-1/2 top-0 z-10 w-9 h-9 rounded-full bg-brand text-on-brand flex items-center justify-center shadow-lg shadow-brand/30 ring-4 ring-canvas"
-    >
-      <Icon size={16} />
-      <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-canvas border border-line text-ink text-[8px] font-bold flex items-center justify-center">{num}</span>
-    </motion.div>
+    <div className="lg:hidden absolute left-4 -translate-x-1/2 top-0 z-10">
+      <motion.div
+        initial={{ scale: 0, opacity: 0 }}
+        whileInView={{ scale: 1, opacity: 1 }}
+        viewport={{ once: true, amount: 0.8 }}
+        transition={{ type: 'spring', stiffness: 240, damping: 16 }}
+        className="relative w-9 h-9 rounded-full bg-brand text-on-brand flex items-center justify-center shadow-lg shadow-brand/30 ring-4 ring-canvas"
+      >
+        <Icon size={16} />
+        <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-canvas border border-line text-ink text-[8px] font-bold flex items-center justify-center">{num}</span>
+      </motion.div>
+    </div>
   );
 
   const visual = (
@@ -124,7 +128,7 @@ const StageRow = ({ stage, index }) => {
   );
 
   return (
-    <div className="relative grid grid-cols-1 lg:grid-cols-[1fr_56px_1fr] gap-6 lg:gap-10 items-center pl-12 lg:pl-0">
+    <div className="relative grid grid-cols-1 lg:grid-cols-[1fr_56px_1fr] gap-6 lg:gap-10 items-center pl-14 lg:pl-0">
       {mobileNode}
       {text}
       {node}
@@ -166,7 +170,7 @@ const MomentsStudio = () => {
             Your media journey, <span className="gradient-text-green">made effortless.</span>
           </h2>
           <p className="text-muted text-base md:text-lg">
-            Our core platform — from capture to delivery — with the Moments guest app built right in. Every step maps to how you actually work, quietly removing the friction.
+            From capture to delivery, with the Moments guest app built in — every step mapped to how you actually work.
           </p>
         </motion.div>
 

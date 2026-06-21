@@ -221,10 +221,10 @@ const GuestPOV = () => (
               </li>
             ))}
           </ul>
-          <motion.a href={WHATSAPP} target="_blank" rel="noopener noreferrer"
+          <motion.a href="#free-trial"
             whileHover={{ scale: 1.03, y: -1 }} whileTap={{ scale: 0.97 }}
             className="inline-flex items-center gap-2 bg-on-brand text-brand px-6 py-3 rounded-full text-sm font-bold shadow-lg">
-            Get Started <ArrowRight size={14} />
+            Start Free Trial <ArrowRight size={14} />
           </motion.a>
         </div>
         <div className="relative z-10 flex justify-center">
@@ -256,14 +256,9 @@ const MomentsBot = () => (
             className="font-tight font-bold text-ink text-[2rem] md:text-[2.8rem] leading-[1.1] tracking-tight mb-5">
             The Gentle<br />Photo Collector
           </motion.h2>
-          <motion.p variants={fadeUp} className="text-muted text-[15px] leading-relaxed mb-8 max-w-md font-medium">
+          <motion.p variants={fadeUp} className="text-muted text-[15px] leading-relaxed max-w-md font-medium">
             Our WhatsApp bot nudges guests to share photos automatically. No chasing — memories collect themselves.
           </motion.p>
-          <motion.a variants={fadeUp} href={WHATSAPP} target="_blank" rel="noopener noreferrer"
-            whileHover={{ scale: 1.03, y: -1 }} whileTap={{ scale: 0.97 }}
-            className="inline-flex items-center gap-2 bg-[#294D32] text-white px-6 py-3 rounded-full text-sm font-bold hover:bg-[#1e3a25] transition-colors shadow-md shadow-brand/15">
-            <MessageCircle size={14} /> Try on WhatsApp
-          </motion.a>
         </motion.div>
       </div>
     </div>
