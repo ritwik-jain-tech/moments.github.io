@@ -43,6 +43,69 @@ const getBrowserInfo = () => {
   return browser;
 };
 
+// Canon CR3 (RAW) support. Browsers report an empty or non-image MIME for CR3, so detect by
+// extension/known type instead of relying on file.type.
+const isCr3File = (file) => {
+  if (!file) return false;
+  const name = (file.name || '').toLowerCase();
+  return name.endsWith('.cr3') || file.type === 'image/x-canon-cr3';
+};
+
+// Accept normal images plus CR3 in the picker/drop handler.
+const isSupportedUpload = (file) => !!file && (file.type.startsWith('image/') || isCr3File(file));
+
+// CR3 is not browser-renderable, but embeds standard JPEG previews (a small thumbnail and a larger
+// full-size preview) near the start of the file. Scan the leading bytes for JPEG SOI..EOI segments
+// and return the largest as a Blob so we can show an instant local preview without any server call.
+const CR3_SCAN_LIMIT_BYTES = 16 * 1024 * 1024;
+const CR3_MIN_PREVIEW_BYTES = 8 * 1024;
+
+const extractCr3JpegPreview = async (file) => {
+  try {
+    const slice = file.slice(0, Math.min(file.size, CR3_SCAN_LIMIT_BYTES));
+    const buf = new Uint8Array(await slice.arrayBuffer());
+    const n = buf.length;
+    let bestStart = -1;
+    let bestEnd = -1;
+    let i = 0;
+    while (i < n - 3) {
+      // JPEG SOI: FF D8 FF
+      if (buf[i] === 0xff && buf[i + 1] === 0xd8 && buf[i + 2] === 0xff) {
+        let end = -1;
+        for (let j = i + 2; j < n - 1; j++) {
+          if (buf[j] === 0xff && buf[j + 1] === 0xd9) { // EOI
+            end = j + 2;
+            break;
+          }
+        }
+        if (end > 0) {
+          if (end - i > bestEnd - bestStart) {
+            bestStart = i;
+            bestEnd = end;
+          }
+          i = end;
+          continue;
+        }
+      }
+      i++;
+    }
+    if (bestStart < 0 || bestEnd - bestStart < CR3_MIN_PREVIEW_BYTES) {
+      return null;
+    }
+    return new Blob([buf.subarray(bestStart, bestEnd)], { type: 'image/jpeg' });
+  } catch (e) {
+    console.warn('CR3 preview extraction failed:', e);
+    return null;
+  }
+};
+
+// Neutral placeholder shown when a CR3 has no extractable embedded preview.
+const CR3_PLACEHOLDER =
+  'data:image/svg+xml;utf8,' +
+  encodeURIComponent(
+    '<svg xmlns="http://www.w3.org/2000/svg" width="96" height="96"><rect width="96" height="96" fill="#e5e7eb"/><text x="48" y="52" font-family="sans-serif" font-size="16" fill="#6b7280" text-anchor="middle">CR3</text></svg>'
+  );
+
 const MomentUploader = ({
   eventId,
   onUploadComplete,
@@ -165,7 +228,7 @@ const MomentUploader = ({
   };
 
   // Handle file selection - ensures unique files are enqueued
-  const handleFiles = (fileList) => {
+  const handleFiles = async (fileList) => {
     if (!isAuthenticated()) {
       alert('Please log in to upload moments. You need to be an existing user.');
       return;
@@ -173,25 +236,39 @@ const MomentUploader = ({
 
     // Get existing file IDs to check for duplicates
     const existingFileIds = new Set(files.map(f => f.id));
-    
-    const newFiles = Array.from(fileList)
-      .filter(file => file.type.startsWith('image/'))
-      .map(file => ({
+
+    const candidates = Array.from(fileList)
+      .filter(isSupportedUpload)
+      .filter(file => {
+        const id = generateFileId(file);
+        if (existingFileIds.has(id)) {
+          console.log(`Skipping duplicate file: ${file.name}`);
+          return false;
+        }
+        return true;
+      });
+
+    const newFiles = [];
+    for (const file of candidates) {
+      const cr3 = isCr3File(file);
+      // For CR3, decode the embedded JPEG for the preview; for normal images, blob URL is enough.
+      let previewBlob = null;
+      if (cr3) {
+        previewBlob = await extractCr3JpegPreview(file);
+      }
+      newFiles.push({
         id: generateFileId(file),
         file,
         name: file.name,
         size: file.size,
         type: file.type,
-        preview: URL.createObjectURL(file)
-      }))
-      .filter(fileObj => {
-        // Only include files that are not already in the queue
-        if (existingFileIds.has(fileObj.id)) {
-          console.log(`Skipping duplicate file: ${fileObj.name}`);
-          return false;
-        }
-        return true;
+        isCr3: cr3,
+        previewBlob,
+        preview: cr3
+          ? (previewBlob ? URL.createObjectURL(previewBlob) : CR3_PLACEHOLDER)
+          : URL.createObjectURL(file),
       });
+    }
 
     if (newFiles.length === 0) {
       console.log('No new files to add (all are duplicates)');
@@ -292,7 +369,7 @@ const MomentUploader = ({
               if (entry.isFile) {
                 return new Promise((fileResolve) => {
                   entry.file((file) => {
-                    if (file.type.startsWith('image/')) {
+                    if (isSupportedUpload(file)) {
                       files.push(file);
                     }
                     fileResolve();
@@ -327,13 +404,13 @@ const MomentUploader = ({
       if (isFolderSelection) {
         console.log(`Folder selected: ${input.files.length} total files found`);
         
-        // Filter and process all image files from the folder
+        // Filter and process all image files from the folder (including CR3 RAW)
         const imageFiles = Array.from(input.files).filter(file => {
-          const isImage = file.type.startsWith('image/');
-          if (!isImage) {
-            console.log(`Skipping non-image file: ${file.name} (type: ${file.type || 'unknown'})`);
+          const supported = isSupportedUpload(file);
+          if (!supported) {
+            console.log(`Skipping unsupported file: ${file.name} (type: ${file.type || 'unknown'})`);
           }
-          return isImage;
+          return supported;
         });
         
         console.log(`Processing ${imageFiles.length} image files from folder (out of ${input.files.length} total files)`);
@@ -543,8 +620,8 @@ const MomentUploader = ({
         throw new Error('Upload response missing publicUrl');
       }
 
-      // Get image dimensions and create moment data
-      const dimensions = await getImageDimensions(fileObj.file);
+      // Get image dimensions and create moment data (CR3 isn't measurable directly; use its preview)
+      const dimensions = await getImageDimensions(fileObj.previewBlob || fileObj.file);
       const creationTime = fileObj.file.lastModified || Date.now();
       const aspectRatio = calculateAspectRatio(dimensions.width, dimensions.height);
 
@@ -668,9 +745,9 @@ const MomentUploader = ({
     // Prepare moments array and add files to FormData
     for (const fileObj of fileObjs) {
       try {
-        // Get image dimensions
-        const dimensions = await getImageDimensions(fileObj.file);
-        
+        // Get image dimensions (CR3 isn't measurable directly; use its extracted preview)
+        const dimensions = await getImageDimensions(fileObj.previewBlob || fileObj.file);
+
         // Calculate creation time (epoch timestamp)
         const creationTime = fileObj.file.lastModified || Date.now();
         
@@ -1549,7 +1626,7 @@ const MomentUploader = ({
               ref={fileInputRef}
               type="file"
               multiple
-              accept="image/*"
+              accept="image/*,.cr3,.CR3"
               onChange={handleFileSelect}
               className="hidden"
             />
@@ -1558,7 +1635,7 @@ const MomentUploader = ({
               ref={folderInputRef}
               type="file"
               multiple
-              accept="image/*"
+              accept="image/*,.cr3,.CR3"
               onChange={handleFileSelect}
               className="hidden"
             />
@@ -1570,7 +1647,7 @@ const MomentUploader = ({
               <div className="text-[#2a4d32] font-medium mb-1">
                 Click to select multiple files or drag & drop files/folder
               </div>
-              <p className="text-xs text-gray-500">PNG, JPG, GIF up to 10MB each</p>
+              <p className="text-xs text-gray-500">PNG, JPG, GIF, CR3 (Canon RAW) up to 10MB each</p>
               <p className="text-xs text-gray-400 mt-1">
                 Click to select multiple files, or drag files/folders here
               </p>
@@ -1657,6 +1734,11 @@ const MomentUploader = ({
                           src={fileObj.preview}
                           alt={fileObj.name}
                           className="w-full h-full object-cover"
+                          onError={(e) => {
+                            if (e.currentTarget.src !== CR3_PLACEHOLDER) {
+                              e.currentTarget.src = CR3_PLACEHOLDER;
+                            }
+                          }}
                         />
                       </div>
 
