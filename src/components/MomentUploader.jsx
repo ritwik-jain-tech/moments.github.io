@@ -1,10 +1,69 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import axios from 'axios';
 import { API_BASE_URL } from '../config/api';
+import { useUpload } from '../context/UploadContext';
 
-const BATCH_SIZE = 2; // Batch size for bulk upload API (reduced to avoid 413 Content Too Large errors)
-const MAX_PARALLEL_BATCHES = 2; // Maximum number of batches to process in parallel
 const STORAGE_KEY = 'moment_upload_queue';
+
+// --- Bulk-upload tuning (robust for 1000+ images) ---------------------------------------------
+// Batches are packed by BYTES, not a fixed file count, so a request never exceeds the server's
+// body limit (Cloud Run caps requests at ~32 MiB). A batch that still 413s is split adaptively.
+const REQUEST_BYTE_BUDGET = 12 * 1024 * 1024; // target max bytes per multipart request (12 MB)
+const MAX_FILES_PER_REQUEST = 5;              // also cap file count per request
+const UPLOAD_CONCURRENCY = 3;                 // parallel in-flight requests (worker pool)
+const MAX_TRANSIENT_RETRIES = 4;              // auto-retries for network/5xx/429/timeout, with backoff
+const RETRY_BASE_DELAY_MS = 800;              // exponential backoff base
+
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+// Exponential backoff with jitter for transient-failure retries.
+const backoffDelay = (attempt) =>
+  RETRY_BASE_DELAY_MS * Math.pow(2, attempt - 1) + Math.floor(Math.random() * 400);
+
+// A request should be retried on network errors, timeouts, rate limiting, and 5xx.
+const isRetryableError = (err) => {
+  const status = err?.status ?? err?.response?.status;
+  if (status === 413) return false; // handled separately by adaptive splitting
+  if (status) return status >= 500 || status === 429 || status === 408;
+  // No HTTP status => network/timeout/abort.
+  return err?.code === 'ERR_NETWORK' || err?.code === 'ECONNABORTED' ||
+    err?.name === 'AbortError' || /network|failed to fetch|timeout/i.test(err?.message || '');
+};
+
+const isTooLargeError = (err) => (err?.status ?? err?.response?.status) === 413;
+
+const isNonRetryableStatus = (status) =>
+  status === 400 || status === 401 || status === 403 || status === 404 || status === 405 || status === 422;
+
+// Greedily pack files into batches bounded by REQUEST_BYTE_BUDGET and MAX_FILES_PER_REQUEST.
+// A single file at/over the budget is sent on its own (the single-file endpoint handles it).
+const buildSizeAwareBatches = (fileObjs) => {
+  const batches = [];
+  let current = [];
+  let currentBytes = 0;
+  const flush = () => {
+    if (current.length) {
+      batches.push(current);
+      current = [];
+      currentBytes = 0;
+    }
+  };
+  for (const fo of fileObjs) {
+    const size = fo.file?.size || 0;
+    if (size >= REQUEST_BYTE_BUDGET) {
+      flush();
+      batches.push([fo]);
+      continue;
+    }
+    if (current.length >= MAX_FILES_PER_REQUEST || currentBytes + size > REQUEST_BYTE_BUDGET) {
+      flush();
+    }
+    current.push(fo);
+    currentBytes += size;
+  }
+  flush();
+  return batches;
+};
 
 // Browser detection utility
 const getBrowserInfo = () => {
@@ -106,13 +165,26 @@ const CR3_PLACEHOLDER =
     '<svg xmlns="http://www.w3.org/2000/svg" width="96" height="96"><rect width="96" height="96" fill="#e5e7eb"/><text x="48" y="52" font-family="sans-serif" font-size="16" fill="#6b7280" text-anchor="middle">CR3</text></svg>'
   );
 
+// Generic placeholder used for large batches where per-file previews are skipped for speed.
+const IMAGE_PLACEHOLDER =
+  'data:image/svg+xml;utf8,' +
+  encodeURIComponent(
+    '<svg xmlns="http://www.w3.org/2000/svg" width="96" height="96"><rect width="96" height="96" fill="#e5e7eb"/><path d="M24 66l16-20 12 14 8-9 12 15z" fill="#9ca3af"/><circle cx="34" cy="34" r="7" fill="#9ca3af"/></svg>'
+  );
+
+// Generating thumbnails (and especially decoding CR3 embedded JPEGs) per file is expensive. Above
+// this batch/queue size we skip previews entirely so enqueuing a large folder stays fast.
+const PREVIEW_FILE_LIMIT = 50;
+
 const MomentUploader = ({
   eventId,
+  eventName = '',
   onUploadComplete,
   triggerText = 'Upload Media',
   triggerClassName = '',
   uploaderTitle = 'Upload Moments',
 }) => {
+  const backgroundUpload = useUpload();
   const [files, setFiles] = useState([]);
   const [uploadQueue, setUploadQueue] = useState([]);
   const [uploadStatus, setUploadStatus] = useState({}); // { fileId: { status, progress, error } }
@@ -248,13 +320,30 @@ const MomentUploader = ({
         return true;
       });
 
+    // For large batches, skip per-file preview generation (thumbnail blob URLs and, above all, the
+    // costly CR3 embedded-JPEG decode) so enqueuing stays fast. Placeholders are shown instead.
+    const skipPreviews = files.length + candidates.length > PREVIEW_FILE_LIMIT;
+    if (skipPreviews) {
+      console.log(
+        `Skipping previews for ${candidates.length} file(s): queue exceeds ${PREVIEW_FILE_LIMIT}`
+      );
+    }
+
     const newFiles = [];
     for (const file of candidates) {
       const cr3 = isCr3File(file);
       // For CR3, decode the embedded JPEG for the preview; for normal images, blob URL is enough.
       let previewBlob = null;
-      if (cr3) {
-        previewBlob = await extractCr3JpegPreview(file);
+      let preview;
+      if (skipPreviews) {
+        preview = cr3 ? CR3_PLACEHOLDER : IMAGE_PLACEHOLDER;
+      } else {
+        if (cr3) {
+          previewBlob = await extractCr3JpegPreview(file);
+        }
+        preview = cr3
+          ? (previewBlob ? URL.createObjectURL(previewBlob) : CR3_PLACEHOLDER)
+          : URL.createObjectURL(file);
       }
       newFiles.push({
         id: generateFileId(file),
@@ -264,9 +353,7 @@ const MomentUploader = ({
         type: file.type,
         isCr3: cr3,
         previewBlob,
-        preview: cr3
-          ? (previewBlob ? URL.createObjectURL(previewBlob) : CR3_PLACEHOLDER)
-          : URL.createObjectURL(file),
+        preview,
       });
     }
 
@@ -894,8 +981,7 @@ const MomentUploader = ({
           const totalSizeMB = fileObjs.reduce((sum, f) => sum + (f.file.size / (1024 * 1024)), 0).toFixed(2);
           errorMessage = `Upload failed: Request too large (HTTP ${httpStatus}). ` +
             `\n\nBatch contains ${fileCount} file(s) with total size of ${totalSizeMB} MB. ` +
-            `\n\nThe server has a size limit. Try uploading fewer files at once or reduce file sizes. ` +
-            `\n\nCurrent batch size is ${BATCH_SIZE} files.`;
+            `\n\nThe server has a size limit; the uploader will automatically split this batch and retry.`;
         } else if (httpStatus === 400) {
           const serverMessage = error.response?.data?.message || error.response?.data?.error || 'Bad request';
           errorMessage = `Upload failed: Bad request (HTTP ${httpStatus}). ` +
@@ -986,124 +1072,120 @@ const MomentUploader = ({
         userAgent: navigator.userAgent,
         fileCount: fileObjs.length
       });
-      throw new Error(errorMessage);
+      // Preserve the HTTP status/response so the orchestrator can classify the failure
+      // (413 -> split, 5xx/network -> retry, 4xx -> terminal).
+      const enhanced = new Error(errorMessage);
+      enhanced.status = error.response?.status;
+      enhanced.response = error.response;
+      enhanced.code = error.code;
+      throw enhanced;
     }
   };
 
-  // Process batch of files - single API call for upload + moment creation
+  // Process one batch: upload + create moments, with automatic transient-failure retries.
+  // Returns an outcome the pool uses to decide next steps:
+  //   { outcome: 'success', count }  - all files uploaded
+  //   { outcome: 'tooLarge' }        - 413 on a multi-file batch; pool should split & requeue
+  //   { outcome: 'error' }           - terminal failure (left for manual retry)
   const processBatch = useCallback(async (batch) => {
-    // Update all files in batch to uploading status
-    batch.forEach(fileObj => {
+    // Merge a status patch onto every file in the batch (preserves fields like retryCount).
+    const setBatchStatus = (patch) => {
       setUploadStatus(prev => {
-        const updated = {
-          ...prev,
-          [fileObj.id]: { status: 'uploading', progress: 0 }
-        };
+        const updated = { ...prev };
+        batch.forEach(fileObj => {
+          updated[fileObj.id] = { ...(prev[fileObj.id] || {}), ...patch };
+        });
         uploadStatusRef.current = updated;
         persistStatus(updated);
         return updated;
       });
-    });
+    };
 
-    try {
-      // For single file batches, use the working single upload endpoint
-      // For multiple files, use bulk upload endpoint
-      if (batch.length === 1) {
-        console.log('Using single file upload endpoint (CORS-safe) for batch of 1');
-        await uploadSingleFileAndCreateMoment(batch[0], (progress) => {
-          setUploadStatus(prev => {
-            const updated = {
-              ...prev,
-              [batch[0].id]: { status: 'uploading', progress }
-            };
-            uploadStatusRef.current = updated;
-            persistStatus(updated);
-            return updated;
-          });
-        });
-      } else {
-        console.log(`Using bulk upload endpoint for batch of ${batch.length} files`);
-        // Make bulk upload API call
-        await bulkUploadMomentsWithDetails(batch, (progress) => {
-          // Update progress for all files in batch
-          batch.forEach(fileObj => {
-            setUploadStatus(prev => {
-              const updated = {
-                ...prev,
-                [fileObj.id]: { status: 'uploading', progress }
-              };
-              uploadStatusRef.current = updated;
-              persistStatus(updated);
-              return updated;
-            });
-          });
-        });
-      }
+    const onProgress = (progress) => setBatchStatus({ status: 'uploading', progress });
 
-      // Mark all files as completed
-      batch.forEach(fileObj => {
-        setUploadStatus(prev => {
-          const updated = {
-            ...prev,
-            [fileObj.id]: { status: 'completed', progress: 100 }
-          };
-          uploadStatusRef.current = updated;
-          persistStatus(updated);
-          return updated;
-        });
-      });
+    setBatchStatus({ status: 'uploading', progress: 0, error: undefined });
 
-      return batch.map(f => ({ fileId: f.id, success: true }));
-    } catch (error) {
-      // Extract error message - use the detailed message from bulkUploadMomentsWithDetails if available
-      // The error.message from bulkUploadMomentsWithDetails already contains detailed, user-friendly messages
-      let errorMessage = error.message || 'Upload failed';
-      
-      // Only override if we have a more specific server message and the error message is generic
-      if (!error.message || error.message === 'Upload failed' || error.message === 'Bulk upload failed') {
-        if (error.response?.status === 413) {
-          const totalSizeMB = batch.reduce((sum, f) => sum + (f.file.size / (1024 * 1024)), 0).toFixed(2);
-          errorMessage = `Request too large (HTTP 413): Batch of ${batch.length} file(s) totaling ${totalSizeMB} MB exceeds server limit. Try uploading fewer files at once.`;
-        } else if (error.response?.data?.message) {
-          errorMessage = `Upload failed (HTTP ${error.response.status}): ${error.response.data.message}`;
-        } else if (error.response?.data?.error) {
-          errorMessage = `Upload failed (HTTP ${error.response.status}): ${error.response.data.error}`;
-        } else if (error.code === 'NETWORK_ERROR') {
-          errorMessage = 'Network error. Please check your connection.';
+    let attempt = 0;
+    // eslint-disable-next-line no-constant-condition
+    while (true) {
+      try {
+        if (batch.length === 1) {
+          await uploadSingleFileAndCreateMoment(batch[0], onProgress);
+        } else {
+          await bulkUploadMomentsWithDetails(batch, onProgress);
         }
-      }
-      
-      batch.forEach(fileObj => {
-        setUploadStatus(prev => {
-          const currentStatus = prev[fileObj.id] || {};
-          const updated = {
-            ...prev,
-            [fileObj.id]: { 
-              status: 'error', 
-              progress: 0,
-              error: errorMessage,
-              retryCount: currentStatus.retryCount || 0
-            }
-          };
-          uploadStatusRef.current = updated;
-          persistStatus(updated);
-          return updated;
+        setBatchStatus({ status: 'completed', progress: 100, error: undefined });
+        return { outcome: 'success', count: batch.length };
+      } catch (error) {
+        // 413: split multi-file batches; a lone file that's too large is terminal.
+        if (isTooLargeError(error)) {
+          if (batch.length > 1) {
+            setBatchStatus({ status: 'pending', progress: 0 });
+            return { outcome: 'tooLarge' };
+          }
+          const sizeMB = (batch[0].file.size / (1024 * 1024)).toFixed(1);
+          setBatchStatus({
+            status: 'error',
+            progress: 0,
+            error: `File is too large for the server (${sizeMB} MB). Please resize it or upload it on its own.`,
+          });
+          return { outcome: 'error' };
+        }
+
+        // Transient (network/timeout/429/5xx): back off and retry.
+        if (isRetryableError(error) && attempt < MAX_TRANSIENT_RETRIES) {
+          attempt += 1;
+          const delay = backoffDelay(attempt);
+          console.warn(
+            `Batch of ${batch.length} failed (${error.status || error.code || 'network'}); ` +
+            `retry ${attempt}/${MAX_TRANSIENT_RETRIES} in ${delay}ms`
+          );
+          setBatchStatus({ status: 'uploading', progress: 0, error: `Retrying (${attempt}/${MAX_TRANSIENT_RETRIES})…` });
+          await sleep(delay);
+          continue;
+        }
+
+        // Terminal failure (4xx, or transient retries exhausted).
+        const errorMessage = error.message || 'Upload failed';
+        setBatchStatus({ status: 'error', progress: 0, error: errorMessage });
+        console.error('Failed to upload batch:', {
+          message: errorMessage,
+          status: error.status || error.response?.status,
+          batchSize: batch.length,
+          totalSizeMB: batch.reduce((sum, f) => sum + f.file.size / (1024 * 1024), 0).toFixed(2),
         });
-      });
-
-      console.error(`Failed to upload batch:`, {
-        error,
-        message: errorMessage,
-        status: error.response?.status,
-        statusText: error.response?.statusText,
-        response: error.response?.data,
-        batchSize: batch.length,
-        totalSizeMB: batch.reduce((sum, f) => sum + (f.file.size / (1024 * 1024)), 0).toFixed(2)
-      });
-
-      return batch.map(f => ({ fileId: f.id, success: false }));
+        return { outcome: 'error' };
+      }
     }
   }, [eventId, persistStatus]);
+
+  // Bounded worker pool over size-aware batches. On a 413 the batch is split in half and requeued,
+  // so the uploader converges to a request size the server accepts without user intervention.
+  const runUploadPool = useCallback(async (fileObjs) => {
+    const queue = buildSizeAwareBatches(fileObjs);
+    let completed = 0;
+
+    const worker = async () => {
+      while (queue.length > 0) {
+        const batch = queue.shift();
+        if (!batch) break;
+        const res = await processBatch(batch);
+        if (res.outcome === 'success') {
+          completed += res.count;
+        } else if (res.outcome === 'tooLarge') {
+          const mid = Math.ceil(batch.length / 2);
+          // Requeue the smaller halves at the front so they retry promptly.
+          queue.unshift(batch.slice(mid));
+          queue.unshift(batch.slice(0, mid));
+        }
+        // 'error' -> leave for manual retry.
+      }
+    };
+
+    const workerCount = Math.min(UPLOAD_CONCURRENCY, Math.max(1, queue.length));
+    await Promise.all(Array.from({ length: workerCount }, () => worker()));
+    return completed;
+  }, [processBatch]);
 
   // Start upload process
   const startUpload = useCallback(async () => {
@@ -1127,10 +1209,11 @@ const MomentUploader = ({
       return;
     }
 
-    // Process files in batches of BATCH_SIZE
+    // Upload everything not already done: pending, previously errored, or interrupted mid-upload
+    // (a stale "uploading" from a reload is safe to resend — the backend dedupes by file+event).
     const pendingFiles = currentFiles.filter(f => {
-      const status = currentStatus[f.id];
-      return !status || status.status === 'pending' || status.status === 'error';
+      const s = currentStatus[f.id]?.status;
+      return !s || s === 'pending' || s === 'error' || s === 'uploading';
     });
 
     if (pendingFiles.length === 0) {
@@ -1145,31 +1228,10 @@ const MomentUploader = ({
     setCompletedAtUploadStart(completedCount); // Track completed count at start
 
     try {
-      let completedCount = 0;
+      console.log(`Uploading ${pendingFiles.length} file(s) via size-aware batches (budget ${(REQUEST_BYTE_BUDGET / (1024 * 1024)).toFixed(0)}MB, concurrency ${UPLOAD_CONCURRENCY})`);
 
-      // Step 1: Create all batches first (before processing)
-      const batches = [];
-      for (let i = 0; i < pendingFiles.length; i += BATCH_SIZE) {
-        batches.push(pendingFiles.slice(i, i + BATCH_SIZE));
-      }
-
-      console.log(`Created ${batches.length} batches of ${BATCH_SIZE} files each from ${pendingFiles.length} total files`);
-
-      // Step 2: Process batches in controlled parallel groups (only spawn when required)
-      for (let i = 0; i < batches.length; i += MAX_PARALLEL_BATCHES) {
-        const parallelBatches = batches.slice(i, i + MAX_PARALLEL_BATCHES);
-        
-        console.log(`Processing batches ${i + 1}-${Math.min(i + MAX_PARALLEL_BATCHES, batches.length)} of ${batches.length} in parallel`);
-        
-        // Spawn parallel batches only when needed (controlled concurrency)
-        const batchPromises = parallelBatches.map(batch => processBatch(batch));
-        const batchResults = await Promise.all(batchPromises);
-        
-        // Count successful uploads from all parallel batches
-        batchResults.forEach(results => {
-          completedCount += results.filter(r => r.success).length;
-        });
-      }
+      // Size-aware batching + bounded concurrency + adaptive 413 splitting + backoff retries.
+      const completedCount = await runUploadPool(pendingFiles);
 
       // Show success message
       if (completedCount > 0) {
@@ -1190,7 +1252,43 @@ const MomentUploader = ({
       setIsUploading(false);
       setUploadQueue([]);
     }
-  }, [processBatch, eventId, onUploadComplete, persistStatus]);
+  }, [runUploadPool, eventId, onUploadComplete, persistStatus]);
+
+  // Hand the selected files to the global background uploader, then auto-minimize. The upload
+  // continues in the provider (floating widget + Uploads history) even as the user navigates away.
+  const handleStart = useCallback(() => {
+    if (!isAuthenticated()) {
+      alert('Please log in to upload moments. You need to be an existing user.');
+      return;
+    }
+    const pending = filesRef.current.filter((f) => {
+      const s = uploadStatusRef.current[f.id]?.status;
+      return !s || s === 'pending' || s === 'error';
+    });
+    if (pending.length === 0) return;
+
+    const res = backgroundUpload.startUpload({
+      eventId,
+      eventName: eventName || uploaderTitle || 'Selected project',
+      files: pending,
+    });
+    if (res && res.ok === false) {
+      if (res.reason === 'busy') {
+        alert('Another upload is still in progress. Please wait for it to finish or stop it before starting a new one for a different project.');
+      }
+      return; // keep the selection so the user can retry
+    }
+
+    // Clear the local selection (now owned by the background uploader) and minimize the panel.
+    setFiles([]);
+    filesRef.current = [];
+    setUploadStatus({});
+    uploadStatusRef.current = {};
+    persistStatus({});
+    setShowUploader(false);
+
+    if (onUploadComplete) onUploadComplete(pending.length);
+  }, [backgroundUpload, eventId, eventName, uploaderTitle, onUploadComplete, persistStatus]);
 
   // Auto-remove completed files
   useEffect(() => {
@@ -1292,7 +1390,8 @@ const MomentUploader = ({
     }
 
     const status = currentStatus[fileId];
-    if (status?.status !== 'error' || (status.retryCount || 0) >= 1) {
+    // Allow manual retry of any errored file (transient retries already happened automatically).
+    if (status?.status !== 'error') {
       return;
     }
 
@@ -1322,8 +1421,7 @@ const MomentUploader = ({
     }
 
     try {
-      const results = await processBatch([fileObj]);
-      const completedCount = results.filter(r => r.success).length;
+      const completedCount = await runUploadPool([fileObj]);
 
       // Show success message for retry
       if (completedCount > 0) {
@@ -1342,7 +1440,7 @@ const MomentUploader = ({
       setIsUploading(false);
       setUploadQueue([]);
     }
-  }, [processBatch, onUploadComplete, persistStatus]);
+  }, [runUploadPool, onUploadComplete, persistStatus]);
 
   // Retry all failed files
   const retryAllFailedFiles = useCallback(async () => {
@@ -1361,14 +1459,12 @@ const MomentUploader = ({
     const currentFiles = filesRef.current;
     const currentStatus = uploadStatusRef.current;
 
-    // Get all failed files that can be retried (retryCount < 1)
-    const failedFiles = currentFiles.filter(f => {
-      const status = currentStatus[f.id];
-      return status?.status === 'error' && (status.retryCount || 0) < 1;
-    });
+    // Every errored file is retryable — automatic transient retries already ran, and re-sending is
+    // safe because the backend is idempotent (same file -> same moment, never duplicated).
+    const failedFiles = currentFiles.filter(f => currentStatus[f.id]?.status === 'error');
 
     if (failedFiles.length === 0) {
-      alert('No failed files available to retry. All failed files have already been retried once.');
+      alert('No failed files to retry.');
       return;
     }
 
@@ -1377,8 +1473,8 @@ const MomentUploader = ({
       setUploadStatus(prev => {
         const updated = {
           ...prev,
-          [fileObj.id]: { 
-            status: 'pending', 
+          [fileObj.id]: {
+            status: 'pending',
             progress: 0,
             retryCount: (prev[fileObj.id]?.retryCount || 0) + 1
           }
@@ -1392,7 +1488,7 @@ const MomentUploader = ({
     // Start upload for all retried files
     setIsUploading(true);
     setUploadQueue(failedFiles);
-    
+
     // Initialize upload tracking for time estimation
     if (!uploadStartTimeRef.current) {
       uploadStartTimeRef.current = Date.now();
@@ -1400,31 +1496,7 @@ const MomentUploader = ({
     }
 
     try {
-      let completedCount = 0;
-
-      // Step 1: Create all batches first (before processing)
-      const batches = [];
-      for (let i = 0; i < failedFiles.length; i += BATCH_SIZE) {
-        batches.push(failedFiles.slice(i, i + BATCH_SIZE));
-      }
-
-      console.log(`Retry: Created ${batches.length} batches of ${BATCH_SIZE} files each from ${failedFiles.length} total failed files`);
-
-      // Step 2: Process batches in controlled parallel groups (only spawn when required)
-      for (let i = 0; i < batches.length; i += MAX_PARALLEL_BATCHES) {
-        const parallelBatches = batches.slice(i, i + MAX_PARALLEL_BATCHES);
-        
-        console.log(`Retry: Processing batches ${i + 1}-${Math.min(i + MAX_PARALLEL_BATCHES, batches.length)} of ${batches.length} in parallel`);
-        
-        // Spawn parallel batches only when needed (controlled concurrency)
-        const batchPromises = parallelBatches.map(batch => processBatch(batch));
-        const batchResults = await Promise.all(batchPromises);
-        
-        // Count successful uploads from all parallel batches
-        batchResults.forEach(results => {
-          completedCount += results.filter(r => r.success).length;
-        });
-      }
+      const completedCount = await runUploadPool(failedFiles);
 
       // Show success message
       if (completedCount > 0) {
@@ -1443,7 +1515,7 @@ const MomentUploader = ({
       setIsUploading(false);
       setUploadQueue([]);
     }
-  }, [processBatch, onUploadComplete, persistStatus, eventId]);
+  }, [runUploadPool, onUploadComplete, persistStatus, eventId]);
 
   // Format time in seconds to readable format
   const formatTime = (seconds) => {
@@ -1494,11 +1566,8 @@ const MomentUploader = ({
       else if (status === 'uploading') stats.uploading++;
       else if (status === 'error') {
         stats.error++;
-        // Check if this error can be retried (retryCount < 1)
-        const retryCount = uploadStatus[f.id]?.retryCount || 0;
-        if (retryCount < 1) {
-          stats.retryable++;
-        }
+        // Every errored file can be retried (idempotent backend makes re-sending safe).
+        stats.retryable++;
       }
     });
 
@@ -1775,25 +1844,14 @@ const MomentUploader = ({
 
                       {/* Action Buttons */}
                       <div className="flex items-center space-x-2">
-                        {isError && canRetry && (
-                          <button
-                            onClick={() => retryFailedFile(fileObj.id)}
-                            disabled={isUploading}
-                            className="flex-shrink-0 px-3 py-1 text-xs bg-red-600 hover:bg-red-700 text-white rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                          >
-                            Retry
-                          </button>
-                        )}
-                        {status.status !== 'uploading' && (
-                          <button
-                            onClick={() => removeFile(fileObj.id)}
-                            className="flex-shrink-0 text-gray-400 hover:text-red-600"
-                          >
-                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
-                            </svg>
-                          </button>
-                        )}
+                        <button
+                          onClick={() => removeFile(fileObj.id)}
+                          className="flex-shrink-0 text-gray-400 hover:text-red-600"
+                        >
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                        </button>
                       </div>
                     </div>
                   );
@@ -1805,49 +1863,27 @@ const MomentUploader = ({
           {/* Action Buttons */}
           <div className="flex space-x-2">
             <button
-              onClick={startUpload}
-              disabled={isUploading || stats.total === 0 || stats.pending === 0}
+              onClick={handleStart}
+              disabled={stats.total === 0}
               className={`flex-1 py-2 px-4 rounded-lg font-medium transition-colors ${
-                isUploading || stats.total === 0 || stats.pending === 0
+                stats.total === 0
                   ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
                   : 'bg-[#67143A] hover:bg-[#4f0f2d] text-white'
               }`}
             >
-              {isUploading ? (
-                <div className="flex items-center justify-center space-x-2">
-                  <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-white"></div>
-                  <span>Uploading...</span>
-                </div>
-              ) : (
-                `Upload ${stats.pending > 0 ? stats.pending : stats.total} File${(stats.pending || stats.total) !== 1 ? 's' : ''}`
-              )}
+              {`Upload ${stats.total} File${stats.total !== 1 ? 's' : ''}`}
             </button>
-            {stats.retryable > 0 && (
-              <button
-                onClick={retryAllFailedFiles}
-                disabled={isUploading}
-                className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                  isUploading
-                    ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                    : 'bg-red-600 hover:bg-red-700 text-white'
-                }`}
-              >
-                Retry All ({stats.retryable})
-              </button>
-            )}
           </div>
 
           {/* Background Upload Indicator */}
-          {isUploading && (
-            <div className="mt-3 text-xs text-gray-500 text-center">
-              <div className="flex items-center justify-center space-x-1">
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
-                </svg>
-                <span>Uploads will continue even if you switch tabs or minimize the window</span>
-              </div>
+          <div className="mt-3 text-xs text-gray-500 text-center">
+            <div className="flex items-center justify-center space-x-1">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+              </svg>
+              <span>Uploads continue in the background — you can switch tabs or minimize the window.</span>
             </div>
-          )}
+          </div>
         </div>
       )}
     </div>

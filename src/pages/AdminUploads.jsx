@@ -1,12 +1,28 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
+import axios from 'axios';
 import AdminSidebar from '../components/AdminSidebar';
 import MomentUploader from '../components/MomentUploader';
+import { API_BASE_URL } from '../config/api';
+import { useUpload } from '../context/UploadContext';
 import {
   fetchEventsForUserWithFallback,
   mergeEventsWithProfileDetails,
   syncProfileEventDetails,
 } from '../utils/fetchUserEvents';
+
+const relTime = (ms) => {
+  if (!ms) return '';
+  return new Date(Number(ms)).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+};
+
+const statusStyle = (status, isDark) => {
+  const s = (status || '').toLowerCase();
+  if (s === 'uploading' || s === 'in_progress' || s === 'started') return 'bg-emerald-500/15 text-emerald-500';
+  if (s === 'paused' || s === 'pause_requested') return 'bg-amber-500/15 text-amber-500';
+  if (s === 'stopped' || s === 'failed' || s === 'error') return 'bg-red-500/15 text-red-500';
+  return isDark ? 'bg-white/10 text-white/70' : 'bg-black/5 text-slate-600'; // completed / done
+};
 
 const AdminUploads = () => {
   const location = useLocation();
@@ -25,6 +41,34 @@ const AdminUploads = () => {
   const [selectedProjectId, setSelectedProjectId] = useState(initialProjectId);
   const [showSelectModal, setShowSelectModal] = useState(!initialProjectId);
   const [projectSearch, setProjectSearch] = useState('');
+
+  // Background upload state + persisted history (computer sessions + Google Drive syncs).
+  const { activeSession, stats, isPaused, pause, resume, stop } = useUpload();
+  const [records, setRecords] = useState([]);
+  const focusSessionId = new URLSearchParams(location.search).get('session');
+
+  const fetchRecords = useCallback(async () => {
+    const userId = localStorage.getItem('userId') || sessionStorage.getItem('userId');
+    if (!userId) return;
+    try {
+      const { data } = await axios.get(
+        `${API_BASE_URL}/api/files/upload-records?userId=${encodeURIComponent(userId)}`
+      );
+      setRecords(Array.isArray(data?.data) ? data.data : []);
+    } catch {
+      /* history is best-effort */
+    }
+  }, []);
+
+  useEffect(() => { fetchRecords(); }, [fetchRecords]);
+  // Refresh once an active session finishes (its backend record now exists).
+  useEffect(() => { if (!activeSession) fetchRecords(); }, [activeSession, fetchRecords]);
+  // When arrived from the floating widget (?session=id), scroll the session into view.
+  useEffect(() => {
+    if (!focusSessionId) return;
+    const el = document.getElementById(`session-${focusSessionId}`);
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, [focusSessionId, activeSession]);
 
   useEffect(() => {
     localStorage.setItem('adminTheme', theme);
@@ -106,6 +150,11 @@ const AdminUploads = () => {
       return haystack.includes(q);
     });
   }, [events, projectSearch]);
+
+  const eventNameFor = useCallback((id) => {
+    const ev = events.find((e) => String(e?.eventId ?? e?.id) === String(id));
+    return ev?.eventName || ev?.name || id || 'Project';
+  }, [events]);
 
   const openSelectModal = () => setShowSelectModal(true);
 
@@ -201,6 +250,7 @@ const AdminUploads = () => {
               >
                 <MomentUploader
                   eventId={selectedProjectId}
+                  eventName={selectedEvent?.eventName || selectedEvent?.name || ''}
                   uploaderTitle={selectedEvent?.eventName ? `Upload to ${selectedEvent.eventName}` : 'Upload Media'}
                   triggerText="Upload Media"
                   triggerClassName={`${isDark ? 'bg-brand hover:bg-brand-2' : 'bg-brand hover:bg-brand-2'}`}
@@ -214,6 +264,93 @@ const AdminUploads = () => {
             {!loading && !selectedProjectId && (
               <div className={`rounded-2xl border p-10 text-center ${isDark ? 'border-white/10 bg-white/5' : 'border-black/10 bg-white'}`}>
                 Choose a project to start uploading.
+              </div>
+            )}
+
+            {/* Upload history: live session (computer) + persisted records (computer + Google Drive) */}
+            {!loading && (
+              <div className={`mt-6 rounded-2xl border ${isDark ? 'border-white/10 bg-white/5' : 'border-black/10 bg-white'}`}>
+                <div className="flex items-center justify-between px-5 py-4 border-b border-black/5">
+                  <div className="font-semibold">Upload history</div>
+                  <button
+                    type="button"
+                    onClick={fetchRecords}
+                    className={`text-xs px-3 py-1.5 rounded-lg border ${isDark ? 'border-white/10 hover:bg-white/10' : 'border-black/10 hover:bg-slate-50'}`}
+                  >
+                    Refresh
+                  </button>
+                </div>
+
+                <div className="divide-y divide-black/5">
+                  {/* Live active session (in progress / paused) */}
+                  {activeSession && (
+                    <div
+                      id={`session-${activeSession.id}`}
+                      className={`px-5 py-4 ${focusSessionId === activeSession.id ? (isDark ? 'bg-emerald-500/10' : 'bg-emerald-50') : ''}`}
+                    >
+                      <div className="flex items-center justify-between gap-3 flex-wrap">
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className={`px-2 py-0.5 rounded-full text-[11px] font-medium ${isDark ? 'bg-white/10 text-white/70' : 'bg-black/5 text-slate-600'}`}>Computer</span>
+                            <span className={`px-2 py-0.5 rounded-full text-[11px] font-medium ${statusStyle(isPaused ? 'paused' : 'uploading', isDark)}`}>
+                              {isPaused ? 'Paused' : 'Uploading'}
+                            </span>
+                            <span className="font-medium truncate">{activeSession.eventName}</span>
+                          </div>
+                          <div className={`text-xs mt-1 ${isDark ? 'text-white/55' : 'text-slate-500'}`}>
+                            {activeSession.uploaderName} · {stats.completed}/{stats.total} done
+                            {stats.failed ? ` · ${stats.failed} failed` : ''} · {relTime(activeSession.startedAt)}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          {isPaused ? (
+                            <button type="button" onClick={resume} className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 text-white">Resume</button>
+                          ) : (
+                            <button type="button" onClick={pause} className={`px-3 py-1.5 rounded-lg text-xs font-semibold border ${isDark ? 'border-white/10 hover:bg-white/10' : 'border-black/10 hover:bg-slate-50'}`}>Pause</button>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => { if (window.confirm('Stop this upload? Remaining files can be retried later.')) stop(); }}
+                            className="px-3 py-1.5 rounded-lg text-xs font-semibold border border-red-500/40 text-red-500 hover:bg-red-500/10"
+                          >
+                            Stop
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Persisted records (newest first) */}
+                  {records.length === 0 && !activeSession && (
+                    <div className={`px-5 py-8 text-center text-sm ${isDark ? 'text-white/50' : 'text-slate-500'}`}>
+                      No uploads yet. Uploads and Google Drive syncs will appear here.
+                    </div>
+                  )}
+                  {records.map((r) => {
+                    const isDrive = String(r.source || '').toUpperCase().includes('DRIVE') || !!r.driveLink;
+                    return (
+                      <div key={r.uploadRecordId} className="px-5 py-4">
+                        <div className="flex items-center justify-between gap-3 flex-wrap">
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2">
+                              <span className={`px-2 py-0.5 rounded-full text-[11px] font-medium ${isDark ? 'bg-white/10 text-white/70' : 'bg-black/5 text-slate-600'}`}>
+                                {isDrive ? 'Google Drive' : 'Computer'}
+                              </span>
+                              <span className={`px-2 py-0.5 rounded-full text-[11px] font-medium ${statusStyle(r.status, isDark)}`}>
+                                {r.status || 'done'}
+                              </span>
+                              <span className="font-medium truncate">{eventNameFor(r.eventId)}</span>
+                            </div>
+                            <div className={`text-xs mt-1 ${isDark ? 'text-white/55' : 'text-slate-500'}`}>
+                              {r.creatorName || 'Unknown'} · {r.progress || 0}/{r.totalCount || 0} uploaded
+                              {r.failedCount ? ` · ${r.failedCount} failed` : ''} · {relTime(r.createdAt)}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
             )}
 

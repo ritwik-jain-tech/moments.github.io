@@ -18,12 +18,15 @@ import AdminUploads from "./pages/AdminUploads";
 import AdminTeam from "./pages/AdminTeam";
 import AdminSettings from "./pages/AdminSettings";
 import { ThemeProvider } from "./context/ThemeContext";
+import { UploadProvider } from "./context/UploadContext";
+import UploadWidget from "./components/UploadWidget";
 import "./index.css";
 
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
     <ThemeProvider>
     <BrowserRouter>
+    <UploadProvider>
       <Routes>
         {/* Public routes - no authentication required */}
         <Route path="/event/:eventId" element={<PublicEvent />} />
@@ -103,6 +106,8 @@ ReactDOM.createRoot(document.getElementById("root")).render(
         <Route path="/guestApp" element={<Landing />} />
         <Route path="/" element={<HomeRouter />} />
       </Routes>
+      <UploadWidget />
+    </UploadProvider>
     </BrowserRouter>
     </ThemeProvider>
   </React.StrictMode>
