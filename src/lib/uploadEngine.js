@@ -147,38 +147,48 @@ const messageForStatus = (status, error, fallback) => {
   return fallback || `Upload failed (${status || 'network'}).`;
 };
 
-// Single-file path (batch of 1). Uploads via /api/files/upload then creates the moment.
+// Single-file path (batch of 1). Uploads the bytes DIRECTLY to Cloud Storage via a signed PUT URL,
+// then creates the moment. Direct-to-GCS bypasses Cloud Run's ~32 MiB request cap, so large RAW/CR3
+// originals (which used to 413 on /api/files/upload) now succeed.
 export const uploadSingleFileAndCreateMoment = async (fileObj, { eventId }, onProgress) => {
   const headers = authHeaders();
-  const uploadFormData = new FormData();
-  uploadFormData.append('file', fileObj.file);
-  uploadFormData.append('fileType', 'IMAGE');
+  const file = fileObj.file;
 
   try {
-    const uploadResponse = await axios.post(`${API_BASE_URL}/api/files/upload`, uploadFormData, {
-      headers,
+    // 1. Ask the backend for a signed PUT URL for this object.
+    const signResponse = await axios.post(
+      `${API_BASE_URL}/api/files/signed-upload-url`,
+      { eventId: String(eventId), files: [{ filename: file.name, contentType: file.type, fileType: 'IMAGE' }] },
+      { headers: { ...headers, 'Content-Type': 'application/json' } }
+    );
+    const target = signResponse.data?.data?.[0];
+    if (!target?.uploadUrl || !target?.publicUrl) throw new Error('Signed upload response missing uploadUrl/publicUrl');
+
+    // 2. PUT the bytes straight to GCS. No app auth header (the signature authorizes the request);
+    //    send the Content-Type the backend intends the object to be stored as.
+    await axios.put(target.uploadUrl, file, {
+      headers: { 'Content-Type': target.contentType || file.type || 'application/octet-stream' },
+      maxContentLength: Infinity,
+      maxBodyLength: Infinity,
+      timeout: 600000,
       onUploadProgress: (e) => {
         if (e.total && onProgress) onProgress(Math.round((e.loaded * 100) / e.total));
       },
     });
-    const publicUrl = uploadResponse.data?.data?.publicUrl;
-    if (!publicUrl) throw new Error('Upload response missing publicUrl');
 
+    // 3. Create the moment from the now-uploaded object.
     const moment = await buildMoment(fileObj, eventId);
-    const momentFormData = new FormData();
-    momentFormData.append('files', fileObj.file);
-    momentFormData.append('moments', JSON.stringify([moment]));
+    moment.media.url = target.publicUrl;
 
     try {
-      await axios.post(`${API_BASE_URL}/api/files/bulk-upload-moments-with-details`, momentFormData, {
-        headers,
-        maxContentLength: Infinity,
-        maxBodyLength: Infinity,
-        timeout: 300000,
-      });
+      await axios.post(
+        `${API_BASE_URL}/api/files/finalize-moments`,
+        { moments: [moment] },
+        { headers: { ...headers, 'Content-Type': 'application/json' }, timeout: 120000 }
+      );
     } catch (momentError) {
       // File is uploaded; moment creation is idempotent and can be retried. Don't fail the upload.
-      console.warn('Moment creation failed after file upload (will be reconciled on retry):', momentError);
+      console.warn('Moment finalize failed after file upload (will be reconciled on retry):', momentError);
     }
     return { success: true };
   } catch (error) {

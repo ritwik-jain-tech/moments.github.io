@@ -665,18 +665,15 @@ const MomentUploader = ({
     return Math.round((width * 1000) / height);
   };
 
-  // Single file upload using the working endpoint (for batches of 1 file)
-  // This uses the /api/files/upload endpoint which has proper CORS configuration
+  // Single file upload (for batches of 1 file). Uploads the bytes DIRECTLY to Cloud Storage via a
+  // signed PUT URL, bypassing Cloud Run's ~32 MiB request cap so large RAW/CR3 originals no longer
+  // 413. The moment is then created from the uploaded object via /api/files/finalize-moments.
   const uploadSingleFileAndCreateMoment = async (fileObj, onProgress) => {
     const userInfo = getUserInfo();
     const userId = localStorage.getItem('userId');
     const phoneNumber = localStorage.getItem('phoneNumber');
     const adminToken = localStorage.getItem('adminToken');
-
-    // Upload file using the single upload endpoint (which works with CORS)
-    const uploadFormData = new FormData();
-    uploadFormData.append('file', fileObj.file);
-    uploadFormData.append('fileType', 'IMAGE');
+    const file = fileObj.file;
 
     const uploadHeaders = {};
     if (adminToken) {
@@ -687,43 +684,42 @@ const MomentUploader = ({
     }
 
     try {
-      // Upload file using the working single upload endpoint
-      const uploadResponse = await axios.post(
-        `${API_BASE_URL}/api/files/upload`,
-        uploadFormData,
-        {
-          headers: uploadHeaders,
-          onUploadProgress: (progressEvent) => {
-            if (progressEvent.total && onProgress) {
-              const uploadProgress = Math.round((progressEvent.loaded * 100) / progressEvent.total);
-              onProgress(uploadProgress);
-            }
+      // 1. Request a signed PUT URL for this object.
+      const signResponse = await axios.post(
+        `${API_BASE_URL}/api/files/signed-upload-url`,
+        { eventId: String(eventId), files: [{ filename: file.name, contentType: file.type, fileType: 'IMAGE' }] },
+        { headers: { ...uploadHeaders, 'Content-Type': 'application/json' } }
+      );
+      const target = signResponse.data?.data?.[0];
+      if (!target?.uploadUrl || !target?.publicUrl) {
+        throw new Error('Signed upload response missing uploadUrl/publicUrl');
+      }
+
+      // 2. PUT the bytes straight to GCS (no app auth header; the signature authorizes the request).
+      await axios.put(target.uploadUrl, file, {
+        headers: { 'Content-Type': target.contentType || file.type || 'application/octet-stream' },
+        maxContentLength: Infinity,
+        maxBodyLength: Infinity,
+        timeout: 600000,
+        onUploadProgress: (progressEvent) => {
+          if (progressEvent.total && onProgress) {
+            onProgress(Math.round((progressEvent.loaded * 100) / progressEvent.total));
           }
         }
-      );
-
-      const publicUrl = uploadResponse.data?.data?.publicUrl;
-      if (!publicUrl) {
-        throw new Error('Upload response missing publicUrl');
-      }
+      });
 
       // Get image dimensions and create moment data (CR3 isn't measurable directly; use its preview)
       const dimensions = await getImageDimensions(fileObj.previewBlob || fileObj.file);
       const creationTime = fileObj.file.lastModified || Date.now();
       const aspectRatio = calculateAspectRatio(dimensions.width, dimensions.height);
 
-      // Create moment using bulk endpoint (but with single file)
-      // Note: This still uses bulk endpoint for moment creation
-      // If this fails, the file is uploaded but moment won't be created
-      const momentFormData = new FormData();
-      momentFormData.append('files', fileObj.file);
-      
       const moment = {
         creatorId: userInfo.userId,
         eventId: String(eventId),
         creationTime: creationTime,
         media: {
           type: "IMAGE",
+          url: target.publicUrl,
           width: dimensions.width,
           height: dimensions.height
         },
@@ -733,27 +729,18 @@ const MomentUploader = ({
         },
         aspectRatio: aspectRatio
       };
-      
-      momentFormData.append('moments', JSON.stringify([moment]));
 
-      // Try to create moment via bulk endpoint
-      // If this fails with CORS, at least the file is uploaded
+      // 3. Finalize: create the moment from the uploaded object (idempotent, retry-safe).
       try {
         await axios.post(
-          `${API_BASE_URL}/api/files/bulk-upload-moments-with-details`,
-          momentFormData,
-          {
-            headers: uploadHeaders,
-            maxContentLength: Infinity,
-            maxBodyLength: Infinity,
-            timeout: 300000,
-          }
+          `${API_BASE_URL}/api/files/finalize-moments`,
+          { moments: [moment] },
+          { headers: { ...uploadHeaders, 'Content-Type': 'application/json' }, timeout: 120000 }
         );
         return { success: true };
       } catch (momentError) {
-        // If moment creation fails, log but don't fail the upload
-        console.warn('Moment creation via bulk endpoint failed (CORS issue), but file was uploaded successfully:', momentError);
-        // Return success since file upload worked
+        // If moment creation fails, log but don't fail the upload (file is already in storage).
+        console.warn('Moment finalize failed, but file was uploaded successfully:', momentError);
         return { success: true, fileUploaded: true, momentCreationSkipped: true };
       }
     } catch (error) {
