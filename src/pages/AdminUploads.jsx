@@ -326,7 +326,10 @@ const AdminUploads = () => {
                       No uploads yet. Uploads and Google Drive syncs will appear here.
                     </div>
                   )}
-                  {records.map((r) => {
+                  {records
+                    // Hide the backend row that mirrors the currently-live session (shown as the card above).
+                    .filter((r) => !(activeSession && r.uploadRecordId === activeSession.recordId))
+                    .map((r) => {
                     const isDrive = String(r.source || '').toUpperCase().includes('DRIVE') || !!r.driveLink;
                     return (
                       <div key={r.uploadRecordId} className="px-5 py-4">

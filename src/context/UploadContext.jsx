@@ -45,6 +45,8 @@ export const UploadProvider = ({ children }) => {
   const canceledRef = useRef(false);
   const runningRef = useRef(false);
   const startTimeRef = useRef(null);
+  const recordIdRef = useRef(null);        // backend UploadRecord id for the active session
+  const lastProgressSyncRef = useRef(0);   // throttle live IN_PROGRESS syncs
 
   // ---- history persistence -------------------------------------------------------------------
   useEffect(() => {
@@ -69,6 +71,96 @@ export const UploadProvider = ({ children }) => {
       return next;
     });
   }, []);
+
+  // ---- backend session record (survives page refresh) ---------------------------------------
+  // Live computer sessions are mirrored to a single backend UploadRecord: IN_PROGRESS while
+  // uploading, PAUSED on pause / page-unload (so a refresh leaves a resumable-looking row instead
+  // of losing the session), and DONE / STOPPED when finished.
+  const countStatuses = useCallback(() => {
+    const status = statusRef.current;
+    let completed = 0, failed = 0;
+    filesRef.current.forEach((f) => {
+      const s = status[f.id]?.status;
+      if (s === 'completed') completed++;
+      else if (s === 'error') failed++;
+    });
+    return { completed, failed };
+  }, []);
+
+  // Send the current session state to the backend. `status` is a backend lifecycle string
+  // (IN_PROGRESS / PAUSED / DONE / STOPPED / FAILED). Uses sendBeacon on page-unload so the
+  // request survives navigation away.
+  const postSession = useCallback((status, { beacon = false } = {}) => {
+    const session = sessionRef.current;
+    if (!session) return;
+    const userInfo = getUserInfo();
+    if (!userInfo.userId) return;
+    const { completed, failed } = countStatuses();
+    const url = `${API_BASE_URL}/api/files/upload-records/computer-session?userId=${encodeURIComponent(userInfo.userId)}`;
+    const payload = {
+      uploadRecordId: recordIdRef.current || undefined,
+      eventId: session.eventId,
+      totalCount: session.total,
+      uploadedCount: completed,
+      failedCount: failed,
+      creatorName: userInfo.userName,
+      status,
+    };
+    lastProgressSyncRef.current = Date.now();
+    if (beacon && typeof navigator !== 'undefined' && navigator.sendBeacon) {
+      try {
+        // Beacons can't read the response, so this only works once recordId is known.
+        navigator.sendBeacon(url, new Blob([JSON.stringify(payload)], { type: 'application/json' }));
+      } catch { /* best-effort */ }
+      return;
+    }
+    axios.post(url, payload, { headers: { 'Content-Type': 'application/json' } })
+      .then(({ data }) => {
+        const id = data?.data?.uploadRecordId;
+        if (id && !recordIdRef.current) {
+          recordIdRef.current = id;
+          // Surface the backend id on the live session so the Uploads tab can de-dupe the row.
+          sessionRef.current = sessionRef.current ? { ...sessionRef.current, recordId: id } : sessionRef.current;
+          setActiveSession((s) => (s ? { ...s, recordId: id } : s));
+        }
+      })
+      .catch((e) => console.warn('Upload session sync failed:', e?.message));
+  }, [countStatuses]);
+
+  // Create the backend record once at session start; flush the real status if the session was
+  // paused/finished while the create request was in flight.
+  const createRecord = useCallback(() => {
+    if (recordIdRef.current || !sessionRef.current) return;
+    const userInfo = getUserInfo();
+    if (!userInfo.userId) return;
+    const session = sessionRef.current;
+    const url = `${API_BASE_URL}/api/files/upload-records/computer-session?userId=${encodeURIComponent(userInfo.userId)}`;
+    axios.post(url, {
+      eventId: session.eventId,
+      totalCount: session.total,
+      uploadedCount: 0,
+      failedCount: 0,
+      creatorName: userInfo.userName,
+      status: 'IN_PROGRESS',
+    }, { headers: { 'Content-Type': 'application/json' } })
+      .then(({ data }) => {
+        const id = data?.data?.uploadRecordId;
+        if (!id) return;
+        recordIdRef.current = id;
+        if (!sessionRef.current) return; // finished during the request
+        sessionRef.current = { ...sessionRef.current, recordId: id };
+        setActiveSession((s) => (s ? { ...s, recordId: id } : s));
+        postSession(pausedRef.current ? 'PAUSED' : 'IN_PROGRESS');
+      })
+      .catch((e) => console.warn('Upload session create failed:', e?.message));
+  }, [postSession]);
+
+  // Throttled IN_PROGRESS heartbeat (skipped until the record exists / while paused / canceled).
+  const maybeSyncProgress = useCallback(() => {
+    if (!recordIdRef.current || pausedRef.current || canceledRef.current) return;
+    if (Date.now() - lastProgressSyncRef.current < 6000) return;
+    postSession('IN_PROGRESS');
+  }, [postSession]);
 
   // ---- stats ---------------------------------------------------------------------------------
   const recomputeStats = useCallback(() => {
@@ -96,7 +188,8 @@ export const UploadProvider = ({ children }) => {
       timeRemaining = 0;
     }
     setStats({ total: session.total, completed, failed, uploading, pending, timeRemaining });
-  }, []);
+    maybeSyncProgress();
+  }, [maybeSyncProgress]);
 
   // Live ticker while a session is active (keeps ETA fresh even between transitions).
   useEffect(() => {
@@ -104,6 +197,22 @@ export const UploadProvider = ({ children }) => {
     const id = setInterval(recomputeStats, 1000);
     return () => clearInterval(id);
   }, [activeSession, recomputeStats]);
+
+  // Browser File handles can't survive a refresh, so on unload we pause the backend record: the
+  // session then reappears as PAUSED in the Uploads tab instead of silently disappearing.
+  useEffect(() => {
+    const handler = () => {
+      if (sessionRef.current && recordIdRef.current && !canceledRef.current && !pausedRef.current) {
+        postSession('PAUSED', { beacon: true });
+      }
+    };
+    window.addEventListener('pagehide', handler);
+    window.addEventListener('beforeunload', handler);
+    return () => {
+      window.removeEventListener('pagehide', handler);
+      window.removeEventListener('beforeunload', handler);
+    };
+  }, [postSession]);
 
   const patchStatus = useCallback((ids, patch) => {
     const status = statusRef.current;
@@ -179,17 +288,11 @@ export const UploadProvider = ({ children }) => {
     };
     upsertSession(record);
 
-    // Persist a durable record on the backend (merged with Drive syncs in the Uploads tab).
-    try {
-      const userInfo = getUserInfo();
-      if (userInfo.userId) {
-        axios.post(
-          `${API_BASE_URL}/api/files/upload-records/computer-session?userId=${encodeURIComponent(userInfo.userId)}`,
-          { eventId: session.eventId, uploadedCount: completed, failedCount: failed, creatorName: userInfo.userName },
-          { headers: { 'Content-Type': 'application/json' } }
-        ).catch((e) => console.warn('Failed to record upload session:', e?.message));
-      }
-    } catch (e) { console.warn('record session error', e); }
+    // Finalize the durable backend record (updates the live row when one was created at start).
+    const backendStatus = resolved === 'stopped' ? 'STOPPED'
+      : resolved === 'failed' ? 'FAILED'
+      : 'DONE';
+    postSession(backendStatus);
 
     // Clear active session.
     sessionRef.current = null;
@@ -199,10 +302,12 @@ export const UploadProvider = ({ children }) => {
     pausedRef.current = false;
     canceledRef.current = false;
     startTimeRef.current = null;
+    recordIdRef.current = null;
+    lastProgressSyncRef.current = 0;
     setActiveSession(null);
     setIsPaused(false);
     setStats(emptyStats);
-  }, [upsertSession]);
+  }, [upsertSession, postSession]);
 
   // ---- worker pool (drains pending files; cooperative pause/stop) -----------------------------
   const ensureRunning = useCallback(async () => {
@@ -296,6 +401,8 @@ export const UploadProvider = ({ children }) => {
       pausedRef.current = false;
       canceledRef.current = false;
       startTimeRef.current = null;
+      recordIdRef.current = null;
+      lastProgressSyncRef.current = 0;
       const session = {
         id,
         eventId: String(eventId),
@@ -307,24 +414,27 @@ export const UploadProvider = ({ children }) => {
       sessionRef.current = session;
       setActiveSession(session);
       setIsPaused(false);
+      createRecord(); // durable backend record so a refresh mid-upload leaves a PAUSED row
     }
     recomputeStats();
     ensureRunning();
     return { ok: true };
-  }, [ensureRunning, recomputeStats]);
+  }, [ensureRunning, recomputeStats, createRecord]);
 
   const pause = useCallback(() => {
     if (!sessionRef.current) return;
     pausedRef.current = true;
     setIsPaused(true);
-  }, []);
+    postSession('PAUSED');
+  }, [postSession]);
 
   const resume = useCallback(() => {
     if (!sessionRef.current) return;
     pausedRef.current = false;
     setIsPaused(false);
+    postSession('IN_PROGRESS');
     ensureRunning();
-  }, [ensureRunning]);
+  }, [ensureRunning, postSession]);
 
   const stop = useCallback(() => {
     if (!sessionRef.current) return;
