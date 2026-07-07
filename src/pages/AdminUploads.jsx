@@ -40,8 +40,6 @@ const AdminUploads = () => {
 
   const initialProjectId = location.state?.selectedProjectId || '';
   const [selectedProjectId, setSelectedProjectId] = useState(initialProjectId);
-  const [showSelectModal, setShowSelectModal] = useState(!initialProjectId);
-  const [projectSearch, setProjectSearch] = useState('');
 
   // Background upload state + persisted history (computer sessions + Google Drive syncs).
   const { activeUploads, activeRecordIds } = useUpload();
@@ -104,8 +102,7 @@ const AdminUploads = () => {
       return;
     }
     // Computer session: select the project and open the uploader to re-select the remaining files.
-    setSelectedProjectId(record.eventId);
-    setShowSelectModal(false);
+    setSelectedProjectId(String(record.eventId));
     navigate(location.pathname, { replace: true, state: { selectedProjectId: record.eventId } });
     setResumeToken((t) => t + 1);
   }, [fetchRecords, navigate, location.pathname]);
@@ -183,56 +180,26 @@ const AdminUploads = () => {
 
   const selectedEvent = useMemo(() => {
     if (!selectedProjectId) return null;
-    return events.find((e) => e?.eventId === selectedProjectId || e?.id === selectedProjectId) || null;
+    return events.find((e) => String(e?.eventId ?? e?.id) === String(selectedProjectId)) || null;
   }, [events, selectedProjectId]);
-
-  const filteredEvents = useMemo(() => {
-    const q = projectSearch.trim().toLowerCase();
-    if (!q) return events;
-    return events.filter((ev) => {
-      const haystack = `${ev?.eventName || ev?.name || ''} ${ev?.eventId || ev?.id || ''}`.toLowerCase();
-      return haystack.includes(q);
-    });
-  }, [events, projectSearch]);
 
   const eventNameFor = useCallback((id) => {
     const ev = events.find((e) => String(e?.eventId ?? e?.id) === String(id));
     return ev?.eventName || ev?.name || id || 'Project';
   }, [events]);
 
-  const openSelectModal = () => setShowSelectModal(true);
-
   const pickProject = (projectId) => {
     setSelectedProjectId(projectId);
-    setShowSelectModal(false);
-    setProjectSearch('');
     navigate(location.pathname, { replace: true, state: { selectedProjectId: projectId } });
   };
 
-  const modalCard = (ev) => {
-    const id = ev?.eventId ?? ev?.id;
-    const label = ev?.eventName || ev?.name || 'Untitled project';
-    const active = String(id) === String(selectedProjectId);
-    return (
-      <button
-        key={id}
-        type="button"
-        onClick={() => pickProject(id)}
-        className={`w-full text-left rounded-xl border p-4 transition-colors ${
-          active
-            ? isDark
-              ? 'border-[#2a4d32]/40 bg-[#2a4d32]/15'
-              : 'border-[#2a4d32]/30 bg-[#2a4d32]/10'
-            : isDark
-              ? 'border-white/10 hover:border-white/20 bg-white/5'
-              : 'border-black/10 hover:border-black/20 bg-white'
-        }`}
-      >
-        <div className="font-semibold truncate">{label}</div>
-        <div className={`text-xs mt-1 ${isDark ? 'text-white/55' : 'text-slate-500'}`}>{id}</div>
-      </button>
-    );
-  };
+  // Single project: auto-select it (no dropdown needed). Multiple: the user picks from the dropdown.
+  useEffect(() => {
+    if (!selectedProjectId && events.length === 1) {
+      const only = events[0];
+      setSelectedProjectId(String(only?.eventId ?? only?.id ?? ''));
+    }
+  }, [events, selectedProjectId]);
 
   return (
     <div className={`min-h-screen ${isDark ? 'bg-[#141C17] text-white' : 'bg-white text-slate-900'} font-sans ${isDark ? 'admin-theme-dark' : 'admin-theme-light'}`}>
@@ -266,17 +233,29 @@ const AdminUploads = () => {
               </div>
 
               <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={openSelectModal}
-                  className={`px-4 py-2 rounded-xl border font-semibold transition-colors ${
-                    isDark
-                      ? 'border-white/10 bg-white/5 hover:bg-white/10'
-                      : 'border-black/10 bg-white hover:bg-slate-50'
-                  }`}
-                >
-                  {selectedEvent ? `Project: ${selectedEvent.eventName || 'Selected'}` : 'Select project'}
-                </button>
+                {events.length > 1 ? (
+                  <select
+                    value={selectedProjectId || ''}
+                    onChange={(e) => pickProject(e.target.value)}
+                    className={`px-4 py-2 rounded-xl border font-semibold transition-colors outline-none ${
+                      isDark
+                        ? 'border-white/10 bg-[#1F2A23] text-white hover:bg-white/10'
+                        : 'border-black/10 bg-white text-slate-900 hover:bg-slate-50'
+                    }`}
+                  >
+                    <option value="" disabled>Select project…</option>
+                    {events.map((ev) => {
+                      const id = String(ev?.eventId ?? ev?.id ?? '');
+                      return <option key={id} value={id}>{ev?.eventName || ev?.name || id}</option>;
+                    })}
+                  </select>
+                ) : events.length === 1 ? (
+                  <div className={`px-4 py-2 rounded-xl border font-semibold ${
+                    isDark ? 'border-white/10 bg-white/5 text-white' : 'border-black/10 bg-white text-slate-900'
+                  }`}>
+                    {selectedEvent?.eventName || selectedEvent?.name || 'Project'}
+                  </div>
+                ) : null}
               </div>
             </div>
 
@@ -421,68 +400,6 @@ const AdminUploads = () => {
             )}
           </div>
         </main>
-
-        {showSelectModal && (
-          <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4 bg-black/50">
-            <div className={`w-full max-w-2xl rounded-2xl border p-5 md:p-6 ${isDark ? 'border-white/10 bg-[#1F2A23] text-white' : 'border-black/10 bg-white text-slate-900'}`}>
-              <div className="flex items-start justify-between gap-3 mb-4">
-                <div>
-                  <div className="text-lg font-semibold">Select a project</div>
-                  <div className={`text-sm ${isDark ? 'text-white/60' : 'text-slate-600'} mt-1`}>
-                    Choose where your uploads and Drive imports will go.
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setShowSelectModal(false)}
-                  className={`w-9 h-9 rounded-xl border flex items-center justify-center transition-colors ${
-                    isDark ? 'border-white/10 bg-white/5 hover:bg-white/10' : 'border-black/10 bg-white hover:bg-slate-50'
-                  }`}
-                  aria-label="Close"
-                >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              </div>
-
-              <div className={`mb-4`}>
-                <input
-                  value={projectSearch}
-                  onChange={(e) => setProjectSearch(e.target.value)}
-                  placeholder="Search projects by name or ID..."
-                  className={`w-full rounded-xl px-4 py-3 outline-none border ${
-                    isDark
-                      ? 'bg-white/5 border-white/10 text-white placeholder:text-white/40 focus:border-[#2a4d32]/40'
-                      : 'bg-white border-black/10 text-slate-900 placeholder:text-slate-400 focus:border-[#2a4d32]/40'
-                  }`}
-                />
-              </div>
-
-              <div className="grid gap-3 max-h-[60vh] overflow-y-auto pr-1">
-                {filteredEvents.length === 0 && (
-                  <div className={`rounded-xl border p-6 text-center ${isDark ? 'border-white/10 bg-white/5 text-white/60' : 'border-black/10 bg-white text-slate-600'}`}>
-                    No projects found.
-                  </div>
-                )}
-
-                {filteredEvents.map((ev) => modalCard(ev))}
-              </div>
-
-              <div className="mt-4 flex justify-end gap-2">
-                <button
-                  type="button"
-                  onClick={() => setShowSelectModal(false)}
-                  className={`px-4 py-2 rounded-xl font-semibold border transition-colors ${
-                    isDark ? 'border-white/10 bg-white/5 hover:bg-white/10 text-white' : 'border-black/10 bg-white hover:bg-slate-50 text-slate-900'
-                  }`}
-                >
-                  Cancel
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
       </div>
     </div>
   );
