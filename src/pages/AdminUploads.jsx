@@ -46,6 +46,8 @@ const AdminUploads = () => {
   // Background upload state + persisted history (computer sessions + Google Drive syncs).
   const { activeSession } = useUpload();
   const [records, setRecords] = useState([]);
+  const [busyRecordId, setBusyRecordId] = useState(null); // record with an in-flight resume/cancel
+  const [resumeToken, setResumeToken] = useState(0);       // bumped to re-open the uploader on resume
   const focusSessionId = new URLSearchParams(location.search).get('session');
 
   const fetchRecords = useCallback(async () => {
@@ -60,6 +62,54 @@ const AdminUploads = () => {
       /* history is best-effort */
     }
   }, []);
+
+  const currentUserId = () => localStorage.getItem('userId') || sessionStorage.getItem('userId');
+
+  // Cancel any not-yet-finished record (Drive import or computer session).
+  const handleCancelRecord = useCallback(async (record) => {
+    const userId = currentUserId();
+    if (!userId || !record?.uploadRecordId) return;
+    if (!window.confirm('Cancel this upload? It will be marked as stopped.')) return;
+    setBusyRecordId(record.uploadRecordId);
+    try {
+      await axios.post(
+        `${API_BASE_URL}/api/files/upload-records/${encodeURIComponent(record.uploadRecordId)}/cancel?userId=${encodeURIComponent(userId)}`
+      );
+      await fetchRecords();
+    } catch (e) {
+      alert(e?.response?.data?.message || 'Failed to cancel upload.');
+    } finally {
+      setBusyRecordId(null);
+    }
+  }, [fetchRecords]);
+
+  // Resume a paused/failed record. Drive imports resume server-side (retrigger, idempotent).
+  // Computer sessions can't resume automatically (the browser no longer holds the files), so we
+  // re-open the uploader on that project — already-uploaded files are skipped on re-select.
+  const handleResumeRecord = useCallback(async (record) => {
+    const userId = currentUserId();
+    if (!userId || !record?.uploadRecordId) return;
+    const isDrive = String(record.source || '').toUpperCase().includes('DRIVE') || !!record.driveLink;
+    if (isDrive) {
+      setBusyRecordId(record.uploadRecordId);
+      try {
+        await axios.post(
+          `${API_BASE_URL}/api/files/upload-records/${encodeURIComponent(record.uploadRecordId)}/retrigger?userId=${encodeURIComponent(userId)}`
+        );
+        await fetchRecords();
+      } catch (e) {
+        alert(e?.response?.data?.message || 'Failed to resume import.');
+      } finally {
+        setBusyRecordId(null);
+      }
+      return;
+    }
+    // Computer session: select the project and open the uploader to re-select the remaining files.
+    setSelectedProjectId(record.eventId);
+    setShowSelectModal(false);
+    navigate(location.pathname, { replace: true, state: { selectedProjectId: record.eventId } });
+    setResumeToken((t) => t + 1);
+  }, [fetchRecords, navigate, location.pathname]);
 
   useEffect(() => { fetchRecords(); }, [fetchRecords]);
   // Refresh once an active session finishes (its backend record now exists).
@@ -253,6 +303,7 @@ const AdminUploads = () => {
                   eventId={selectedProjectId}
                   eventName={selectedEvent?.eventName || selectedEvent?.name || ''}
                   uploaderTitle={selectedEvent?.eventName ? `Upload to ${selectedEvent.eventName}` : 'Upload Media'}
+                  autoOpenToken={resumeToken}
                   triggerText="Upload Media"
                   triggerClassName={`${isDark ? 'bg-brand hover:bg-brand-2' : 'bg-brand hover:bg-brand-2'}`}
                   onUploadComplete={() => {
@@ -304,10 +355,23 @@ const AdminUploads = () => {
                     .filter((r) => !(activeSession && r.uploadRecordId === activeSession.recordId))
                     .map((r) => {
                     const isDrive = String(r.source || '').toUpperCase().includes('DRIVE') || !!r.driveLink;
+                    const st = String(r.status || 'done').toLowerCase();
+                    const isDone = st === 'done' || st === 'completed';
+                    const isStopped = st === 'stopped';
+                    const total = r.totalCount || 0;
+                    const done = r.progress || 0;
+                    const pct = total > 0 ? Math.min(100, Math.round((done / total) * 100)) : (isDone ? 100 : 0);
+                    const barColor = isDone ? 'bg-emerald-500'
+                      : st === 'paused' ? 'bg-amber-400'
+                      : (st === 'failed' || st === 'error' || isStopped) ? 'bg-red-500'
+                      : 'bg-emerald-500';
+                    const canResume = st === 'paused' || st === 'failed' || st === 'error';
+                    const canCancel = !isDone && !isStopped;
+                    const busy = busyRecordId === r.uploadRecordId;
                     return (
                       <div key={r.uploadRecordId} className="px-5 py-4">
-                        <div className="flex items-center justify-between gap-3 flex-wrap">
-                          <div className="min-w-0">
+                        <div className="flex items-start justify-between gap-3 flex-wrap">
+                          <div className="min-w-0 flex-1">
                             <div className="flex items-center gap-2">
                               <span className={`px-2 py-0.5 rounded-full text-[11px] font-medium ${isDark ? 'bg-white/10 text-white/70' : 'bg-black/5 text-slate-600'}`}>
                                 {isDrive ? 'Google Drive' : 'Computer'}
@@ -317,11 +381,41 @@ const AdminUploads = () => {
                               </span>
                               <span className="font-medium truncate">{eventNameFor(r.eventId)}</span>
                             </div>
-                            <div className={`text-xs mt-1 ${isDark ? 'text-white/55' : 'text-slate-500'}`}>
-                              {r.creatorName || 'Unknown'} · {r.progress || 0}/{r.totalCount || 0} uploaded
+                            {/* Widget-style progress bar */}
+                            <div className={`h-2 rounded-full overflow-hidden mt-2 ${isDark ? 'bg-white/10' : 'bg-black/10'}`}>
+                              <div className={`h-full transition-all ${barColor}`} style={{ width: `${pct}%` }} />
+                            </div>
+                            <div className={`text-xs mt-1.5 ${isDark ? 'text-white/55' : 'text-slate-500'}`}>
+                              {r.creatorName || 'Unknown'} · {done}/{total} uploaded ({pct}%)
                               {r.failedCount ? ` · ${r.failedCount} failed` : ''} · {relTime(r.createdAt)}
                             </div>
                           </div>
+
+                          {/* Per-row actions — hidden once completed. */}
+                          {(canResume || canCancel) && (
+                            <div className="flex items-center gap-2 shrink-0">
+                              {canResume && (
+                                <button
+                                  type="button"
+                                  disabled={busy}
+                                  onClick={() => handleResumeRecord(r)}
+                                  className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 text-white disabled:opacity-50"
+                                >
+                                  {busy ? 'Resuming…' : 'Resume'}
+                                </button>
+                              )}
+                              {canCancel && (
+                                <button
+                                  type="button"
+                                  disabled={busy}
+                                  onClick={() => handleCancelRecord(r)}
+                                  className="px-3 py-1.5 rounded-lg text-xs font-semibold border border-red-500/40 text-red-500 hover:bg-red-500/10 disabled:opacity-50"
+                                >
+                                  Cancel
+                                </button>
+                              )}
+                            </div>
+                          )}
                         </div>
                       </div>
                     );

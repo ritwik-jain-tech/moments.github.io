@@ -183,6 +183,7 @@ const MomentUploader = ({
   triggerText = 'Upload Media',
   triggerClassName = '',
   uploaderTitle = 'Upload Moments',
+  autoOpenToken = 0,
 }) => {
   const backgroundUpload = useUpload();
   const [files, setFiles] = useState([]);
@@ -257,6 +258,12 @@ const MomentUploader = ({
 
     loadPersistedStatus();
   }, [eventId]);
+
+  // Open the uploader panel on demand (e.g. "Resume" on a paused computer session, which needs the
+  // user to re-select the same files — already-uploaded ones are skipped server-side).
+  useEffect(() => {
+    if (autoOpenToken) setShowUploader(true);
+  }, [autoOpenToken]);
 
   // Set webkitdirectory attribute on folder input
   useEffect(() => {
