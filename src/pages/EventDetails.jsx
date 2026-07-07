@@ -407,31 +407,41 @@ const EventDetails = () => {
     try {
       setLoading(true);
       const token = localStorage.getItem('adminToken');
-      const response = await axios.post(
-        `${API_BASE_URL}/api/moments/feed`,
-        {
-          eventId,
-          cursor: {
-            limit: 500
+      // The admin feed caps page size at 100 server-side, so walk the keyset cursor
+      // (anchorMomentId + lastPage) to load every moment, not just the first page.
+      const PAGE_SIZE = 100;
+      const MAX_PAGES = 500; // safety stop (~50k moments)
+      const all = [];
+      let anchorMomentId = null;
+      for (let i = 0; i < MAX_PAGES; i++) {
+        const response = await axios.post(
+          `${API_BASE_URL}/api/moments/feed`,
+          {
+            eventId,
+            cursor: { limit: PAGE_SIZE, anchorMomentId },
+            filter: { source: 'web' },
           },
-          filter: {
-            source: "web"
+          {
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json',
+            },
           }
-        },
-        {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          }
+        );
+
+        const data = response.data?.data || {};
+        const pageMoments = Array.isArray(data.moments) ? data.moments : [];
+        all.push(...pageMoments);
+
+        const cursor = data.cursor || {};
+        const prevAnchor = anchorMomentId;
+        anchorMomentId = cursor.anchorMomentId || null;
+        if (cursor.lastPage || pageMoments.length < PAGE_SIZE || !anchorMomentId || anchorMomentId === prevAnchor) {
+          break;
         }
-      );
-      
-      // Debug log
-      console.log('Moments response:', response.data);
-      
-      // Handle the response data properly - access moments from data.moments
-      const momentsData = response.data.data?.moments || [];
-      setMoments(Array.isArray(momentsData) ? momentsData : []);
+      }
+
+      setMoments(all);
     } catch (err) {
       setError('Failed to fetch moments');
       console.error('Error fetching moments:', err);
