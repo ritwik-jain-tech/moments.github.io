@@ -67,12 +67,27 @@ export const buildSizeAwareBatches = (fileObjs) => {
 
 // Decode natural dimensions from an image blob; falls back to a portrait default on failure
 // (e.g. a CR3 whose embedded preview couldn't be extracted).
+// IMPORTANT: always settles. Some files never fire onload/onerror (undecodable RAW, huge images),
+// which would otherwise hang a worker forever and stall the whole pool. A timeout guarantees the
+// promise resolves, and the object URL is always revoked to avoid leaking one per file.
+const DIMENSION_DECODE_TIMEOUT_MS = 15000;
+const DEFAULT_DIMENSIONS = { width: 390, height: 844 };
 export const getImageDimensions = (file) =>
   new Promise((resolve) => {
     const img = new Image();
-    img.onload = () => resolve({ width: img.naturalWidth, height: img.naturalHeight });
-    img.onerror = () => resolve({ width: 390, height: 844 });
-    img.src = URL.createObjectURL(file);
+    const url = URL.createObjectURL(file);
+    let settled = false;
+    const finish = (dims) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      try { URL.revokeObjectURL(url); } catch { /* ignore */ }
+      resolve(dims);
+    };
+    const timer = setTimeout(() => finish(DEFAULT_DIMENSIONS), DIMENSION_DECODE_TIMEOUT_MS);
+    img.onload = () => finish({ width: img.naturalWidth, height: img.naturalHeight });
+    img.onerror = () => finish(DEFAULT_DIMENSIONS);
+    img.src = url;
   });
 
 export const calculateAspectRatio = (width, height) => {

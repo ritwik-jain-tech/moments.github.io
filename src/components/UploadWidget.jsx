@@ -66,11 +66,20 @@ const UploadWidget = ({ inline = false }) => {
   }
 
   const containerCls = inline
-    ? `w-full sm:w-[320px] rounded-2xl border shadow-sm ${shell}`
+    ? `w-full sm:w-[320px] rounded-2xl border shadow-sm cursor-pointer ${shell}`
     : `fixed bottom-5 right-5 z-[2000] w-[320px] rounded-2xl border shadow-2xl ${shell}`;
 
+  // Clicking the inline tile pops it out as the floating widget: navigate off the Uploads tab so the
+  // always-on floating instance takes over, staying sticky bottom-right while the user works.
+  const popOut = () => navigate('/admin/homepage');
+
   return (
-    <div className={containerCls}>
+    <div
+      className={containerCls}
+      onClick={inline ? popOut : undefined}
+      role={inline ? 'button' : undefined}
+      title={inline ? 'Pop out — keep watching while you work' : undefined}
+    >
       {/* header */}
       <div
         className={`flex items-center justify-between gap-2 px-4 pt-3 pb-2 ${inline ? '' : 'cursor-pointer'}`}
