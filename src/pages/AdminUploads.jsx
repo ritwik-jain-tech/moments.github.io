@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import AdminSidebar from '../components/AdminSidebar';
 import MomentUploader from '../components/MomentUploader';
+import UploadWidget from '../components/UploadWidget';
 import { API_BASE_URL } from '../config/api';
 import { useUpload } from '../context/UploadContext';
 import {
@@ -43,7 +44,7 @@ const AdminUploads = () => {
   const [projectSearch, setProjectSearch] = useState('');
 
   // Background upload state + persisted history (computer sessions + Google Drive syncs).
-  const { activeSession, stats, isPaused, pause, resume, stop } = useUpload();
+  const { activeSession } = useUpload();
   const [records, setRecords] = useState([]);
   const focusSessionId = new URLSearchParams(location.search).get('session');
 
@@ -282,41 +283,13 @@ const AdminUploads = () => {
                 </div>
 
                 <div className="divide-y divide-black/5">
-                  {/* Live active session (in progress / paused) */}
+                  {/* Live active session rendered as the same progress tile as the floating widget. */}
                   {activeSession && (
                     <div
                       id={`session-${activeSession.id}`}
                       className={`px-5 py-4 ${focusSessionId === activeSession.id ? (isDark ? 'bg-emerald-500/10' : 'bg-emerald-50') : ''}`}
                     >
-                      <div className="flex items-center justify-between gap-3 flex-wrap">
-                        <div className="min-w-0">
-                          <div className="flex items-center gap-2">
-                            <span className={`px-2 py-0.5 rounded-full text-[11px] font-medium ${isDark ? 'bg-white/10 text-white/70' : 'bg-black/5 text-slate-600'}`}>Computer</span>
-                            <span className={`px-2 py-0.5 rounded-full text-[11px] font-medium ${statusStyle(isPaused ? 'paused' : 'uploading', isDark)}`}>
-                              {isPaused ? 'Paused' : 'Uploading'}
-                            </span>
-                            <span className="font-medium truncate">{activeSession.eventName}</span>
-                          </div>
-                          <div className={`text-xs mt-1 ${isDark ? 'text-white/55' : 'text-slate-500'}`}>
-                            {activeSession.uploaderName} · {stats.completed}/{stats.total} done
-                            {stats.failed ? ` · ${stats.failed} failed` : ''} · {relTime(activeSession.startedAt)}
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          {isPaused ? (
-                            <button type="button" onClick={resume} className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 text-white">Resume</button>
-                          ) : (
-                            <button type="button" onClick={pause} className={`px-3 py-1.5 rounded-lg text-xs font-semibold border ${isDark ? 'border-white/10 hover:bg-white/10' : 'border-black/10 hover:bg-slate-50'}`}>Pause</button>
-                          )}
-                          <button
-                            type="button"
-                            onClick={() => { if (window.confirm('Stop this upload? Remaining files can be retried later.')) stop(); }}
-                            className="px-3 py-1.5 rounded-lg text-xs font-semibold border border-red-500/40 text-red-500 hover:bg-red-500/10"
-                          >
-                            Stop
-                          </button>
-                        </div>
-                      </div>
+                      <UploadWidget inline />
                     </div>
                   )}
 

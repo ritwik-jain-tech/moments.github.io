@@ -1,8 +1,11 @@
-// Floating, always-on-top upload widget. Shows live progress for the active background upload and
-// lets the user pause / resume / stop from anywhere in the admin app. Clicking the body opens the
-// Uploads tab focused on this session. Rendered once at the app root (see main.jsx).
+// Live upload progress tile. Two variants share one look:
+//   - floating (default): fixed bottom-right, always-on-top, rendered once at the app root
+//     (see main.jsx) so it follows the user across tabs until the upload finishes.
+//   - inline (`inline` prop): same tile in normal page flow, used by the Uploads tab.
+// The floating variant hides itself on the Uploads page so the inline tile isn't duplicated.
+// Lets the user pause / resume / stop from anywhere.
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useUpload } from '../context/UploadContext';
 
 const formatTime = (seconds) => {
@@ -16,12 +19,15 @@ const formatTime = (seconds) => {
   return `${h}h ${m % 60}m left`;
 };
 
-const UploadWidget = () => {
+const UploadWidget = ({ inline = false }) => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { activeSession, stats, isPaused, pause, resume, stop } = useUpload();
   const [collapsed, setCollapsed] = useState(false);
 
   if (!activeSession) return null;
+  // The Uploads tab renders its own inline tile, so the floating one steps aside there.
+  if (!inline && location.pathname.startsWith('/admin/uploads')) return null;
 
   const isDark = (localStorage.getItem('adminTheme') || 'light') === 'dark';
   const done = stats.completed + stats.failed;
@@ -44,7 +50,8 @@ const UploadWidget = () => {
     }
   };
 
-  if (collapsed) {
+  // Collapse-to-pill is a floating-only affordance.
+  if (!inline && collapsed) {
     return (
       <button
         type="button"
@@ -58,14 +65,18 @@ const UploadWidget = () => {
     );
   }
 
+  const containerCls = inline
+    ? `w-full sm:w-[320px] rounded-2xl border shadow-sm ${shell}`
+    : `fixed bottom-5 right-5 z-[2000] w-[320px] rounded-2xl border shadow-2xl ${shell}`;
+
   return (
-    <div className={`fixed bottom-5 right-5 z-[2000] w-[320px] rounded-2xl border shadow-2xl ${shell}`}>
+    <div className={containerCls}>
       {/* header */}
       <div
-        className="flex items-center justify-between gap-2 px-4 pt-3 pb-2 cursor-pointer"
-        onClick={openUploads}
-        role="button"
-        title="Open in Uploads"
+        className={`flex items-center justify-between gap-2 px-4 pt-3 pb-2 ${inline ? '' : 'cursor-pointer'}`}
+        onClick={inline ? undefined : openUploads}
+        role={inline ? undefined : 'button'}
+        title={inline ? undefined : 'Open in Uploads'}
       >
         <div className="min-w-0">
           <div className="flex items-center gap-2">
@@ -76,16 +87,18 @@ const UploadWidget = () => {
           </div>
           <div className={`text-xs mt-0.5 truncate ${subtle}`}>{activeSession.eventName}</div>
         </div>
-        <button
-          type="button"
-          onClick={(e) => { e.stopPropagation(); setCollapsed(true); }}
-          className={`shrink-0 w-7 h-7 rounded-lg border flex items-center justify-center ${btn}`}
-          aria-label="Minimize"
-        >
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 13H5" />
-          </svg>
-        </button>
+        {!inline && (
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); setCollapsed(true); }}
+            className={`shrink-0 w-7 h-7 rounded-lg border flex items-center justify-center ${btn}`}
+            aria-label="Minimize"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 13H5" />
+            </svg>
+          </button>
+        )}
       </div>
 
       {/* progress */}
