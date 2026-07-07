@@ -44,11 +44,10 @@ const AdminUploads = () => {
   const [projectSearch, setProjectSearch] = useState('');
 
   // Background upload state + persisted history (computer sessions + Google Drive syncs).
-  const { activeSession } = useUpload();
+  const { activeUploads, activeRecordIds } = useUpload();
   const [records, setRecords] = useState([]);
   const [busyRecordId, setBusyRecordId] = useState(null); // record with an in-flight resume/cancel
   const [resumeToken, setResumeToken] = useState(0);       // bumped to re-open the uploader on resume
-  const focusSessionId = new URLSearchParams(location.search).get('session');
 
   const fetchRecords = useCallback(async () => {
     const userId = localStorage.getItem('userId') || sessionStorage.getItem('userId');
@@ -112,14 +111,8 @@ const AdminUploads = () => {
   }, [fetchRecords, navigate, location.pathname]);
 
   useEffect(() => { fetchRecords(); }, [fetchRecords]);
-  // Refresh once an active session finishes (its backend record now exists).
-  useEffect(() => { if (!activeSession) fetchRecords(); }, [activeSession, fetchRecords]);
-  // When arrived from the floating widget (?session=id), scroll the session into view.
-  useEffect(() => {
-    if (!focusSessionId) return;
-    const el = document.getElementById(`session-${focusSessionId}`);
-    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-  }, [focusSessionId, activeSession]);
+  // Refresh whenever the set of live uploads changes (a finished one now has a settled record).
+  useEffect(() => { fetchRecords(); }, [activeUploads.length, fetchRecords]);
 
   useEffect(() => {
     localStorage.setItem('adminTheme', theme);
@@ -334,25 +327,22 @@ const AdminUploads = () => {
                 </div>
 
                 <div className="divide-y divide-black/5">
-                  {/* Live active session rendered as the same progress tile as the floating widget. */}
-                  {activeSession && (
-                    <div
-                      id={`session-${activeSession.id}`}
-                      className={`px-5 py-4 ${focusSessionId === activeSession.id ? (isDark ? 'bg-emerald-500/10' : 'bg-emerald-50') : ''}`}
-                    >
+                  {/* Live uploads (computer + Drive) as the same progress tiles as the floating widget. */}
+                  {activeUploads.length > 0 && (
+                    <div className="px-5 py-4">
                       <UploadWidget inline />
                     </div>
                   )}
 
                   {/* Persisted records (newest first) */}
-                  {records.length === 0 && !activeSession && (
+                  {records.length === 0 && activeUploads.length === 0 && (
                     <div className={`px-5 py-8 text-center text-sm ${isDark ? 'text-white/50' : 'text-slate-500'}`}>
                       No uploads yet. Uploads and Google Drive syncs will appear here.
                     </div>
                   )}
                   {records
-                    // Hide the backend row that mirrors the currently-live session (shown as the card above).
-                    .filter((r) => !(activeSession && r.uploadRecordId === activeSession.recordId))
+                    // Hide records already shown as live tiles above.
+                    .filter((r) => !activeRecordIds.has(r.uploadRecordId))
                     .map((r) => {
                     const isDrive = String(r.source || '').toUpperCase().includes('DRIVE') || !!r.driveLink;
                     const st = String(r.status || 'done').toLowerCase();

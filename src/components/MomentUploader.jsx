@@ -598,6 +598,8 @@ const MomentUploader = ({
         'Your Drive import has started. Photos will appear in Moments shortly - you can continue with other work.'
       );
       setDriveFolderUrl('');
+      // Surface the import in the shared upload widget (live progress + pause/resume/cancel).
+      backgroundUpload.notifyDriveStarted?.();
     } catch (err) {
       const status = err.response?.status;
       if (status === 403) {
