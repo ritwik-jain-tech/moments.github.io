@@ -2,22 +2,44 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <link rel="icon" href="/favicon.ico" sizes="any" />
+    <link rel="apple-touch-icon" href="/favicon.ico" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Moments</title>
-    
-    <!-- Default Open Graph Meta Tags -->
+    <meta name="theme-color" content="#294D32" />
+    <title>Moments Studio — Media Management for Photographers</title>
+    <meta name="description" content="The all-in-one platform for professional photographers & studios — camera-to-cloud uploads, AI face & event tagging, fast client review, and branded delivery, with a built-in guest app." />
+
+    <!-- Open Graph -->
     <meta property="og:type" content="website" />
-    <meta property="og:title" content="Moments" />
-    <meta property="og:description" content="Capture moments through the eyes of your loved ones." />
+    <meta property="og:site_name" content="Moments Studio" />
+    <meta property="og:title" content="Moments Studio — Media Management for Photographers" />
+    <meta property="og:description" content="Camera-to-cloud uploads, AI face & event tagging, fast client review, and branded delivery — with a built-in guest app. Manage more, charge more, deliver better." />
     <meta property="og:url" content="https://moments.live" />
-    <meta property="og:image" content="https://moments.live/logo.png" />
-    <meta property="og:image:width" content="1200" />
-    <meta property="og:image:height" content="630" />
-    <script type="module" crossorigin src="/assets/index-LODtWA_k.js"></script>
-    <link rel="stylesheet" crossorigin href="/assets/index-D-jXWmRr.css">
+    <meta property="og:image" content="https://moments.live/og-image.png" />
+    <meta property="og:image:width" content="2400" />
+    <meta property="og:image:height" content="1260" />
+    <meta property="og:image:alt" content="Moments Studio — media management for photographers" />
+
+    <!-- Twitter -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Moments Studio — Media Management for Photographers" />
+    <meta name="twitter:description" content="Camera-to-cloud uploads, AI face & event tagging, fast client review, and branded delivery — with a built-in guest app." />
+    <meta name="twitter:image" content="https://moments.live/og-image.png" />
+    <script type="module" crossorigin src="/assets/index-C1c2GDdd.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/index-Cbq2Ay-j.css">
   </head>
   <body>
+    <script>
+      // Anti-FOUC: apply saved/system theme before first paint
+      (function () {
+        try {
+          var s = localStorage.getItem('moments-theme');
+          var dark = s ? s === 'dark'
+            : window.matchMedia('(prefers-color-scheme: dark)').matches;
+          if (dark) document.documentElement.classList.add('dark');
+        } catch (e) {}
+      })();
+    </script>
     <div id="root"></div>
   </body>
 </html>

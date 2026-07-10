@@ -10,6 +10,7 @@ import {
 import { auth } from '../firebase/config';
 import { API_BASE_URL } from '../config/api';
 import { persistAdminSession } from '../utils/adminSession';
+import GoogleAuthFlow from '../components/GoogleAuthFlow';
 
 const formatPhoneNumber = (phone) => phone.replace(/\D/g, '');
 
@@ -54,6 +55,9 @@ const AdminLogin = () => {
   const [showPhonePanel, setShowPhonePanel] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  // When Google sign-in succeeds but the email isn't a known account, this holds
+  // the Firebase user + Google identity so the staged overlay can take over.
+  const [googleFlow, setGoogleFlow] = useState(null);
   const navigate = useNavigate();
 
   const t = isDark
@@ -123,17 +127,40 @@ const AdminLogin = () => {
     finishLogin(userProfile, userProfile.phoneNumber || '', token);
   };
 
+  // Stage 1 of the Google-first flow: if the backend knows this Google email we
+  // log straight in; otherwise it returns NEEDS_PHONE and we hand off to the
+  // staged overlay (phone OTP → link existing account, or free-trial signup).
+  const startGoogleStagedAuth = async (user) => {
+    const idToken = await user.getIdToken();
+    const { data } = await axios.post(
+      `${API_BASE_URL}/api/auth/google/start`,
+      { idToken },
+      { headers: { 'Content-Type': 'application/json' } }
+    );
+    const result = data?.data;
+    if (result?.status === 'LOGGED_IN' && result.userProfile?.userId) {
+      finishLogin(result.userProfile, result.userProfile.phoneNumber || '', result.token);
+      return;
+    }
+    if (result?.status === 'NEEDS_PHONE') {
+      setGoogleFlow({
+        user,
+        email: result.email || user.email || '',
+        name: result.name || user.displayName || '',
+      });
+      return;
+    }
+    throw new Error(data?.message || 'Could not start Google sign-in.');
+  };
+
   const handleGoogleLogin = async () => {
     try {
       setError('');
       setLoading(true);
       const provider = new GoogleAuthProvider();
-      provider.addScope('https://www.googleapis.com/auth/user.phonenumbers.read');
       provider.setCustomParameters({ prompt: 'select_account' });
       const result = await signInWithPopup(auth, provider);
-      const cred = GoogleAuthProvider.credentialFromResult(result);
-      const accessToken = cred?.accessToken;
-      await syncBackendFirebaseSession(result.user, accessToken);
+      await startGoogleStagedAuth(result.user);
     } catch (err) {
       console.error('Google sign-in error:', err);
       if (err.code === 'auth/popup-closed-by-user') {
@@ -298,6 +325,20 @@ const AdminLogin = () => {
 
   return (
     <div className={`min-h-screen flex flex-col md:flex-row font-sans antialiased ${t.page}`}>
+      {googleFlow && (
+        <GoogleAuthFlow
+          user={googleFlow.user}
+          googleEmail={googleFlow.email}
+          googleName={googleFlow.name}
+          t={t}
+          isDark={isDark}
+          onLoggedIn={(userProfile, phone, token) => {
+            setGoogleFlow(null);
+            finishLogin(userProfile, phone, token);
+          }}
+          onClose={() => setGoogleFlow(null)}
+        />
+      )}
       {/* Left — brand */}
       <div
         className={`relative w-full md:w-1/2 min-h-[40vh] md:min-h-screen flex flex-col px-8 sm:px-12 py-10 md:py-14 overflow-hidden ${t.left}`}

@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 1080" fill="none">
+  <!-- Hand-drawn hashtag mark (stopgap rendition of the Think Tonk logo) -->
+  <g stroke="#2b2f38" stroke-width="26" stroke-linecap="round">
+    <!-- verticals -->
+    <path d="M404 300 C 396 480, 398 720, 388 880" transform="rotate(-4 396 590)"/>
+    <path d="M540 200 C 532 430, 536 690, 526 800" transform="rotate(-3 533 500)"/>
+    <!-- horizontals -->
+    <path d="M250 400 C 430 392, 660 396, 840 372" transform="rotate(-2 545 384)"/>
+    <path d="M170 520 C 360 512, 600 516, 770 498" transform="rotate(-2 470 509)"/>
+  </g>
+  <!-- Wordmark -->
+  <text x="628" y="648" font-family="Helvetica, Arial, sans-serif" font-size="118" font-weight="500" letter-spacing="10" fill="#2b2f38">THINK</text>
+  <text x="628" y="772" font-family="Helvetica, Arial, sans-serif" font-size="118" font-weight="500" letter-spacing="10" fill="#2b2f38">TONK</text>
+</svg>

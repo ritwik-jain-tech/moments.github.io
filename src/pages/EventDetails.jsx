@@ -8,7 +8,7 @@ import { API_BASE_URL, FACE_TAGGING_BASE_URL } from '../config/api';
 import heic2any from 'heic2any';
 
 // Component to handle HEIC image conversion
-const HeicImage = ({ src, alt, className, style, onError }) => {
+const HeicImage = ({ src, alt, className, style, onError, aspectRatio }) => {
   const [imageSrc, setImageSrc] = useState(src);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -68,7 +68,7 @@ const HeicImage = ({ src, alt, className, style, onError }) => {
   }, [src]);
 
   return (
-    <div className="relative w-full">
+    <div className="relative w-full" style={aspectRatio ? { aspectRatio } : undefined}>
       {isLoading && (
         <div className="absolute inset-0 flex items-center justify-center bg-gray-100 z-10">
           <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-[#2a4d32]"></div>
@@ -77,7 +77,9 @@ const HeicImage = ({ src, alt, className, style, onError }) => {
       <img
         src={imageSrc}
         alt={alt}
-        className={className}
+        loading="lazy"
+        decoding="async"
+        className={aspectRatio ? 'absolute inset-0 w-full h-full object-cover' : className}
         style={style}
         onError={onError}
       />
@@ -151,6 +153,14 @@ const EventDetails = () => {
   const [previewScale, setPreviewScale] = useState(1);
   const [favoriteMomentIds, setFavoriteMomentIds] = useState(() => new Set());
   const pinchDistanceRef = useRef(0);
+
+  // Feed pagination: load one keyset page at a time and append on scroll instead of
+  // blocking on the entire event. Prevents the "everything loads from the top" glitch.
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMoreMoments, setHasMoreMoments] = useState(true);
+  const momentsAnchorRef = useRef(null);
+  const momentsFetchingRef = useRef(false);
+  const loadMoreSentinelRef = useRef(null);
 
   // Shared admin theme across pages
   const [theme, setTheme] = useState(() => localStorage.getItem('adminTheme') || 'light'); // dark | light
@@ -412,52 +422,88 @@ const EventDetails = () => {
     }
   };
 
-  const fetchMoments = async () => {
+  const MOMENTS_PAGE_SIZE = 30;
+
+  // Load a single keyset page. `reset` starts over (first load, refresh after upload/status
+  // change); otherwise the next page is appended for infinite scroll. A ref guard keeps the
+  // scroll sentinel from firing overlapping requests.
+  const loadMomentsPage = async ({ reset = false } = {}) => {
+    if (momentsFetchingRef.current) return;
+    momentsFetchingRef.current = true;
     try {
-      setLoading(true);
-      const token = localStorage.getItem('adminToken');
-      // The admin feed caps page size at 100 server-side, so walk the keyset cursor
-      // (anchorMomentId + lastPage) to load every moment, not just the first page.
-      const PAGE_SIZE = 100;
-      const MAX_PAGES = 500; // safety stop (~50k moments)
-      const all = [];
-      let anchorMomentId = null;
-      for (let i = 0; i < MAX_PAGES; i++) {
-        const response = await axios.post(
-          `${API_BASE_URL}/api/moments/feed`,
-          {
-            eventId,
-            cursor: { limit: PAGE_SIZE, anchorMomentId },
-            filter: { source: 'web' },
-          },
-          {
-            headers: {
-              'Authorization': `Bearer ${token}`,
-              'Content-Type': 'application/json',
-            },
-          }
-        );
-
-        const data = response.data?.data || {};
-        const pageMoments = Array.isArray(data.moments) ? data.moments : [];
-        all.push(...pageMoments);
-
-        const cursor = data.cursor || {};
-        const prevAnchor = anchorMomentId;
-        anchorMomentId = cursor.anchorMomentId || null;
-        if (cursor.lastPage || pageMoments.length < PAGE_SIZE || !anchorMomentId || anchorMomentId === prevAnchor) {
-          break;
-        }
+      if (reset) {
+        setLoading(true);
+        momentsAnchorRef.current = null;
+        setHasMoreMoments(true);
+      } else {
+        setLoadingMore(true);
       }
 
-      setMoments(all);
+      const token = localStorage.getItem('adminToken');
+      const anchorMomentId = reset ? null : momentsAnchorRef.current;
+      const response = await axios.post(
+        `${API_BASE_URL}/api/moments/feed`,
+        {
+          eventId,
+          cursor: { limit: MOMENTS_PAGE_SIZE, anchorMomentId },
+          filter: { source: 'web' },
+        },
+        {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+
+      const data = response.data?.data || {};
+      const pageMoments = Array.isArray(data.moments) ? data.moments : [];
+      const cursor = data.cursor || {};
+      const prevAnchor = anchorMomentId;
+      const nextAnchor = cursor.anchorMomentId || null;
+      momentsAnchorRef.current = nextAnchor;
+
+      const noMore =
+        cursor.lastPage ||
+        pageMoments.length < MOMENTS_PAGE_SIZE ||
+        !nextAnchor ||
+        nextAnchor === prevAnchor;
+      setHasMoreMoments(!noMore);
+
+      setMoments((prev) => {
+        if (reset) return pageMoments;
+        const seen = new Set(prev.map((m) => String(m.id || m.momentId)));
+        const fresh = pageMoments.filter((m) => !seen.has(String(m.id || m.momentId)));
+        return [...prev, ...fresh];
+      });
     } catch (err) {
       setError('Failed to fetch moments');
       console.error('Error fetching moments:', err);
     } finally {
       setLoading(false);
+      setLoadingMore(false);
+      momentsFetchingRef.current = false;
     }
   };
+
+  // Full refresh (used on mount and after mutations) — resets to the first page.
+  const fetchMoments = () => loadMomentsPage({ reset: true });
+
+  // Infinite scroll: load the next page as the sentinel nears the viewport. Re-observes when
+  // the list grows or when there are more pages to fetch.
+  useEffect(() => {
+    const sentinel = loadMoreSentinelRef.current;
+    if (!sentinel || !hasMoreMoments) return undefined;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting) loadMomentsPage();
+      },
+      { rootMargin: '600px' }
+    );
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hasMoreMoments, moments.length]);
 
   const handleStatusChange = async (moment, newStatus) => {
     try {
@@ -3126,6 +3172,9 @@ const EventDetails = () => {
               const mCreator = moment?.creatorDetails?.userName || 'Guest';
               const momentKey = String(moment?.id || moment?.momentId || '');
               const isFav = favoriteMomentIds.has(momentKey);
+              const mW = Number(moment?.media?.width || moment?.media?.imageWidth || moment?.width || 0);
+              const mH = Number(moment?.media?.height || moment?.media?.imageHeight || moment?.height || 0);
+              const mAspect = mW > 0 && mH > 0 ? `${mW} / ${mH}` : undefined;
               return (
                 <button
                   key={moment.id || moment.momentId}
@@ -3140,6 +3189,7 @@ const EventDetails = () => {
                       alt="Moment"
                       className="w-full h-auto object-cover"
                       style={{ maxHeight: 'none' }}
+                      aspectRatio={mAspect}
                       onError={(e) => {
                         e.target.onerror = null;
                         e.target.src = '/default-event.jpg';
@@ -3166,6 +3216,19 @@ const EventDetails = () => {
                 </button>
               );
             })}
+          </div>
+        )}
+
+        {/* Infinite-scroll sentinel + loading indicator for the next page */}
+        {!loading && sorted.length > 0 && (
+          <div ref={loadMoreSentinelRef} className="w-full flex items-center justify-center py-8">
+            {loadingMore ? (
+              <div className="animate-spin rounded-full h-8 w-8 border-2 border-[#2a4d32]/40 border-t-[#2a4d32]" />
+            ) : !hasMoreMoments ? (
+              <span className={`text-xs ${isDark ? 'text-white/40' : 'text-slate-400'}`}>
+                You’ve reached the end
+              </span>
+            ) : null}
           </div>
         )}
 

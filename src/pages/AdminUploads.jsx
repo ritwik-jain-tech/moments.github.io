@@ -80,9 +80,10 @@ const AdminUploads = () => {
     }
   }, [fetchRecords]);
 
-  // Resume a paused/failed record. Drive imports resume server-side (retrigger, idempotent).
-  // Computer sessions can't resume automatically (the browser no longer holds the files), so we
-  // re-open the uploader on that project — already-uploaded files are skipped on re-select.
+  // Resume a paused/failed record. Only Drive imports reach here (see canResume) — they resume
+  // server-side via retrigger (idempotent). Computer sessions are pause/resumed live in the widget
+  // tiles while their session is alive; once it's gone the browser no longer holds the files, so
+  // history offers no Resume for them.
   const handleResumeRecord = useCallback(async (record) => {
     const userId = currentUserId();
     if (!userId || !record?.uploadRecordId) return;
@@ -275,6 +276,7 @@ const AdminUploads = () => {
                   eventId={selectedProjectId}
                   eventName={selectedEvent?.eventName || selectedEvent?.name || ''}
                   uploaderTitle={selectedEvent?.eventName ? `Upload to ${selectedEvent.eventName}` : 'Upload Media'}
+                  isDark={isDark}
                   autoOpenToken={resumeToken}
                   triggerText="Upload Media"
                   triggerClassName={`${isDark ? 'bg-brand hover:bg-brand-2' : 'bg-brand hover:bg-brand-2'}`}
@@ -334,7 +336,10 @@ const AdminUploads = () => {
                       : st === 'paused' ? 'bg-amber-400'
                       : (st === 'failed' || st === 'error' || isStopped) ? 'bg-red-500'
                       : 'bg-emerald-500';
-                    const canResume = st === 'paused' || st === 'failed' || st === 'error';
+                    // Only Drive imports can resume from history (server-side, idempotent). A computer
+                    // session that isn't a live tile is from a past browser session — its file handles
+                    // are gone, so there's nothing to resume. No Resume button for those.
+                    const canResume = isDrive && (st === 'paused' || st === 'failed' || st === 'error');
                     const canCancel = !isDone && !isStopped;
                     const busy = busyRecordId === r.uploadRecordId;
                     return (

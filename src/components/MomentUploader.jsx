@@ -184,6 +184,7 @@ const MomentUploader = ({
   triggerClassName = '',
   uploaderTitle = 'Upload Moments',
   autoOpenToken = 0,
+  isDark = false,
 }) => {
   const backgroundUpload = useUpload();
   const [files, setFiles] = useState([]);
@@ -1572,6 +1573,47 @@ const MomentUploader = ({
 
   const stats = getUploadStats();
 
+  // Theme tokens so the panel follows the admin app's light/dark theme (driven by the `isDark` prop).
+  const ui = isDark
+    ? {
+        panel: 'bg-[#1F2A23] border-white/10 text-white',
+        title: 'text-white',
+        closeBtn: 'text-white/50 hover:text-white',
+        statBox: 'bg-white/5 border-white/10',
+        statNum: 'text-white',
+        muted: 'text-white/50',
+        dropIdle: 'border-white/15 hover:border-emerald-400 hover:bg-white/5',
+        dropActive: 'border-emerald-400 bg-emerald-400/10',
+        dropTitle: 'text-white',
+        dropSub: 'text-white/50',
+        dropIcon: 'text-white/40',
+        divider: 'border-white/10',
+        input: 'bg-white/5 border-white/10 text-white placeholder:text-white/40 disabled:bg-white/5',
+        fileRow: 'bg-white/5 border-white/10',
+        fileName: 'text-white',
+        progressTrack: 'bg-white/10',
+        browseBtn: 'border-white/15 bg-white/5 hover:bg-white/10 text-white',
+      }
+    : {
+        panel: 'bg-white bg-opacity-90 border-[#d4d4d8] text-slate-900',
+        title: 'text-[#2a4d32]',
+        closeBtn: 'text-gray-400 hover:text-[#2a4d32]',
+        statBox: 'bg-[#fdfaf3] border-[#d4d4d8]',
+        statNum: 'text-[#2a4d32]',
+        muted: 'text-gray-500',
+        dropIdle: 'border-[#d4d4d8] hover:border-[#67143A] hover:bg-gray-50',
+        dropActive: 'border-[#67143A] bg-[#67143A]/10',
+        dropTitle: 'text-[#2a4d32]',
+        dropSub: 'text-gray-500',
+        dropIcon: 'text-gray-400',
+        divider: 'border-[#d4d4d8]',
+        input: 'bg-white border-[#d4d4d8] text-[#2a4d32] placeholder:text-gray-400 disabled:bg-gray-100',
+        fileRow: 'bg-[#fdfaf3] border-[#d4d4d8]',
+        fileName: 'text-[#2a4d32]',
+        progressTrack: 'bg-gray-200',
+        browseBtn: 'border-[#d4d4d8] bg-white hover:bg-gray-50 text-[#2a4d32]',
+      };
+
   if (!isAuthenticated()) {
     return null; // Don't show uploader if not authenticated
   }
@@ -1593,13 +1635,13 @@ const MomentUploader = ({
 
       {/* Uploader UI */}
       {showUploader && (
-        <div className="bg-white bg-opacity-90 rounded-xl shadow-2xl p-6 border border-[#d4d4d8]">
+        <div className={`rounded-xl shadow-2xl p-6 border ${ui.panel}`}>
           {/* Header */}
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-xl font-semibold text-[#2a4d32]">{uploaderTitle}</h3>
+            <h3 className={`text-xl font-semibold ${ui.title}`}>{uploaderTitle}</h3>
             <button
               onClick={() => setShowUploader(false)}
-              className="text-gray-400 hover:text-[#2a4d32]"
+              className={ui.closeBtn}
             >
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
@@ -1638,33 +1680,33 @@ const MomentUploader = ({
 
           {/* Stats */}
           {(stats.total > 0 || stats.completed > 0) && (
-            <div className="mb-4 p-3 bg-[#fdfaf3] rounded-lg border border-[#d4d4d8]">
+            <div className={`mb-4 p-3 rounded-lg border ${ui.statBox}`}>
               <div className="grid grid-cols-4 gap-2 text-center text-xs">
                 <div>
-                  <div className="font-semibold text-[#2a4d32]">{stats.total}</div>
-                  <div className="text-gray-500">Total</div>
+                  <div className={`font-semibold ${ui.statNum}`}>{stats.total}</div>
+                  <div className={ui.muted}>Total</div>
                 </div>
                 <div>
-                  <div className="font-semibold text-blue-600">{stats.pending + stats.uploading}</div>
-                  <div className="text-gray-500">In Queue</div>
+                  <div className="font-semibold text-blue-500">{stats.pending + stats.uploading}</div>
+                  <div className={ui.muted}>In Queue</div>
                 </div>
                 <div>
-                  <div className="font-semibold text-green-600">{stats.completed}</div>
-                  <div className="text-gray-500">Completed</div>
+                  <div className="font-semibold text-green-500">{stats.completed}</div>
+                  <div className={ui.muted}>Completed</div>
                 </div>
                 <div>
-                  <div className="font-semibold text-red-600">{stats.error}</div>
-                  <div className="text-gray-500">Failed</div>
+                  <div className="font-semibold text-red-500">{stats.error}</div>
+                  <div className={ui.muted}>Failed</div>
                 </div>
               </div>
               {/* Estimated Time Remaining */}
               {isUploading && estimatedTimeRemaining !== null && (
-                <div className="mt-3 pt-3 border-t border-[#d4d4d8] text-center">
+                <div className={`mt-3 pt-3 border-t text-center ${ui.divider}`}>
                   <div className="flex items-center justify-center space-x-2">
-                    <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className="w-4 h-4 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
-                    <span className="text-xs text-gray-600">
+                    <span className={`text-xs ${ui.muted}`}>
                       Estimated time remaining: <span className="font-semibold text-blue-600">{formatTime(estimatedTimeRemaining)}</span>
                     </span>
                   </div>
@@ -1673,13 +1715,11 @@ const MomentUploader = ({
             </div>
           )}
 
-          {/* Drag & Drop Zone - Entire area is clickable */}
+          {/* Single drop-and-select zone: drag & drop files OR a folder, or use the buttons inside it. */}
           <div
             onClick={handleUploadZoneClick}
             className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors mb-4 cursor-pointer ${
-              dragActive 
-                ? 'border-[#67143A] bg-[#67143A]/10' 
-                : 'border-[#d4d4d8] hover:border-[#67143A] hover:bg-gray-50'
+              dragActive ? ui.dropActive : ui.dropIdle
             }`}
             onDragEnter={handleDragIn}
             onDragLeave={handleDragOut}
@@ -1695,7 +1735,7 @@ const MomentUploader = ({
               onChange={handleFileSelect}
               className="hidden"
             />
-            {/* Hidden folder input for programmatic folder selection (if needed) */}
+            {/* Hidden folder input (webkitdirectory set in an effect) */}
             <input
               ref={folderInputRef}
               type="file"
@@ -1704,36 +1744,39 @@ const MomentUploader = ({
               onChange={handleFileSelect}
               className="hidden"
             />
-            
+
             <div>
-              <svg className="mx-auto h-12 w-12 text-gray-400 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className={`mx-auto h-12 w-12 mb-2 ${ui.dropIcon}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
               </svg>
-              <div className="text-[#2a4d32] font-medium mb-1">
-                Click to select multiple files or drag & drop files/folder
+              <div className={`font-medium mb-1 ${ui.dropTitle}`}>
+                Drag & drop files or a folder here
               </div>
-              <p className="text-xs text-gray-500">PNG, JPG, GIF, CR3 (Canon RAW) up to 10MB each</p>
-              <p className="text-xs text-gray-400 mt-1">
-                Click to select multiple files, or drag files/folders here
-              </p>
+              <p className={`text-xs mb-3 ${ui.dropSub}`}>PNG, JPG, GIF, CR3 (Canon RAW) up to 10MB each</p>
+              {/* Two explicit browse actions inside the same zone. */}
+              <div className="flex items-center justify-center gap-2">
+                <button
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); fileInputRef.current?.click(); }}
+                  className={`px-3 py-1.5 rounded-lg border text-xs font-medium transition-colors ${ui.browseBtn}`}
+                >
+                  Browse files
+                </button>
+                <button
+                  ref={folderButtonRef}
+                  type="button"
+                  onClick={handleFolderSelectClick}
+                  className={`px-3 py-1.5 rounded-lg border text-xs font-medium transition-colors ${ui.browseBtn}`}
+                >
+                  Browse folder
+                </button>
+              </div>
             </div>
           </div>
-          
-          {/* Folder selection button - outside clickable zone */}
-          <div className="text-center mb-4">
-            <button
-              ref={folderButtonRef}
-              type="button"
-              onClick={handleFolderSelectClick}
-              className="text-xs text-[#67143A] hover:underline"
-            >
-              Or select a folder
-            </button>
-          </div>
 
-          <div className="border-t border-[#d4d4d8] pt-4 mb-4">
-            <p className="text-sm font-medium text-[#2a4d32] mb-1">Import from Google Drive</p>
-            <p className="text-xs text-gray-500 mb-3">
+          <div className={`border-t pt-4 mb-4 ${ui.divider}`}>
+            <p className={`text-sm font-medium mb-1 ${ui.title}`}>Import from Google Drive</p>
+            <p className={`text-xs mb-3 ${ui.muted}`}>
               Paste a Google Drive link and start import. If the link is private, we will ask for a public link.
             </p>
             <div className="flex flex-col sm:flex-row gap-2">
@@ -1743,7 +1786,7 @@ const MomentUploader = ({
                 onChange={(e) => setDriveFolderUrl(e.target.value)}
                 placeholder="https://drive.google.com/drive/folders/…"
                 disabled={driveImporting || isUploading}
-                className="flex-1 px-3 py-2 border border-[#d4d4d8] rounded-lg text-sm text-[#2a4d32] placeholder:text-gray-400 disabled:bg-gray-100"
+                className={`flex-1 px-3 py-2 border rounded-lg text-sm ${ui.input}`}
               />
               <button
                 type="button"
@@ -1788,13 +1831,13 @@ const MomentUploader = ({
                     <div
                       key={fileObj.id}
                       className={`flex items-center space-x-3 p-3 rounded-lg border ${
-                        isError 
-                          ? 'bg-red-50 border-red-300' 
-                          : 'bg-[#fdfaf3] border-[#d4d4d8]'
+                        isError
+                          ? (isDark ? 'bg-red-500/10 border-red-500/40' : 'bg-red-50 border-red-300')
+                          : ui.fileRow
                       }`}
                     >
                       {/* Thumbnail */}
-                      <div className="flex-shrink-0 w-12 h-12 rounded overflow-hidden bg-gray-200">
+                      <div className={`flex-shrink-0 w-12 h-12 rounded overflow-hidden ${ui.progressTrack}`}>
                         <img
                           src={fileObj.preview}
                           alt={fileObj.name}
@@ -1810,13 +1853,13 @@ const MomentUploader = ({
                       {/* File Info */}
                       <div className="flex-1 min-w-0">
                         <div className={`text-sm font-medium truncate ${
-                          isError ? 'text-red-700' : 'text-[#2a4d32]'
+                          isError ? (isDark ? 'text-red-300' : 'text-red-700') : ui.fileName
                         }`}>
                           {fileObj.name}
                         </div>
                         <div className="flex items-center space-x-2 mt-1">
                           {/* Progress Bar */}
-                          <div className="flex-1 h-2 bg-gray-200 rounded-full overflow-hidden">
+                          <div className={`flex-1 h-2 rounded-full overflow-hidden ${ui.progressTrack}`}>
                             <div
                               className={`h-full transition-all ${
                                 status.status === 'error' ? 'bg-red-500' :
