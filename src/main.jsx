@@ -9,6 +9,8 @@ import AdminEvents from "./pages/AdminEvents";
 import ProtectedRoute from "./components/ProtectedRoute";
 import EventDetails from "./pages/EventDetails";
 import PublicEvent from "./pages/PublicEvent";
+import ReviewPage from "./pages/ReviewPage";
+import AlbumPage from "./pages/AlbumPage";
 import AdminRedirect from "./components/AdminRedirect";
 import AdminPlaceholder from "./pages/AdminPlaceholder";
 import HomeRouter from "./components/HomeRouter";
@@ -30,6 +32,8 @@ ReactDOM.createRoot(document.getElementById("root")).render(
       <Routes>
         {/* Public routes - no authentication required */}
         <Route path="/event/:eventId" element={<PublicEvent />} />
+        <Route path="/review/:token" element={<ReviewPage />} />
+        <Route path="/album/:token" element={<AlbumPage />} />
         <Route path="/privacy-policy" element={<PrivacyPolicy />} />
         <Route path="/deleteAccount" element={<DeleteAccount />} />
         
