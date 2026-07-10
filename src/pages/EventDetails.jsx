@@ -238,6 +238,15 @@ const EventDetails = () => {
     if (end) setAccessEnd(new Date(end).toISOString().slice(0, 10));
   }, [eventData]);
 
+  // Close the moment preview when the browser / hardware Back button fires (the history entry
+  // pushed on open is consumed here), so Back returns to the grid instead of leaving the screen.
+  useEffect(() => {
+    if (!previewOpen) return undefined;
+    const onPop = () => { setPreviewOpen(false); setPreviewScale(1); };
+    window.addEventListener('popstate', onPop);
+    return () => window.removeEventListener('popstate', onPop);
+  }, [previewOpen]);
+
   // Fetch event details for meta tags
   useEffect(() => {
     const fetchEventDetails = async () => {
@@ -2791,6 +2800,17 @@ const EventDetails = () => {
       setPreviewIndex(idx);
       setPreviewScale(1);
       setPreviewOpen(true);
+      // Push a history entry so the browser / hardware Back button closes the preview
+      // (via the popstate listener) instead of navigating away from the event screen.
+      try { window.history.pushState({ momentPreview: true }, ''); } catch { /* ignore */ }
+    };
+
+    const closePreview = () => {
+      setPreviewScale(1);
+      // If our pushed entry is on top, go back so history stays balanced (popstate closes it);
+      // otherwise close directly.
+      if (window.history.state?.momentPreview) window.history.back();
+      else setPreviewOpen(false);
     };
 
     const movePreview = (direction) => {
@@ -3155,10 +3175,18 @@ const EventDetails = () => {
             onClick={() => setPreviewScale(1)}
           >
             <button
-              onClick={() => {
-                setPreviewOpen(false);
-                setPreviewScale(1);
-              }}
+              onClick={(e) => { e.stopPropagation(); closePreview(); }}
+              className="absolute top-5 left-5 h-10 px-3 inline-flex items-center gap-2 rounded-xl border border-white/20 text-white hover:bg-white/10"
+              aria-label="Back"
+            >
+              <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+              </svg>
+              <span className="text-sm font-medium">Back</span>
+            </button>
+
+            <button
+              onClick={(e) => { e.stopPropagation(); closePreview(); }}
               className="absolute top-5 right-5 w-10 h-10 rounded-xl border border-white/20 text-white hover:bg-white/10"
               aria-label="Close preview"
             >
@@ -3205,54 +3233,80 @@ const EventDetails = () => {
                   />
                 </div>
               </div>
-              <div className={`mt-3 rounded-xl border p-3 flex items-center justify-between gap-3 text-sm ${
-                isDark ? 'bg-[#1F2A23] border-white/15 text-white/90' : 'bg-white border-black/10 text-slate-800'
-              }`}>
-                <div className="min-w-0 pr-4 space-y-1 text-xs md:text-sm">
-                  <div className="truncate">
-                    {sorted[previewIndex].media?.fileName || sorted[previewIndex].fileName || sorted[previewIndex].media?.name || sorted[previewIndex].name || `Moment ${sorted[previewIndex].id || sorted[previewIndex].momentId || ''}`}
+              {(() => {
+                const m = sorted[previewIndex];
+                const fileName = m.media?.fileName || m.fileName || m.media?.name || m.name || `Moment ${m.id || m.momentId || ''}`;
+                const role = getCreatorRole(m);
+                const tags = getTaggedUserNames(m);
+                const isFav = favoriteMomentIds.has(String(m.id || m.momentId || ''));
+                const status = String(m.status || m.moderationStatus || '').toUpperCase();
+                const cardCls = isDark ? 'bg-[#1F2A23] border-white/15 text-white' : 'bg-white border-black/10 text-slate-800';
+                const labelCls = isDark ? 'text-white/45' : 'text-slate-400';
+                const dividerCls = isDark ? 'border-white/10' : 'border-black/5';
+                const statusPill = status === 'APPROVED' ? 'bg-emerald-500/15 text-emerald-400'
+                  : status === 'REJECTED' ? 'bg-red-500/15 text-red-400'
+                  : isDark ? 'bg-white/10 text-white/70' : 'bg-black/5 text-slate-600';
+                const field = (label, value) => (
+                  <div className="min-w-0">
+                    <div className={`text-[10px] uppercase tracking-wide ${labelCls}`}>{label}</div>
+                    <div className="text-xs md:text-sm font-medium truncate" title={typeof value === 'string' ? value : undefined}>{value}</div>
                   </div>
-                  <div>creationTime: {formatPlainTime(sorted[previewIndex].creationTime ?? sorted[previewIndex].media?.creationTime)}</div>
-                  <div>uploadTime: {formatPlainTime(sorted[previewIndex].uploadTime ?? sorted[previewIndex].uploadedAt ?? sorted[previewIndex].media?.uploadTime)}</div>
-                  <div>uploaded by: {sorted[previewIndex]?.creatorDetails?.userName || 'Unknown'}</div>
-                  <div className="inline-flex items-center gap-2">
-                    <span>creator role:</span>
-                    {roleIcon(getCreatorRole(sorted[previewIndex]))}
-                    <span className="capitalize">{getCreatorRole(sorted[previewIndex])}</span>
+                );
+                return (
+                  <div className={`mt-3 rounded-2xl border p-4 md:p-5 ${cardCls}`}>
+                    {/* header: name + role, status + index */}
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <div className="font-semibold truncate" title={fileName}>{fileName}</div>
+                        <div className="mt-1 inline-flex items-center gap-2 text-xs opacity-80">
+                          {roleIcon(role)}<span className="capitalize">{role}</span>
+                        </div>
+                      </div>
+                      <div className="shrink-0 flex items-center gap-2">
+                        {status && <span className={`px-2 py-0.5 rounded-full text-[11px] font-medium ${statusPill}`}>{status}</span>}
+                        <span className="text-xs opacity-60">{previewIndex + 1} / {sorted.length}</span>
+                      </div>
+                    </div>
+
+                    {/* metadata grid */}
+                    <div className={`mt-4 grid grid-cols-2 sm:grid-cols-4 gap-3 border-t pt-4 ${dividerCls}`}>
+                      {field('Created', formatPlainTime(m.creationTime ?? m.media?.creationTime))}
+                      {field('Uploaded', formatPlainTime(m.uploadTime ?? m.uploadedAt ?? m.media?.uploadTime))}
+                      {field('Uploaded by', m?.creatorDetails?.userName || 'Unknown')}
+                      {field('Tagged', tags.length ? tags.join(', ') : 'None')}
+                    </div>
+
+                    {/* actions */}
+                    <div className={`mt-4 flex flex-wrap items-center gap-2 border-t pt-4 ${dividerCls}`}>
+                      <button
+                        onClick={() => handleStatusChange(m, 'APPROVED')}
+                        className="px-4 h-9 rounded-lg bg-brand hover:bg-brand-2 text-on-brand text-xs font-semibold border border-[#2a4d32]/40"
+                      >
+                        Accept
+                      </button>
+                      <button
+                        onClick={() => handleStatusChange(m, 'REJECTED')}
+                        className="px-4 h-9 rounded-lg bg-red-600 hover:bg-red-500 text-white text-xs font-semibold border border-red-400/40"
+                      >
+                        Reject
+                      </button>
+                      <button
+                        onClick={() => toggleFavorite(m)}
+                        className={`px-4 h-9 rounded-lg text-xs font-semibold border inline-flex items-center gap-1.5 ${
+                          isFav
+                            ? 'bg-amber-500 border-amber-300/40 text-white'
+                            : isDark ? 'bg-white/10 border-white/20 text-white' : 'bg-black/5 border-black/10 text-slate-700'
+                        }`}
+                      >
+                        <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill={isFav ? 'currentColor' : 'none'} stroke="currentColor">
+                          <path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M11.48 3.5l2.6 5.27 5.82.85-4.21 4.1.99 5.79L11.48 17l-5.2 2.73.99-5.79L3.06 9.62l5.82-.85z" />
+                        </svg>
+                        {isFav ? 'Favorited' : 'Favorite'}
+                      </button>
+                    </div>
                   </div>
-                  <div className="truncate">
-                    TaggedUserIds: {(() => {
-                      const tags = getTaggedUserNames(sorted[previewIndex]);
-                      return tags.length ? tags.join(', ') : 'None';
-                    })()}
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => handleStatusChange(sorted[previewIndex], 'APPROVED')}
-                    className="px-3 h-9 rounded-lg bg-brand hover:bg-brand-2 text-on-brand text-xs font-semibold border border-[#2a4d32]/40"
-                  >
-                    Accept
-                  </button>
-                  <button
-                    onClick={() => handleStatusChange(sorted[previewIndex], 'REJECTED')}
-                    className="px-3 h-9 rounded-lg bg-red-600 hover:bg-red-500 text-white text-xs font-semibold border border-red-400/40"
-                  >
-                    Reject
-                  </button>
-                  <button
-                    onClick={() => toggleFavorite(sorted[previewIndex])}
-                    className={`px-3 h-9 rounded-lg text-xs font-semibold border ${
-                      favoriteMomentIds.has(String(sorted[previewIndex].id || sorted[previewIndex].momentId || ''))
-                        ? 'bg-amber-500 border-amber-300/40 text-white'
-                        : 'bg-white/10 border-white/20 text-white'
-                    }`}
-                  >
-                    Favorite
-                  </button>
-                  <div>{previewIndex + 1} / {sorted.length}</div>
-                </div>
-              </div>
+                );
+              })()}
             </div>
           </div>
         )}
