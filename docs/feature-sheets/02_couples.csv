@@ -1,0 +1,23 @@
+Feature Area,Feature,Sub-Feature / Detail,User Story,Page / Screen,Login / Access,Priority,Done
+Auth & Login,Access,Magic link / no-account entry,"As a couple, I want to open my gallery from an email link without creating an account.",/g/:eventSlug,Link token,P0,FALSE
+Auth & Login,Access,Password/PIN gated link,"As a couple, I want a private gallery protected by a PIN so only we see it.",/g/:eventSlug,Link token,P1,FALSE
+Auth & Login,Access,Optional account claim,"As a couple, I want to claim an account so my album persists and I get notifications.",/g/:eventSlug/claim,Optional login,P2,FALSE
+Auth & Login,Login,Google / Apple / email login,"As a couple, I want social login to save my selections across devices.",/login,Public,P1,FALSE
+Gallery,Browse,View full event gallery,"As a couple, I want to browse all delivered photos in a clean gallery.",/g/:eventSlug,Link token,P0,FALSE
+Gallery,Browse,Filter by person (face-find),"As a couple, I want to filter photos by a person's face to find specific people.",/g/:eventSlug/people,Link token,P1,FALSE
+Gallery,Browse,Filter by moment/scene tag,"As a couple, I want to filter by scene (ceremony, dance, candid) to jump to a moment.",/g/:eventSlug,Link token,P1,FALSE
+Gallery,Browse,Lightbox full-screen view,"As a couple, I want full-screen photo view with swipe navigation.",/g/:eventSlug/photo/:id,Link token,P0,FALSE
+Gallery,Browse,Favorites / heart,"As a couple, I want to heart photos I love while browsing.",/g/:eventSlug,Link token,P0,FALSE
+Review,Shortlisting,Build album shortlist,"As a couple, I want to select which photos go in our album so the photographer edits the right ones.",/g/:eventSlug/shortlist,Link token,P0,FALSE
+Review,Shortlisting,Shortlist counter / target,"As a couple, I want to see how many I've picked vs the album target.",/g/:eventSlug/shortlist,Link token,P1,FALSE
+Review,Shortlisting,Submit shortlist to photographer,"As a couple, I want to submit our final picks so the photographer starts editing.",/g/:eventSlug/shortlist,Link token,P0,FALSE
+Review,Feedback,Per-photo comments,"As a couple, I want to leave notes on photos (crop, remove object) for the editor.",/g/:eventSlug/photo/:id,Link token,P1,FALSE
+Review,Feedback,Approve / request changes,"As a couple, I want to approve edited photos or request revisions.",/g/:eventSlug/review,Link token,P1,FALSE
+Album,Digital album,View branded digital album,"As a couple, I want a beautiful lasting digital album of our final photos.",/g/:eventSlug/album,Link token,P0,FALSE
+Album,Digital album,Album that lasts forever,"As a couple, I want permanent access to our album (not an expiring link).",/g/:eventSlug/album,Optional login,P1,FALSE
+Album,Downloads,Download high-res photos,"As a couple, I want to download our final high-res photos.",/g/:eventSlug/download,Link token,P0,FALSE
+Album,Downloads,Download all / zip,"As a couple, I want to download the whole album as a zip.",/g/:eventSlug/download,Link token,P1,FALSE
+Share,Sharing,Share album link with family,"As a couple, I want to share our album with family via a link.",/g/:eventSlug/share,Link token,P1,FALSE
+Share,Sharing,Social share cards,"As a couple, I want to post select photos to social media easily.",/g/:eventSlug/share,Link token,P2,FALSE
+Guest POV,Contribution,See guest-uploaded POV photos,"As a couple, I want to see photos guests uploaded from their angle.",/g/:eventSlug/guests,Link token,P1,FALSE
+Notifications,Alerts,Delivery & update alerts,"As a couple, I want to be notified when new photos or the final album are ready.",/g/:eventSlug,Optional login,P2,FALSE

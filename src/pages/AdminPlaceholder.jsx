@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AdminSidebar from '../components/AdminSidebar';
+import { NotificationsSkeleton } from '../components/ui/Skeleton';
 
 const routeForKey = (key) => {
   if (key === 'home') return '/admin/homepage';
@@ -18,6 +19,14 @@ const AdminPlaceholder = ({ activeKey, title }) => {
   const [theme, setTheme] = useState(() => localStorage.getItem('adminTheme') || 'light');
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => localStorage.getItem('adminSidebarCollapsed') === '1');
   const isDark = theme === 'dark';
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    // Section has no backend feed yet — show a skeleton briefly so the shell
+    // doesn't flash empty, then reveal the placeholder content.
+    const t = setTimeout(() => setLoading(false), 700);
+    return () => clearTimeout(t);
+  }, []);
 
   useEffect(() => {
     localStorage.setItem('adminTheme', theme);
@@ -62,12 +71,18 @@ const AdminPlaceholder = ({ activeKey, title }) => {
           onNavigate={(key) => navigate(routeForKey(key))}
         />
         <main className="flex-1 p-10">
-          <div className={`max-w-3xl rounded-2xl border p-8 ${isDark ? 'border-white/10 bg-white/5' : 'border-black/10 bg-white'}`}>
-            <h1 className="text-2xl font-semibold">{title}</h1>
-            <p className={`mt-2 text-sm ${isDark ? 'text-white/60' : 'text-slate-600'}`}>
-              This page is intentionally blank for now. We can build this section incrementally next.
-            </p>
-          </div>
+          <h1 className="text-2xl font-semibold mb-6">{title}</h1>
+          {loading ? (
+            <div className="max-w-3xl">
+              <NotificationsSkeleton isDark={isDark} />
+            </div>
+          ) : (
+            <div className={`max-w-3xl rounded-2xl border p-8 ${isDark ? 'border-white/10 bg-white/5' : 'border-black/10 bg-white'}`}>
+              <p className={`text-sm ${isDark ? 'text-white/60' : 'text-slate-600'}`}>
+                This page is intentionally blank for now. We can build this section incrementally next.
+              </p>
+            </div>
+          )}
         </main>
       </div>
     </div>

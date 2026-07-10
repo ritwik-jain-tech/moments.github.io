@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { API_BASE_URL } from '../config/api';
+import { API_BASE_URL, FACE_TAGGING_BASE_URL } from '../config/api';
 import AdminSidebar from '../components/AdminSidebar';
 
 const routeForKey = (key) => {
@@ -52,6 +52,11 @@ const AdminSettings = () => {
   const [profile, setProfile] = useState(() => readStoredProfile());
   const [storage, setStorage] = useState(null);
   const [loading, setLoading] = useState(true);
+
+  // Data sync (storage / face tagging) against the face-tagging service.
+  const [syncEventId, setSyncEventId] = useState('');
+  const [syncing, setSyncing] = useState({ storage: false, tagging: false });
+  const [syncMsg, setSyncMsg] = useState(null);
 
   useEffect(() => {
     localStorage.setItem('adminTheme', theme);
@@ -143,6 +148,58 @@ const AdminSettings = () => {
     : Array.isArray(profile?.eventIds)
       ? profile.eventIds.length
       : 0;
+
+  // Options for the sync event picker: prefer the storage overview (has names), fall back to profile.eventIds.
+  const eventOptions = useMemo(() => {
+    const fromStorage = Array.isArray(storage?.events)
+      ? storage.events
+          .map((e) => ({ id: String(e?.eventId ?? e?.id ?? '').trim(), name: e?.eventName || e?.name || '' }))
+          .filter((e) => e.id)
+      : [];
+    if (fromStorage.length) return fromStorage;
+    const ids = Array.isArray(profile?.eventIds) ? profile.eventIds : [];
+    return ids.map((id) => ({ id: String(id).trim(), name: '' })).filter((e) => e.id);
+  }, [storage, profile]);
+
+  useEffect(() => {
+    if (!syncEventId && eventOptions.length === 1) setSyncEventId(eventOptions[0].id);
+  }, [eventOptions, syncEventId]);
+
+  const runSync = useCallback(
+    async (kind) => {
+      const ev = (syncEventId || '').trim();
+      if (!ev) {
+        setSyncMsg({ type: 'error', text: 'Select or enter an event ID first.' });
+        return;
+      }
+      const path =
+        kind === 'storage'
+          ? `sync/storage/event/${encodeURIComponent(ev)}?scope=all&force=true`
+          : `sync/face-tagging/event/${encodeURIComponent(ev)}?scope=approved&force=true`;
+      setSyncing((s) => ({ ...s, [kind]: true }));
+      setSyncMsg(null);
+      try {
+        const res = await axios.post(
+          `${FACE_TAGGING_BASE_URL}/api/v1/face-embeddings/${path}`,
+          null,
+          { headers: authHeaders() }
+        );
+        const data = res.data || {};
+        setSyncMsg({
+          type: 'success',
+          text: data.message || `${kind === 'storage' ? 'Storage' : 'Face tagging'} sync started for ${ev}.`,
+        });
+      } catch (e) {
+        setSyncMsg({
+          type: 'error',
+          text: e?.response?.data?.detail || e?.message || 'Sync failed to start.',
+        });
+      } finally {
+        setSyncing((s) => ({ ...s, [kind]: false }));
+      }
+    },
+    [syncEventId, authHeaders]
+  );
 
   // -------- styling
   const cardBorder = isDark ? 'border-white/10' : 'border-black/10';
@@ -258,6 +315,63 @@ const AdminSettings = () => {
                 View storage details
               </button>
             </div>
+          </section>
+
+          {/* Data sync */}
+          <section className={`rounded-2xl border ${cardBorder} ${cardBg} p-5 md:p-6`}>
+            <div>
+              <h2 className="text-lg font-semibold">Data sync</h2>
+              <p className={`text-sm ${subtle}`}>
+                Reprocess an event's media. Both jobs run in the background — you can leave this page after starting.
+              </p>
+            </div>
+
+            <div className="mt-5 max-w-md">
+              <label className={`block text-xs uppercase tracking-wide mb-1.5 ${subtle}`}>Event ID</label>
+              <input
+                list="sync-event-options"
+                value={syncEventId}
+                onChange={(e) => setSyncEventId(e.target.value)}
+                placeholder="Select or paste an event ID"
+                className={`w-full h-10 px-3 rounded-xl border text-sm ${isDark ? 'bg-white/[0.03] border-white/15 text-white placeholder-white/40' : 'bg-white border-black/10 text-slate-900 placeholder-slate-400'}`}
+              />
+              <datalist id="sync-event-options">
+                {eventOptions.map((e) => (
+                  <option key={e.id} value={e.id}>
+                    {e.name ? `${e.name} (${e.id})` : e.id}
+                  </option>
+                ))}
+              </datalist>
+            </div>
+
+            <div className="mt-5 flex flex-wrap gap-2">
+              <button
+                onClick={() => runSync('storage')}
+                disabled={syncing.storage || syncing.tagging}
+                className="h-10 px-4 inline-flex items-center rounded-xl bg-brand hover:bg-brand-2 transition-colors text-sm font-semibold border border-[#2a4d32]/20 text-on-brand disabled:opacity-60 disabled:cursor-not-allowed"
+              >
+                {syncing.storage ? 'Starting…' : 'Sync storage'}
+              </button>
+              <button
+                onClick={() => runSync('tagging')}
+                disabled={syncing.storage || syncing.tagging}
+                className={`h-10 px-4 inline-flex items-center rounded-xl border text-sm font-semibold disabled:opacity-60 disabled:cursor-not-allowed ${isDark ? 'border-white/15 text-white hover:bg-white/10' : 'border-black/10 text-slate-800 hover:bg-slate-50'}`}
+              >
+                {syncing.tagging ? 'Starting…' : 'Sync face tagging'}
+              </button>
+            </div>
+
+            {syncMsg && (
+              <div
+                className={`mt-4 text-sm rounded-xl px-3 py-2 border ${
+                  syncMsg.type === 'success'
+                    ? 'text-[#2a4d32] bg-[#2a4d32]/10 border-[#2a4d32]/20'
+                    : 'text-red-600 bg-red-500/10 border-red-500/20'
+                }`}
+              >
+                {syncMsg.text}
+              </div>
+            )}
           </section>
         </main>
       </div>

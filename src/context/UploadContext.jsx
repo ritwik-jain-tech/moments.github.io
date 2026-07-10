@@ -28,7 +28,7 @@ export const useUpload = () => {
 };
 
 const emptyStats = {
-  total: 0, completed: 0, failed: 0, uploading: 0, pending: 0, timeRemaining: null,
+  total: 0, completed: 0, failed: 0, uploading: 0, pending: 0, duplicates: 0, timeRemaining: null,
   totalBytes: 0, uploadedBytes: 0, speedBps: 0,
 };
 const sumFileBytes = (files) => files.reduce((s, f) => s + (f.file?.size || 0), 0);
@@ -99,33 +99,44 @@ export const UploadProvider = ({ children }) => {
       .catch((e) => console.warn('Upload session sync failed:', e?.message));
   }, [countStatuses, updateSession]);
 
-  const createRecord = useCallback((id) => {
+  // Create the durable history record BEFORE any bytes are uploaded, and resolve once it exists so
+  // the caller can await it. This guarantees the session has a single authoritative recordId that
+  // every later progress sync / finalize updates in place (no duplicate rows, no stuck IN_PROGRESS).
+  const createRecord = useCallback(async (id) => {
     const r = rt.current[id];
-    if (!r || r.recordId) return;
+    if (!r) return null;
+    if (r.recordId) return r.recordId;
     const userInfo = getUserInfo();
-    if (!userInfo.userId) return;
-    axios.post(SESSION_ENDPOINT(userInfo.userId), {
-      eventId: r.eventId,
-      totalCount: r.files.length,
-      uploadedCount: 0,
-      failedCount: 0,
-      creatorName: userInfo.userName,
-      status: 'IN_PROGRESS',
-    }, { headers: { 'Content-Type': 'application/json' } })
-      .then(({ data }) => {
-        const rid = data?.data?.uploadRecordId;
-        if (!rid || !rt.current[id]) return;
+    if (!userInfo.userId) return null;
+    try {
+      const { data } = await axios.post(SESSION_ENDPOINT(userInfo.userId), {
+        eventId: r.eventId,
+        totalCount: r.files.length,
+        uploadedCount: 0,
+        failedCount: 0,
+        creatorName: userInfo.userName,
+        status: 'IN_PROGRESS',
+      }, { headers: { 'Content-Type': 'application/json' } });
+      const rid = data?.data?.uploadRecordId;
+      if (rid && rt.current[id]) {
         rt.current[id].recordId = rid;
+        rt.current[id].lastSync = Date.now();
         updateSession(id, { recordId: rid });
-        postSession(id, rt.current[id].paused ? 'PAUSED' : 'IN_PROGRESS');
-      })
-      .catch((e) => console.warn('Upload session create failed:', e?.message));
-  }, [postSession, updateSession]);
+      }
+      return rid || null;
+    } catch (e) {
+      console.warn('Upload session create failed:', e?.message);
+      return null;
+    }
+  }, [updateSession]);
 
+  // Heartbeat the record's progress at most every 5s so a refresh/crash leaves a fresh status that
+  // the Uploads history (and floating widget) can re-show.
+  const PROGRESS_SYNC_INTERVAL_MS = 5000;
   const maybeSyncProgress = useCallback((id) => {
     const r = rt.current[id];
     if (!r || !r.recordId || r.paused || r.canceled) return;
-    if (Date.now() - r.lastSync < 6000) return;
+    if (Date.now() - r.lastSync < PROGRESS_SYNC_INTERVAL_MS) return;
     postSession(id, 'IN_PROGRESS');
   }, [postSession]);
 
@@ -186,7 +197,7 @@ export const UploadProvider = ({ children }) => {
     }
     updateSession(id, {
       total,
-      stats: { total, completed, failed, uploading, pending, timeRemaining, totalBytes, uploadedBytes, speedBps },
+      stats: { total, completed, failed, uploading, pending, duplicates: r.duplicates || 0, timeRemaining, totalBytes, uploadedBytes, speedBps },
     });
     maybeSyncProgress(id);
   }, [updateSession, maybeSyncProgress]);
@@ -222,10 +233,13 @@ export const UploadProvider = ({ children }) => {
     while (true) {
       if (r.canceled) return { outcome: 'canceled' };
       try {
-        if (batch.length === 1) await uploadSingleFileAndCreateMoment(batch[0], ctx, onProgress);
-        else await bulkUploadMomentsWithDetails(batch, ctx, onProgress);
+        const res = batch.length === 1
+          ? await uploadSingleFileAndCreateMoment(batch[0], ctx, onProgress)
+          : await bulkUploadMomentsWithDetails(batch, ctx, onProgress);
+        const dup = res?.duplicates || 0;
+        if (dup) r.duplicates = (r.duplicates || 0) + dup;
         patchStatus(id, ids, { status: 'completed', progress: 100, error: undefined });
-        return { outcome: 'success', count: batch.length };
+        return { outcome: 'success', count: batch.length, duplicates: dup };
       } catch (error) {
         if (isTooLargeError(error)) {
           if (batch.length > 1) {
@@ -380,6 +394,7 @@ export const UploadProvider = ({ children }) => {
     rt.current[id] = {
       source: 'computer', eventId: eid, files: [...files], status,
       paused: false, canceled: false, running: false, startTime: null, recordId: null, lastSync: 0,
+      duplicates: 0,
     };
     setSessions((prev) => [...prev, {
       id, source: 'computer', eventId: eid,
@@ -388,9 +403,14 @@ export const UploadProvider = ({ children }) => {
       startedAt: Date.now(), total: files.length, recordId: null, isPaused: false,
       stats: { ...emptyStats, total: files.length, pending: files.length, totalBytes: sumFileBytes(files) },
     }]);
-    createRecord(id);
     recompute(id);
-    ensureRunning(id);
+    // Create the history record first, THEN start uploading, so a mid-flight refresh always finds a
+    // persisted session to re-show. A failed create (offline / no userId) still proceeds to upload
+    // rather than blocking the user.
+    (async () => {
+      await createRecord(id);
+      if (rt.current[id]) ensureRunning(id);
+    })();
     return { ok: true };
   }, [updateSession, recompute, ensureRunning, createRecord]);
 
@@ -483,7 +503,8 @@ export const UploadProvider = ({ children }) => {
       .map((s) => ({
         id: s.id, kind: 'computer', eventName: s.eventName, isPaused: s.isPaused,
         done: s.stats.completed, total: s.stats.total, failed: s.stats.failed,
-        pending: s.stats.pending, enqueued: s.stats.uploading, timeRemaining: s.stats.timeRemaining,
+        pending: s.stats.pending, enqueued: s.stats.uploading, duplicates: s.stats.duplicates || 0,
+        timeRemaining: s.stats.timeRemaining,
         totalBytes: s.stats.totalBytes, uploadedBytes: s.stats.uploadedBytes, speedBps: s.stats.speedBps,
       }));
     return [...computer, ...driveSessions];

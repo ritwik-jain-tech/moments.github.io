@@ -195,17 +195,19 @@ export const uploadSingleFileAndCreateMoment = async (fileObj, { eventId }, onPr
     const moment = await buildMoment(fileObj, eventId);
     moment.media.url = target.publicUrl;
 
+    let duplicates = 0;
     try {
-      await axios.post(
+      const finalizeResp = await axios.post(
         `${API_BASE_URL}/api/files/finalize-moments`,
         { moments: [moment] },
         { headers: { ...headers, 'Content-Type': 'application/json' }, timeout: 120000 }
       );
+      duplicates = finalizeResp.data?.data?.duplicateCount || 0;
     } catch (momentError) {
       // File is uploaded; moment creation is idempotent and can be retried. Don't fail the upload.
       console.warn('Moment finalize failed after file upload (will be reconciled on retry):', momentError);
     }
-    return { success: true };
+    return { success: true, duplicates };
   } catch (error) {
     const status = error.response?.status;
     const fallback = error.code === 'ECONNABORTED'
@@ -237,7 +239,7 @@ export const bulkUploadMomentsWithDetails = async (fileObjs, { eventId }, onProg
         if (e.total && onProgress) onProgress(Math.round((e.loaded * 100) / e.total));
       },
     });
-    return response.data;
+    return { success: true, duplicates: response.data?.data?.duplicateCount || 0 };
   } catch (error) {
     const status = error.response?.status;
     const fallback = error.code === 'ECONNABORTED'

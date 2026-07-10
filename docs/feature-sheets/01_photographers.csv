@@ -1,0 +1,45 @@
+Feature Area,Feature,Sub-Feature / Detail,User Story,Page / Screen,Login / Access,Priority,Done
+Auth & Login,Login,Email + password,"As a photographer, I want to log in with email/password so I can reach my studio dashboard.",/admin/login,Public,P0,FALSE
+Auth & Login,Login,Google OAuth (SSO),"As a photographer, I want one-click Google sign-in so I skip password management.",/admin/login,Public,P0,FALSE
+Auth & Login,Login,Apple sign-in,"As a photographer on iOS, I want Apple sign-in for fast secure access.",/admin/login,Public,P2,FALSE
+Auth & Login,Login,Magic link (passwordless),"As a photographer, I want an email magic link so I can log in without a password.",/admin/login,Public,P2,FALSE
+Auth & Login,Signup,Start free trial,"As a new photographer, I want to create a studio account and start a free trial.",/admin/signup,Public,P0,FALSE
+Auth & Login,Signup,Studio/agency profile setup,"As a new user, I want to set studio name, logo, and branding during onboarding.",/admin/onboarding,Authenticated,P0,FALSE
+Auth & Login,Session,Password reset,"As a photographer, I want to reset a forgotten password by email.",/admin/reset,Public,P1,FALSE
+Auth & Login,Session,2FA / MFA,"As a studio owner, I want two-factor auth to protect client media.",/admin/settings/security,Authenticated,P2,FALSE
+Auth & Login,Session,Remember device / logout all,"As a photographer, I want to see active sessions and log out remotely.",/admin/settings/security,Authenticated,P3,FALSE
+Dashboard,Home overview,Studio KPIs,"As a photographer, I want a dashboard of events, storage used, pending deliveries, and tagging status.",/admin,Authenticated,P0,FALSE
+Dashboard,Home overview,Recent activity feed,"As a photographer, I want a feed of recent uploads, client feedback, and downloads.",/admin,Authenticated,P1,FALSE
+Dashboard,Home overview,Quick actions,"As a photographer, I want quick buttons to create event, upload, invite client.",/admin,Authenticated,P1,FALSE
+Collect,Camera-to-cloud,SFTP auto-upload,"As a photographer, I want photos to auto-upload from camera/card to cloud over SFTP so I stop manually copying files.",/admin/uploads,Authenticated,P0,FALSE
+Collect,Camera-to-cloud,SFTP credentials management,"As a photographer, I want to generate/rotate SFTP credentials per event.",/admin/settings/sftp,Authenticated,P1,FALSE
+Collect,Ingest,Chronological sync into buckets,"As a photographer, I want uploads sorted chronologically into event buckets automatically.",/admin/uploads,Authenticated,P0,FALSE
+Collect,Ingest,Drag-and-drop web upload,"As a photographer, I want to drag folders into the browser to upload when off-camera.",/admin/uploads,Authenticated,P0,FALSE
+Collect,Ingest,RAW format support,"As a photographer, I want CR3/RAW handled and previewed, not rejected.",/admin/uploads,Authenticated,P1,FALSE
+Collect,Ingest,Upload progress & resume,"As a photographer, I want resumable uploads so a dropped connection doesn't restart.",/admin/uploads,Authenticated,P1,FALSE
+Collect,Auto-sort,AI event bucketing,"As a photographer, I want photos auto-grouped by event so I don't sort manually.",/admin/storage,Authenticated,P1,FALSE
+Select,AI face tagging,Auto face detection & tagging,"As a photographer, I want every face detected and clustered so I can filter shots by person.",/admin/events/:id/select,Authenticated,P0,FALSE
+Select,AI face tagging,Person clusters gallery,"As a photographer, I want a per-person cluster view to quickly find all shots of one guest.",/admin/events/:id/people,Authenticated,P0,FALSE
+Select,AI event tagging,Scene/emotion tags,"As a photographer, I want AI tags (haldi, dance, candid, traditional, emotion) to speed culling.",/admin/events/:id/select,Authenticated,P1,FALSE
+Select,Culling,Rating & flag (pick/reject),"As a photographer, I want star ratings and pick/reject flags to cull thousands of shots fast.",/admin/events/:id/select,Authenticated,P0,FALSE
+Select,Culling,Duplicate / burst grouping,"As a photographer, I want near-duplicate bursts grouped so I pick one best frame.",/admin/events/:id/select,Authenticated,P1,FALSE
+Select,Culling,Blur / eyes-closed detection,"As a photographer, I want AI to flag blurry or eyes-closed shots to auto-reject.",/admin/events/:id/select,Authenticated,P2,FALSE
+Select,Filters,Filter by person/tag/rating,"As a photographer, I want combined filters (person + tag + rating) to build a selection.",/admin/events/:id/select,Authenticated,P1,FALSE
+Deliver,Client galleries,Create branded gallery,"As a photographer, I want a branded shareable gallery so clients review in my studio look.",/admin/events/:id/deliver,Authenticated,P0,FALSE
+Deliver,Client galleries,Shareable review link,"As a photographer, I want a link/QR so couples review without an account.",/admin/events/:id/deliver,Authenticated,P0,FALSE
+Deliver,Client galleries,Access control / expiry / password,"As a photographer, I want link expiry and password gating to protect galleries.",/admin/events/:id/deliver,Authenticated,P1,FALSE
+Deliver,Feedback loop,Client shortlist review,"As a photographer, I want to see the couple's shortlist so I know which to edit.",/admin/events/:id/feedback,Authenticated,P0,FALSE
+Deliver,Feedback loop,Comments & approvals,"As a photographer, I want per-photo comments and approval status from the client.",/admin/events/:id/feedback,Authenticated,P1,FALSE
+Deliver,Digital album,Branded digital album builder,"As a photographer, I want to build a lasting branded digital album from selects.",/admin/events/:id/album,Authenticated,P1,FALSE
+Deliver,Delivery,Final delivery + download controls,"As a photographer, I want to release final high-res downloads with limits/watermark options.",/admin/events/:id/deliver,Authenticated,P0,FALSE
+Deliver,Guest value-add,Enable guest face-find & POV upload,"As a photographer, I want guests to find their photos and upload their POV to boost album value.",/admin/events/:id/settings,Authenticated,P1,FALSE
+Manage,Team,Invite freelancers/editors,"As an agency owner, I want to invite editors and assign them to events.",/admin/team,Authenticated,P1,FALSE
+Manage,Team,Roles & permissions,"As an owner, I want role-based access (admin/editor/viewer) per event.",/admin/team,Authenticated,P1,FALSE
+Manage,Team,Task assignment,"As an owner, I want to assign culling/editing tasks and track status.",/admin/team,Authenticated,P2,FALSE
+Manage,Storage,Storage usage & tiers,"As a photographer, I want to see storage used and upgrade tiers.",/admin/storage,Authenticated,P0,FALSE
+Manage,Storage,Archive / cold storage,"As a photographer, I want old events archived cheaply but restorable.",/admin/storage,Authenticated,P2,FALSE
+Manage,Events,Event CRUD,"As a photographer, I want to create/edit/delete events with dates and clients.",/admin/events,Authenticated,P0,FALSE
+Manage,Events,Client CRM,"As a photographer, I want a client list with contact and event history.",/admin/clients,Authenticated,P2,FALSE
+Manage,Billing,Subscription & invoices,"As a studio owner, I want to manage plan, payment method, and invoices.",/admin/settings/billing,Authenticated,P1,FALSE
+Manage,Branding,Custom logo/domain/colors,"As a studio, I want galleries on my brand (logo, colors, custom domain).",/admin/settings/branding,Authenticated,P1,FALSE
+Manage,Notifications,Email/push alerts,"As a photographer, I want alerts when a client finishes review or a download completes.",/admin/settings/notifications,Authenticated,P2,FALSE

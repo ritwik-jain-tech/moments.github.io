@@ -1,0 +1,21 @@
+Feature Area,Feature,Sub-Feature / Detail,User Story,Page / Screen,Login / Access,Priority,Done
+Auth & Login,Entry,Join event via QR / link,"As a guest, I want to scan a QR at the event to open its photo space.",/e/:eventCode,Link token,P0,FALSE
+Auth & Login,Entry,No-account browse,"As a guest, I want to browse public event photos without signing up.",/e/:eventCode,Link token,P0,FALSE
+Auth & Login,Login,Phone OTP login,"As a guest, I want to log in with my phone number + OTP to find my photos.",/e/:eventCode/login,Public,P0,FALSE
+Auth & Login,Login,Google / Apple login,"As a guest, I want social login for a fast one-tap sign-in.",/e/:eventCode/login,Public,P1,FALSE
+Auth & Login,Login,Selfie-only identify (no account),"As a guest, I want to take a selfie to find my photos without full signup.",/e/:eventCode/find,Link token,P1,FALSE
+Find My Photos,Face recognition,Selfie face-match,"As a guest, I want to take a selfie so AI shows every photo I'm in.",/e/:eventCode/find,Authenticated / selfie,P0,FALSE
+Find My Photos,Face recognition,My photos gallery,"As a guest, I want a personal gallery of all photos featuring me.",/e/:eventCode/me,Authenticated,P0,FALSE
+Find My Photos,Face recognition,Re-scan / improve match,"As a guest, I want to add another selfie to improve match accuracy.",/e/:eventCode/find,Authenticated,P2,FALSE
+Find My Photos,Privacy,Opt out of face matching,"As a guest, I want to opt out so my face isn't used for matching.",/e/:eventCode/privacy,Authenticated,P1,FALSE
+Browse,Gallery,View full event gallery,"As a guest, I want to browse all shared event photos.",/e/:eventCode,Link token,P0,FALSE
+Browse,Gallery,Filter by moment/scene,"As a guest, I want to filter by moment (ceremony, dance) to find highlights.",/e/:eventCode,Link token,P1,FALSE
+Browse,Gallery,Lightbox view,"As a guest, I want full-screen swipe viewing of photos.",/e/:eventCode/photo/:id,Link token,P0,FALSE
+Upload POV,Contribution,Upload my photos,"As a guest, I want to upload my own photos so the couple sees my POV.",/e/:eventCode/upload,Authenticated,P0,FALSE
+Upload POV,Contribution,Camera capture in-app,"As a guest, I want to snap and post directly from the event.",/e/:eventCode/upload,Authenticated,P1,FALSE
+Upload POV,Contribution,Upload moderation status,"As a guest, I want to see if my upload is pending/approved by the host.",/e/:eventCode/upload,Authenticated,P2,FALSE
+Download,Save,Download photos of me,"As a guest, I want to download the photos I'm in.",/e/:eventCode/me,Authenticated,P0,FALSE
+Download,Save,Download selected,"As a guest, I want to multi-select and download several photos.",/e/:eventCode/me,Authenticated,P1,FALSE
+Share,Sharing,Share my photos to social,"As a guest, I want to share photos of me to Instagram/WhatsApp.",/e/:eventCode/me,Authenticated,P1,FALSE
+Share,Sharing,Get a personal share link,"As a guest, I want a link to my photo set to send to friends.",/e/:eventCode/me,Authenticated,P2,FALSE
+Notifications,Alerts,New-photos-of-me alert,"As a guest, I want a notification when new photos of me are added.",/e/:eventCode/me,Authenticated,P2,FALSE

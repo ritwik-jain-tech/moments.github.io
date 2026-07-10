@@ -1752,7 +1752,8 @@ const MomentUploader = ({
               <div className={`font-medium mb-1 ${ui.dropTitle}`}>
                 Drag & drop files or a folder here
               </div>
-              <p className={`text-xs mb-3 ${ui.dropSub}`}>PNG, JPG, GIF, CR3 (Canon RAW) up to 10MB each</p>
+              <p className={`text-xs mb-1 ${ui.dropSub}`}>PNG, JPG, GIF, CR3 (Canon RAW) up to 10MB each</p>
+              <p className={`text-xs mb-3 ${ui.dropSub}`}>Re-selecting the same folder is safe — already-uploaded photos are skipped, never duplicated.</p>
               {/* Two explicit browse actions inside the same zone. */}
               <div className="flex items-center justify-center gap-2">
                 <button

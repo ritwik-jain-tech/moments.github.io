@@ -11,6 +11,22 @@ import {
   mergeEventsWithProfileDetails,
   syncProfileEventDetails,
 } from '../utils/fetchUserEvents';
+import { DashboardSkeleton, ProjectsGridSkeleton } from '../components/ui/Skeleton';
+import { isDummyEvent } from '../utils/dummyEvent';
+
+/** Small "view only" pill shown on the shared demo event across the dashboard. */
+const DummyBadge = ({ isDark }) => (
+  <span
+    className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold border ${
+      isDark
+        ? 'bg-amber-500/15 text-amber-300 border-amber-400/25'
+        : 'bg-amber-500/10 text-amber-700 border-amber-500/25'
+    }`}
+    title="Shared demo event — uploads disabled"
+  >
+    Demo · View only
+  </span>
+);
 
 const BYTES_PER_GB = 1024 ** 3;
 
@@ -89,6 +105,15 @@ const AdminEvents = ({ initialSection = 'dashboard' }) => {
     }
   }, [location.state, location.pathname, navigate]);
 
+  // Opened from the uploads page when a user tries to upload to the demo event.
+  useEffect(() => {
+    if (location.state?.openCreate) {
+      resetCreateForm();
+      setShowCreateModal(true);
+      navigate(location.pathname, { replace: true, state: {} });
+    }
+  }, [location.state, location.pathname, navigate]);
+
   useEffect(() => {
     const profile = localStorage.getItem('userProfile') || sessionStorage.getItem('userProfile');
     const userId = localStorage.getItem('userId') || sessionStorage.getItem('userId');
@@ -144,7 +169,7 @@ const AdminEvents = ({ initialSection = 'dashboard' }) => {
     }
     const userId = localStorage.getItem('userId') || sessionStorage.getItem('userId');
     const token = localStorage.getItem('adminToken') || sessionStorage.getItem('adminToken');
-    if (!userId || !token) {
+    if (!userId) {
       setDashStorageOverview(null);
       return;
     }
@@ -153,7 +178,7 @@ const AdminEvents = ({ initialSection = 'dashboard' }) => {
       try {
         const { data: body } = await axios.get(`${API_BASE_URL}/api/moments/storage/overview`, {
           params: { userId },
-          headers: { Authorization: `Bearer ${token}` },
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
         });
         if (!cancelled) {
           setDashStorageOverview(body?.data ?? body);
@@ -1174,7 +1199,10 @@ const AdminEvents = ({ initialSection = 'dashboard' }) => {
                             )}
                           </div>
                           <div className="min-w-0">
-                            <div className="font-semibold truncate max-w-[220px]">{p.name}</div>
+                            <div className="font-semibold truncate max-w-[220px] flex items-center gap-2">
+                              {p.name}
+                              {isDummyEvent(p.id) && <DummyBadge isDark={isDark} />}
+                            </div>
                             <div className={`text-xs ${isDark ? 'text-white/45' : 'text-slate-500'}`}>{p.id ?? ''}</div>
                           </div>
                         </div>
@@ -1238,6 +1266,7 @@ const AdminEvents = ({ initialSection = 'dashboard' }) => {
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
                         <div className="font-semibold truncate">{p.name}</div>
+                        {isDummyEvent(p.id) && <div className="mt-1"><DummyBadge isDark={isDark} /></div>}
                         <div className={`text-xs ${isDark ? 'text-white/45' : 'text-slate-500'} mt-1`}>
                           {p.dateLabel || '-'}
                         </div>
@@ -1396,9 +1425,9 @@ const AdminEvents = ({ initialSection = 'dashboard' }) => {
             )}
 
             {loading ? (
-              <div className="flex justify-center items-center h-64">
-                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#2a4d32]"></div>
-              </div>
+              activeSection === 'projects'
+                ? <ProjectsGridSkeleton isDark={isDark} />
+                : <DashboardSkeleton isDark={isDark} />
             ) : activeSection === 'projects' ? (
               renderProjectsView()
             ) : (
@@ -1555,7 +1584,10 @@ const AdminEvents = ({ initialSection = 'dashboard' }) => {
                                   )}
                                 </div>
                               </div>
-                              <div className="font-semibold truncate">{event.eventName || 'Untitled project'}</div>
+                              <div className="font-semibold truncate flex items-center gap-2">
+                                {event.eventName || 'Untitled project'}
+                                {isDummyEvent(event.eventId) && <DummyBadge isDark={isDark} />}
+                              </div>
                               <div className={`mt-1 text-xs ${isDark ? 'text-white/45' : 'text-slate-500'}`}>Project ID: {event.eventId}</div>
                               <div className={`mt-3 flex items-center justify-between text-xs ${isDark ? 'text-white/60' : 'text-slate-600'}`}>
                                 <div className="inline-flex items-center gap-1">
@@ -1689,6 +1721,7 @@ const AdminEvents = ({ initialSection = 'dashboard' }) => {
                         const pct =
                           totalBytes > 0 ? Math.min(100, Math.round((usedGb / limitGb) * 100)) : 0;
                         const usedLabel = `${formatStorageGb(usedGb)}GB / ${limitGb}GB`;
+                        const imageCount = Number(o?.totalMomentCount) || 0;
                         return (
                           <>
                             <div className={`flex items-center justify-between text-sm ${isDark ? 'text-white/70' : 'text-slate-600'}`}>
@@ -1702,6 +1735,12 @@ const AdminEvents = ({ initialSection = 'dashboard' }) => {
                                 className="h-full bg-brand rounded-full transition-all"
                                 style={{ width: `${o ? pct : 0}%` }}
                               />
+                            </div>
+                            <div className={`mt-3 flex items-center justify-between text-sm ${isDark ? 'text-white/70' : 'text-slate-600'}`}>
+                              <div>Images</div>
+                              <div className={`${isDark ? 'text-white/80' : 'text-slate-900'} font-semibold`}>
+                                {o ? imageCount.toLocaleString() : '—'}
+                              </div>
                             </div>
                             <button
                               type="button"

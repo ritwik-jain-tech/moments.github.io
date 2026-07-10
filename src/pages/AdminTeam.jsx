@@ -4,6 +4,7 @@ import axios from 'axios';
 import { API_BASE_URL } from '../config/api';
 import AdminSidebar from '../components/AdminSidebar';
 import { fetchEventsForUser } from '../utils/fetchUserEvents';
+import { TeamSkeleton } from '../components/ui/Skeleton';
 
 const routeForKey = (key) => {
   if (key === 'home') return '/admin/homepage';
@@ -430,7 +431,7 @@ const AdminTeam = () => {
           </div>
 
           {loading ? (
-            <div className={`rounded-2xl border ${cardBorder} ${cardBg} p-10 text-center ${subtle}`}>Loading team…</div>
+            <TeamSkeleton isDark={isDark} />
           ) : (
             <>
               {/* Role filter chips */}

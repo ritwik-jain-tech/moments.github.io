@@ -6,6 +6,8 @@ import MomentUploader from '../components/MomentUploader';
 import UploadWidget from '../components/UploadWidget';
 import { API_BASE_URL } from '../config/api';
 import { useUpload } from '../context/UploadContext';
+import { UploadsSkeleton } from '../components/ui/Skeleton';
+import { isDummyEvent } from '../utils/dummyEvent';
 import {
   fetchEventsForUserWithFallback,
   mergeEventsWithProfileDetails,
@@ -184,6 +186,8 @@ const AdminUploads = () => {
     return events.find((e) => String(e?.eventId ?? e?.id) === String(selectedProjectId)) || null;
   }, [events, selectedProjectId]);
 
+  const selectedIsDummy = isDummyEvent(selectedProjectId);
+
   const eventNameFor = useCallback((id) => {
     const ev = events.find((e) => String(e?.eventId ?? e?.id) === String(id));
     return ev?.eventName || ev?.name || id || 'Project';
@@ -247,7 +251,8 @@ const AdminUploads = () => {
                     <option value="" disabled>Select project…</option>
                     {events.map((ev) => {
                       const id = String(ev?.eventId ?? ev?.id ?? '');
-                      return <option key={id} value={id}>{ev?.eventName || ev?.name || id}</option>;
+                      const label = ev?.eventName || ev?.name || id;
+                      return <option key={id} value={id}>{isDummyEvent(id) ? `${label} · View only` : label}</option>;
                     })}
                   </select>
                 ) : events.length === 1 ? (
@@ -255,18 +260,45 @@ const AdminUploads = () => {
                     isDark ? 'border-white/10 bg-white/5 text-white' : 'border-black/10 bg-white text-slate-900'
                   }`}>
                     {selectedEvent?.eventName || selectedEvent?.name || 'Project'}
+                    {selectedIsDummy && <span className="ml-2 text-xs font-medium opacity-70">· View only</span>}
                   </div>
                 ) : null}
               </div>
             </div>
 
-            {loading && (
-              <div className="rounded-2xl border border-white/10 bg-white/5 p-6 animate-pulse">
-                Loading projects…
+            {loading && <UploadsSkeleton isDark={isDark} />}
+
+            {!loading && selectedProjectId && selectedIsDummy && (
+              <div
+                className={`rounded-2xl border p-8 md:p-10 text-center shadow-sm ${
+                  isDark ? 'border-white/10 bg-white/5' : 'border-black/10 bg-white'
+                }`}
+              >
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-amber-500/15 text-amber-500 border border-amber-500/25">
+                  <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                    <path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    <path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                  </svg>
+                  Demo project · View only
+                </span>
+                <div className={`mt-4 text-lg font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                  Uploads are disabled for the demo project
+                </div>
+                <div className={`mt-1.5 text-sm max-w-md mx-auto ${isDark ? 'text-white/60' : 'text-slate-600'}`}>
+                  This is a shared sample event so you can see how Moments works. Create your own
+                  project to start uploading and tagging your photos.
+                </div>
+                <button
+                  type="button"
+                  onClick={() => navigate('/admin/events', { state: { openCreate: true } })}
+                  className="mt-5 px-5 py-2.5 rounded-xl bg-brand hover:bg-brand-2 transition-colors font-semibold border border-[#2a4d32]/20 text-on-brand"
+                >
+                  Create New Project
+                </button>
               </div>
             )}
 
-            {!loading && selectedProjectId && (
+            {!loading && selectedProjectId && !selectedIsDummy && (
               <div
                 className={`rounded-2xl border p-5 md:p-6 shadow-sm ${
                   isDark ? 'border-white/10 bg-white/5' : 'border-black/10 bg-white'
@@ -297,7 +329,12 @@ const AdminUploads = () => {
             {!loading && (
               <div className={`mt-6 rounded-2xl border ${isDark ? 'border-white/10 bg-white/5' : 'border-black/10 bg-white'}`}>
                 <div className="flex items-center justify-between px-5 py-4 border-b border-black/5">
-                  <div className="font-semibold">Upload history</div>
+                  <div>
+                    <div className="font-semibold">Upload history</div>
+                    <div className={`text-xs mt-0.5 ${isDark ? 'text-white/50' : 'text-slate-500'}`}>
+                      Retry is safe — re-selecting the same folder skips photos already uploaded, so no duplicates are created.
+                    </div>
+                  </div>
                   <button
                     type="button"
                     onClick={fetchRecords}
@@ -336,11 +373,14 @@ const AdminUploads = () => {
                       : st === 'paused' ? 'bg-amber-400'
                       : (st === 'failed' || st === 'error' || isStopped) ? 'bg-red-500'
                       : 'bg-emerald-500';
-                    // Only Drive imports can resume from history (server-side, idempotent). A computer
-                    // session that isn't a live tile is from a past browser session — its file handles
-                    // are gone, so there's nothing to resume. No Resume button for those.
-                    const canResume = isDrive && (st === 'paused' || st === 'failed' || st === 'error');
+                    // Drive imports resume server-side (idempotent). A computer session from a past
+                    // browser tab lost its file handles, so "Retry" re-opens the uploader to re-point
+                    // at the folder — already-uploaded photos are skipped as duplicates on the server.
+                    const canResume = isDrive
+                      ? (st === 'paused' || st === 'failed' || st === 'error')
+                      : (st === 'paused' || st === 'in_progress' || st === 'started' || st === 'failed' || st === 'error');
                     const canCancel = !isDone && !isStopped;
+                    const resumeLabel = isDrive ? 'Resume' : 'Retry';
                     const busy = busyRecordId === r.uploadRecordId;
                     return (
                       <div key={r.uploadRecordId} className="px-5 py-4">
@@ -375,7 +415,7 @@ const AdminUploads = () => {
                                   onClick={() => handleResumeRecord(r)}
                                   className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 text-white disabled:opacity-50"
                                 >
-                                  {busy ? 'Resuming…' : 'Resume'}
+                                  {busy ? 'Resuming…' : resumeLabel}
                                 </button>
                               )}
                               {canCancel && (

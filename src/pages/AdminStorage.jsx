@@ -8,6 +8,7 @@ import {
   mergeEventsWithProfileDetails,
   syncProfileEventDetails,
 } from '../utils/fetchUserEvents';
+import { StorageRowsSkeleton } from '../components/ui/Skeleton';
 
 const BYTES_PER_GB = 1024 ** 3;
 
@@ -208,7 +209,9 @@ const AdminStorage = () => {
   const loadStorage = useCallback(async () => {
     const userId = localStorage.getItem('userId') || sessionStorage.getItem('userId');
     const token = localStorage.getItem('adminToken') || sessionStorage.getItem('adminToken');
-    if (!userId || !token) {
+    // Only userId is required — whitelisted-phone logins have no JWT. Attach the
+    // Bearer header when we have one; the backend authorizes by userId otherwise.
+    if (!userId) {
       setStorageError('Sign in again to load storage usage.');
       setStorageLoading(false);
       setStorageByEventId({});
@@ -219,7 +222,7 @@ const AdminStorage = () => {
 
     setStorageLoading(true);
     setStorageError('');
-    const headers = { Authorization: `Bearer ${token}` };
+    const headers = token ? { Authorization: `Bearer ${token}` } : {};
 
     try {
       const { data: body } = await axios.get(`${API_BASE_URL}/api/moments/storage/overview`, {
@@ -520,6 +523,9 @@ const AdminStorage = () => {
                     </tr>
                   </thead>
                   <tbody>
+                    {storageLoading && activeProjects.length === 0 ? (
+                      <StorageRowsSkeleton count={4} />
+                    ) : null}
                     {activeProjects.length === 0 && !storageLoading ? (
                       <tr className={tableRow}>
                         <td colSpan={5} className={`px-6 py-10 text-center ${submuted}`}>

@@ -97,8 +97,8 @@ const UploadTile = ({ u, isDark, onPause, onResume, onStop, onPopOut }) => {
           <div className={`text-[10px] uppercase tracking-wide ${subtle}`}>Pending</div>
         </div>
         <div className={`rounded-lg border py-1.5 ${isDark ? 'border-white/10' : 'border-black/5'}`}>
-          <div className="text-sm font-semibold">{isDrive ? u.done : u.enqueued}</div>
-          <div className={`text-[10px] uppercase tracking-wide ${subtle}`}>{isDrive ? 'Done' : 'Enqueued'}</div>
+          <div className="text-sm font-semibold">{isDrive ? u.done : (u.duplicates || 0)}</div>
+          <div className={`text-[10px] uppercase tracking-wide ${subtle}`}>{isDrive ? 'Done' : 'Duplicates'}</div>
         </div>
         <div className={`rounded-lg border py-1.5 ${isDark ? 'border-white/10' : 'border-black/5'}`}>
           <div className={`text-sm font-semibold ${u.failed ? 'text-red-500' : ''}`}>{u.failed}</div>
