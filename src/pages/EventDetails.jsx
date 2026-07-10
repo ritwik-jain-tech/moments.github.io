@@ -5,6 +5,8 @@ import axios from 'axios';
 import { useMetaTags } from '../hooks/useMetaTags';
 import AdminSidebar from '../components/AdminSidebar';
 import { API_BASE_URL, FACE_TAGGING_BASE_URL } from '../config/api';
+import { isDummyEvent } from '../utils/dummyEvent';
+import { exportToReview } from '../utils/deliveryApi';
 import heic2any from 'heic2any';
 
 // Component to handle HEIC image conversion
@@ -135,6 +137,13 @@ const EventDetails = () => {
   const [moderationEnabled, setModerationEnabled] = useState(false);
   const [approvalMethod, setApprovalMethod] = useState('Manual Review'); // Manual Review | Auto-approve
 
+  // Client review / album delivery
+  const [reviewToken, setReviewToken] = useState(null);
+  const [albumFinalized, setAlbumFinalized] = useState(false);
+  const [reviewExporting, setReviewExporting] = useState(false);
+  const [reviewMessage, setReviewMessage] = useState('');
+  const [reviewLinkCopied, setReviewLinkCopied] = useState(false);
+
   // Media toolbar UI states
   const [mediaSearch, setMediaSearch] = useState('');
   const [activeTag, setActiveTag] = useState('Details');
@@ -246,6 +255,9 @@ const EventDetails = () => {
 
     if (start) setAccessStart(new Date(start).toISOString().slice(0, 10));
     if (end) setAccessEnd(new Date(end).toISOString().slice(0, 10));
+
+    if (eventData?.reviewToken) setReviewToken(eventData.reviewToken);
+    setAlbumFinalized(getBool(eventData?.albumFinalized));
   }, [eventData]);
 
   // Close the moment preview when the browser / hardware Back button fires (the history entry
@@ -2078,6 +2090,44 @@ const EventDetails = () => {
     </div>
   );
 
+  const handleExportReview = async () => {
+    const userId = localStorage.getItem('userId') || sessionStorage.getItem('userId');
+    if (!userId) {
+      setReviewMessage('Please sign in again to export.');
+      return;
+    }
+    setReviewExporting(true);
+    setReviewMessage('');
+    try {
+      const info = await exportToReview(eventId, userId);
+      if (info?.reviewToken) {
+        setReviewToken(info.reviewToken);
+        setAlbumFinalized(!!info.albumFinalized);
+        setReviewMessage('Review link ready — share it with your client.');
+      } else {
+        setReviewMessage('Exported, but no link was returned.');
+      }
+    } catch (e) {
+      setReviewMessage(e?.response?.data?.message || 'Export failed. Please try again.');
+    } finally {
+      setReviewExporting(false);
+    }
+  };
+
+  const reviewLink = reviewToken ? `${window.location.origin}/review/${reviewToken}` : '';
+  const albumLink = reviewToken ? `${window.location.origin}/album/${reviewToken}` : '';
+
+  const copyReviewLink = async () => {
+    if (!reviewLink) return;
+    try {
+      await navigator.clipboard.writeText(reviewLink);
+      setReviewLinkCopied(true);
+      setTimeout(() => setReviewLinkCopied(false), 1500);
+    } catch {
+      /* clipboard blocked */
+    }
+  };
+
   const renderDeliveryAndGallery = () => {
     const card = isDark ? 'rounded-2xl border border-white/10 bg-[#1A241E] p-6' : 'rounded-2xl border border-black/10 bg-white p-6';
     const inner = isDark ? 'rounded-xl border border-white/10 bg-white/5 p-4' : 'rounded-xl border border-black/10 bg-slate-50 p-4';
@@ -2091,6 +2141,72 @@ const EventDetails = () => {
 
     return (
     <div className="space-y-6">
+      {/* Client Review & Album */}
+      <div className={card}>
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <div className="flex items-center gap-2">
+              <svg className={`w-4 h-4 ${isDark ? 'text-white/70' : 'text-slate-600'}`} viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <h3 className={heading}>Client Review &amp; Album</h3>
+            </div>
+            <div className={`mt-2 text-sm ${isDark ? 'text-white/60' : 'text-slate-600'}`}>
+              Send approved photos to your client to select their album favourites.
+            </div>
+          </div>
+          <button
+            onClick={handleExportReview}
+            disabled={reviewExporting}
+            className={`px-5 py-2 rounded-xl font-semibold border transition-colors disabled:opacity-50 bg-[#67143A]/15 border-[#67143A]/30 ${isDark ? 'text-[#e8b7cd]' : 'text-[#67143A]'} hover:bg-[#67143A]/25`}
+          >
+            {reviewExporting ? 'Exporting…' : reviewToken ? 'Re-export to Review' : 'Export to Review'}
+          </button>
+        </div>
+
+        {reviewMessage && (
+          <div className={`mt-3 text-xs ${isDark ? 'text-white/60' : 'text-slate-500'}`}>{reviewMessage}</div>
+        )}
+
+        {reviewToken && (
+          <div className="mt-5 grid gap-5 md:grid-cols-[auto,1fr] items-start">
+            <div className="bg-white p-3 rounded-xl border border-black/10 w-max">
+              <QRCodeSVG value={reviewLink} size={128} />
+            </div>
+            <div className="space-y-3 min-w-0">
+              <div>
+                <div className={textPrimary}>Review link (share with client)</div>
+                <div className="flex gap-2 mt-1">
+                  <input readOnly value={reviewLink} className={input} onFocus={(e) => e.target.select()} />
+                  <button
+                    onClick={copyReviewLink}
+                    className={`px-4 py-2 rounded-xl font-semibold border whitespace-nowrap ${isDark ? 'border-white/10 text-white/80 hover:bg-white/5' : 'border-black/10 text-slate-700 hover:bg-slate-50'}`}
+                  >
+                    {reviewLinkCopied ? 'Copied' : 'Copy'}
+                  </button>
+                </div>
+              </div>
+              <div>
+                <div className={textPrimary}>Album link</div>
+                <div className={textSecondary}>
+                  {albumFinalized
+                    ? 'Client has finalized — the album is live.'
+                    : 'Available to the client after they finalize their selection.'}
+                </div>
+                <a
+                  href={albumLink}
+                  target="_blank"
+                  rel="noreferrer"
+                  className={`inline-block mt-1 text-sm underline ${albumFinalized ? (isDark ? 'text-[#8fd2a5]' : 'text-[#2a4d32]') : 'opacity-50 pointer-events-none'}`}
+                >
+                  {albumLink}
+                </a>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
       {/* Gallery Status */}
       <div className={card}>
         <div className="flex items-start justify-between gap-4">
@@ -2773,17 +2889,28 @@ const EventDetails = () => {
 
           <div className="px-4 pb-5">
             <div className="pt-2">
-              <button
-                type="button"
-                onClick={() => navigate('/admin/uploads', { state: { selectedProjectId: eventId } })}
-                className={`w-full px-4 py-3 rounded-xl font-semibold border transition-colors ${
-                  isDark
-                    ? 'bg-brand hover:bg-brand-2 border-[#2a4d32]/20 text-on-brand'
-                    : 'bg-brand hover:bg-brand-2 border-[#2a4d32]/20 text-on-brand'
-                }`}
-              >
-                Upload to this project
-              </button>
+              {isDummyEvent(eventId) ? (
+                <button
+                  type="button"
+                  onClick={() => navigate('/admin/events', { state: { openCreate: true } })}
+                  className="w-full px-4 py-3 rounded-xl font-semibold border transition-colors bg-brand hover:bg-brand-2 border-[#2a4d32]/20 text-on-brand"
+                  title="This is a shared demo event — create your own project to upload"
+                >
+                  Create New Project
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => navigate('/admin/uploads', { state: { selectedProjectId: eventId } })}
+                  className={`w-full px-4 py-3 rounded-xl font-semibold border transition-colors ${
+                    isDark
+                      ? 'bg-brand hover:bg-brand-2 border-[#2a4d32]/20 text-on-brand'
+                      : 'bg-brand hover:bg-brand-2 border-[#2a4d32]/20 text-on-brand'
+                  }`}
+                >
+                  Upload to this project
+                </button>
+              )}
             </div>
           </div>
         </aside>
