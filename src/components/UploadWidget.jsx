@@ -8,6 +8,23 @@ import React from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useUpload } from '../context/UploadContext';
 
+const formatBytes = (bytes) => {
+  const n = Number(bytes);
+  if (!Number.isFinite(n) || n <= 0) return '0 MB';
+  if (n >= 1024 ** 3) return `${(n / 1024 ** 3).toFixed(2)} GB`;
+  if (n >= 1024 ** 2) return `${(n / 1024 ** 2).toFixed(1)} MB`;
+  if (n >= 1024) return `${(n / 1024).toFixed(0)} KB`;
+  return `${n} B`;
+};
+
+const formatSpeed = (bytesPerSec) => {
+  const n = Number(bytesPerSec);
+  if (!Number.isFinite(n) || n <= 0) return null;
+  if (n >= 1024 ** 2) return `${(n / 1024 ** 2).toFixed(1)} MB/s`;
+  if (n >= 1024) return `${(n / 1024).toFixed(0)} KB/s`;
+  return `${Math.round(n)} B/s`;
+};
+
 const formatTime = (seconds) => {
   if (seconds === null || seconds === undefined || isNaN(seconds)) return 'Estimating…';
   if (seconds <= 0) return 'Almost done';
@@ -65,6 +82,12 @@ const UploadTile = ({ u, isDark, onPause, onResume, onStop, onPopOut }) => {
           <div className="text-sm font-semibold">{done}/{u.total} ({pct}%)</div>
           <div className={`text-xs ${subtle}`}>{u.isPaused ? 'Paused' : (isDrive ? '' : formatTime(u.timeRemaining))}</div>
         </div>
+        {!isDrive && u.totalBytes > 0 ? (
+          <div className={`flex items-center justify-between mt-1 text-xs ${subtle}`}>
+            <span>{formatBytes(u.uploadedBytes)} / {formatBytes(u.totalBytes)}</span>
+            <span>{u.isPaused ? '' : (formatSpeed(u.speedBps) || '')}</span>
+          </div>
+        ) : null}
       </div>
 
       {/* counts */}

@@ -27,7 +27,11 @@ export const useUpload = () => {
   return ctx;
 };
 
-const emptyStats = { total: 0, completed: 0, failed: 0, uploading: 0, pending: 0, timeRemaining: null };
+const emptyStats = {
+  total: 0, completed: 0, failed: 0, uploading: 0, pending: 0, timeRemaining: null,
+  totalBytes: 0, uploadedBytes: 0, speedBps: 0,
+};
+const sumFileBytes = (files) => files.reduce((s, f) => s + (f.file?.size || 0), 0);
 const SESSION_ENDPOINT = (userId) =>
   `${API_BASE_URL}/api/files/upload-records/computer-session?userId=${encodeURIComponent(userId)}`;
 
@@ -130,23 +134,60 @@ export const UploadProvider = ({ children }) => {
     const r = rt.current[id];
     if (!r) return;
     let completed = 0, failed = 0, uploading = 0, pending = 0;
+    let totalBytes = 0, uploadedBytes = 0;
     r.files.forEach((f) => {
+      const size = f.file?.size || 0;
+      totalBytes += size;
       const s = r.status[f.id]?.status;
-      if (s === 'completed') completed++;
+      if (s === 'completed') { completed++; uploadedBytes += size; }
       else if (s === 'error') failed++;
-      else if (s === 'uploading') uploading++;
-      else pending++;
+      else if (s === 'uploading') {
+        uploading++;
+        uploadedBytes += size * ((r.status[f.id]?.progress || 0) / 100);
+      } else pending++;
     });
     const total = r.files.length;
-    let timeRemaining = null;
-    const elapsed = r.startTime ? (Date.now() - r.startTime) / 1000 : 0;
-    const remaining = total - completed - failed;
-    if (completed > 0 && elapsed > 1 && remaining > 0) {
-      timeRemaining = Math.ceil(remaining / (completed / elapsed));
-    } else if (remaining <= 0) {
-      timeRemaining = 0;
+
+    // Smoothed upload speed (bytes/sec) from the change in uploaded bytes between ticks. Paused
+    // sessions report 0 and reset the baseline so the next resume doesn't spike.
+    const now = Date.now();
+    let speedBps = 0;
+    if (r.paused) {
+      r.lastBytes = uploadedBytes;
+      r.lastBytesAt = now;
+      r.lastSpeed = 0;
+    } else if (r.lastBytesAt) {
+      const dt = (now - r.lastBytesAt) / 1000;
+      if (dt >= 0.5) {
+        const inst = Math.max(0, (uploadedBytes - (r.lastBytes || 0)) / dt);
+        speedBps = r.lastSpeed ? r.lastSpeed * 0.6 + inst * 0.4 : inst;
+        r.lastBytes = uploadedBytes;
+        r.lastBytesAt = now;
+        r.lastSpeed = speedBps;
+      } else {
+        speedBps = r.lastSpeed || 0;
+      }
+    } else {
+      r.lastBytes = uploadedBytes;
+      r.lastBytesAt = now;
     }
-    updateSession(id, { total, stats: { total, completed, failed, uploading, pending, timeRemaining } });
+
+    // Prefer a bytes-based ETA (remaining bytes / live speed); fall back to count-based pacing.
+    let timeRemaining = null;
+    const elapsed = r.startTime ? (now - r.startTime) / 1000 : 0;
+    const remaining = total - completed - failed;
+    const remainingBytes = Math.max(0, totalBytes - uploadedBytes);
+    if (remaining <= 0) {
+      timeRemaining = 0;
+    } else if (speedBps > 1024) {
+      timeRemaining = Math.ceil(remainingBytes / speedBps);
+    } else if (completed > 0 && elapsed > 1) {
+      timeRemaining = Math.ceil(remaining / (completed / elapsed));
+    }
+    updateSession(id, {
+      total,
+      stats: { total, completed, failed, uploading, pending, timeRemaining, totalBytes, uploadedBytes, speedBps },
+    });
     maybeSyncProgress(id);
   }, [updateSession, maybeSyncProgress]);
 
@@ -345,7 +386,7 @@ export const UploadProvider = ({ children }) => {
       eventName: eventName || 'Selected project',
       uploaderName: userInfo.userName || 'You',
       startedAt: Date.now(), total: files.length, recordId: null, isPaused: false,
-      stats: { ...emptyStats, total: files.length, pending: files.length },
+      stats: { ...emptyStats, total: files.length, pending: files.length, totalBytes: sumFileBytes(files) },
     }]);
     createRecord(id);
     recompute(id);
@@ -443,6 +484,7 @@ export const UploadProvider = ({ children }) => {
         id: s.id, kind: 'computer', eventName: s.eventName, isPaused: s.isPaused,
         done: s.stats.completed, total: s.stats.total, failed: s.stats.failed,
         pending: s.stats.pending, enqueued: s.stats.uploading, timeRemaining: s.stats.timeRemaining,
+        totalBytes: s.stats.totalBytes, uploadedBytes: s.stats.uploadedBytes, speedBps: s.stats.speedBps,
       }));
     return [...computer, ...driveSessions];
   }, [sessions, driveSessions]);

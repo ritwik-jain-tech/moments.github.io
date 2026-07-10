@@ -3156,7 +3156,7 @@ const EventDetails = () => {
             </div>
           </div>
         ) : (
-          <div className="columns-2 sm:columns-3 xl:columns-4 gap-4 [column-fill:_balance]">
+          <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-4 items-start">
             {sorted.map((moment, idx) => {
               const pill = pillForStatus(moment.status);
               const mDateRaw =
@@ -3172,16 +3172,13 @@ const EventDetails = () => {
               const mCreator = moment?.creatorDetails?.userName || 'Guest';
               const momentKey = String(moment?.id || moment?.momentId || '');
               const isFav = favoriteMomentIds.has(momentKey);
-              const mW = Number(moment?.media?.width || moment?.media?.imageWidth || moment?.width || 0);
-              const mH = Number(moment?.media?.height || moment?.media?.imageHeight || moment?.height || 0);
-              const mAspect = mW > 0 && mH > 0 ? `${mW} / ${mH}` : undefined;
               return (
                 <button
                   key={moment.id || moment.momentId}
                   onClick={() => openPreview(idx)}
                   className={`relative rounded-xl overflow-hidden border group ${
                     isDark ? 'border-white/10 bg-white/0' : 'border-black/10 bg-white'
-                  } mb-4 w-full text-left break-inside-avoid hover:border-[#2a4d32]/30 transition-colors`}
+                  } w-full text-left hover:border-[#2a4d32]/30 transition-colors`}
                 >
                   <div className="bg-black/10">
                     <HeicImage
@@ -3189,7 +3186,7 @@ const EventDetails = () => {
                       alt="Moment"
                       className="w-full h-auto object-cover"
                       style={{ maxHeight: 'none' }}
-                      aspectRatio={mAspect}
+                      aspectRatio="1 / 1"
                       onError={(e) => {
                         e.target.onerror = null;
                         e.target.src = '/default-event.jpg';
